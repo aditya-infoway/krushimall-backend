@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model Company {
+  id Int @id @default(autoincrement())
+
+  companyName String
+  logo        String?
+  country     String
+  state       String
+  stateCode   String
+  district    String
+  city        String
+
+  pincode String
+
+  addressLine1 String
+  addressLine2 String?
+
+  mobileNumber String
+  phoneNumber  String?
+
+  gstNumber String
+  panNumber String
+
+  bankName       String
+  bankHolderName String
+  ifscCode       String
+  branchLocation String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  financialYears FinancialYear[]
+}
+
+model FinancialYear {
+  id Int @id @default(autoincrement())
+
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+
+  companyName String
+
+  financialYear String
+  fyStartDate   DateTime
+  fyEndDate     DateTime
+
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, financialYear])
+}
+
+model Category {
+  id Int @id @default(autoincrement())
+
+  categoryName String @unique
+  status       String @default("ACTIVE")
+
+  brands     Brand[]
+  models     Model[]
+  modelYears ModelYear[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Brand {
+  id Int @id @default(autoincrement())
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  brandName String
+  image     String?
+  status    String  @default("ACTIVE")
+
+  models     Model[]
+  modelYears ModelYear[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Model {
+  id Int @id @default(autoincrement())
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  brandId Int
+  brand   Brand @relation(fields: [brandId], references: [id])
+
+  modelName String
+  image     String?
+  status    String  @default("ACTIVE")
+
+  modelYears ModelYear[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ModelYear {
+  id Int @id @default(autoincrement())
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  brandId Int
+  brand   Brand @relation(fields: [brandId], references: [id])
+
+  modelId Int
+  model   Model @relation(fields: [modelId], references: [id])
+
+  modelYear String
+
+  image  String?
+  status String  @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
