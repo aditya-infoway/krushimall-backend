@@ -6,7 +6,6 @@ import {
   updateBrand,
   deleteBrand,
 } from "../controllers/brand.js";
-
 import { upload } from "../middleware/upload.js";
 
 const router = Router();
