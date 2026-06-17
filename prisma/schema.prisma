@@ -82,9 +82,9 @@ model Category {
   brands     Brand[]
   models     Model[]
   modelYears ModelYear[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  variants   Variant[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 }
 
 model Brand {
@@ -99,9 +99,9 @@ model Brand {
 
   models     Model[]
   modelYears ModelYear[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  variants   Variant[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 }
 
 model Model {
@@ -117,10 +117,11 @@ model Model {
   image     String?
   status    String  @default("ACTIVE")
 
-  modelYears ModelYear[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  modelYears       ModelYear[]
+  showroomVariants ShowroomVariant[]
+  variants         Variant[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model ModelYear {
@@ -137,8 +138,81 @@ model ModelYear {
 
   modelYear String
 
-  image  String?
-  status String  @default("ACTIVE")
+  image     String?
+  status    String    @default("ACTIVE")
+  variants  Variant[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model ShowroomVariant {
+  id Int @id @default(autoincrement())
+
+  modelId Int
+  model   Model @relation(fields: [modelId], references: [id])
+
+  variantName String
+
+  purPrice      Float
+  purTaxPercent Float
+
+  exShowroomPrice      Float
+  exShowroomTaxPercent Float
+
+  insurance           Float
+  insuranceTaxPercent Float
+
+  rtoCharge     Float
+  rtoTaxType    String
+  rtoTaxPercent Float
+
+  salesPrice Float
+
+  status String @default("ACTIVE")
+
+  accessories ShowroomVariantAccessory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ShowroomVariantAccessory {
+  id Int @id @default(autoincrement())
+
+  showroomVariantId Int
+
+  showroomVariant ShowroomVariant @relation(fields: [showroomVariantId], references: [id], onDelete: Cascade)
+
+  accessoryName String
+
+  price Float
+
+  taxPercent Float
+
+  totalPrice Float
+
+  createdAt DateTime @default(now())
+}
+
+model Variant {
+  id Int @id @default(autoincrement())
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  brandId Int
+  brand   Brand @relation(fields: [brandId], references: [id])
+
+  modelId Int
+  model   Model @relation(fields: [modelId], references: [id])
+
+  modelYearId Int
+  modelYear   ModelYear @relation(fields: [modelYearId], references: [id])
+
+  variantCode String @unique
+  variantName String
+image String?
+  status String @default("ACTIVE")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
