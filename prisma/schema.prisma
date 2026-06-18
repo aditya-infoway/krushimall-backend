@@ -79,12 +79,13 @@ model Category {
   categoryName String @unique
   status       String @default("ACTIVE")
 
-  brands     Brand[]
-  models     Model[]
-  modelYears ModelYear[]
-  variants   Variant[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  brands          Brand[]
+  models          Model[]
+  modelYears      ModelYear[]
+  variants        Variant[]
+  websiteVariants WebsiteVariant[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model Brand {
@@ -97,11 +98,12 @@ model Brand {
   image     String?
   status    String  @default("ACTIVE")
 
-  models     Model[]
-  modelYears ModelYear[]
-  variants   Variant[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  models          Model[]
+  modelYears      ModelYear[]
+  variants        Variant[]
+  websiteVariants WebsiteVariant[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model Model {
@@ -120,6 +122,7 @@ model Model {
   modelYears       ModelYear[]
   showroomVariants ShowroomVariant[]
   variants         Variant[]
+  websiteVariants  WebsiteVariant[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 }
@@ -138,11 +141,12 @@ model ModelYear {
 
   modelYear String
 
-  image     String?
-  status    String    @default("ACTIVE")
-  variants  Variant[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  image           String?
+  status          String           @default("ACTIVE")
+  variants        Variant[]
+  websiteVariants WebsiteVariant[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model ShowroomVariant {
@@ -209,11 +213,242 @@ model Variant {
   modelYearId Int
   modelYear   ModelYear @relation(fields: [modelYearId], references: [id])
 
-  variantCode String @unique
-  variantName String
-image String?
-  status String @default("ACTIVE")
+  variantCode     String           @unique
+  variantName     String
+  websiteVariants WebsiteVariant[]
+  image           String?
+  status          String           @default("ACTIVE")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model WebsiteVariant {
+  id Int @id @default(autoincrement())
+
+  // =========================
+  // SYSTEM
+  // =========================
+  currentStep Int     @default(1)
+  status      String  @default("DRAFT")
+  isCompleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // =========================
+  // BASIC INFORMATION
+  // =========================
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  brandId Int?
+  brand   Brand? @relation(fields: [brandId], references: [id])
+
+  modelId Int?
+  model   Model? @relation(fields: [modelId], references: [id])
+
+  modelYearId Int?
+  modelYear   ModelYear? @relation(fields: [modelYearId], references: [id])
+
+  variantId Int?
+  variant   Variant? @relation(fields: [variantId], references: [id])
+
+  variantCode String?
+  productName String?
+  productCode String?
+  skuCode     String?
+
+  launchYear DateTime?
+
+  country       String?
+  tractorStatus String?
+
+  shortDescription String? @db.Text
+
+  highlight1 String?
+  highlight2 String?
+  highlight3 String?
+  highlight4 String?
+  highlight5 String?
+
+  redColor    Boolean @default(false)
+  blueColor   Boolean @default(false)
+  greenColor  Boolean @default(false)
+  orangeColor Boolean @default(false)
+  blackColor  Boolean @default(false)
+  whiteColor  Boolean @default(false)
+  customColor Boolean @default(false)
+
+  customColorName String?
+  customColorCode String?
+
+  availableStates    Json?
+  availableDistricts Json?
+  availableDealers   Json?
+
+  stockStatus String?
+
+  seoTitle        String?
+  seoUrl          String?
+  metaDescription String? @db.Text
+  keywords        String?
+
+  // =========================
+  // ENGINE DETAILS
+  // =========================
+  engineType String?
+  fuelType   String?
+
+  horsePower        Int?
+  numberOfCylinders String?
+
+  cubicCapacity Int?
+  ratedRpm      Int?
+
+  aspiratedType String?
+  emissionNorms String?
+
+  coolingSystem String?
+  airFilterType String?
+
+  maximumTorque Float?
+  torqueRpm     Float?
+  torqueBackup  Float?
+
+  engineCondition String?
+
+  // =========================
+  // TRANSMISSION
+  // =========================
+  clutchType String?
+
+  forwardGears Int?
+  reverseGears Int?
+
+  gearType         String?
+  transmissionType String?
+
+  ptoHp  Int?
+  ptoRpm Int?
+
+  ptoType     String?
+  ptoPosition String?
+
+  creeperGears  Boolean @default(false)
+  shuttleShift  Boolean @default(false)
+  sideShiftGear Boolean @default(false)
+  powerShuttle  Boolean @default(false)
+  hiLoGears     Boolean @default(false)
+  multiSpeedPto Boolean @default(false)
+  reversePto    Boolean @default(false)
+  superReducer  Boolean @default(false)
+
+  // =========================
+  // HYDRAULIC
+  // =========================
+  liftingCapacity        Int?
+  liftingCapacityAt610mm Int?
+
+  hydraulicType String?
+
+  addc            Boolean @default(false)
+  positionControl Boolean @default(false)
+  draftControl    Boolean @default(false)
+
+  controlType String?
+
+  remoteValveType      String?
+  numberOfRemoteValves String?
+
+  threePointLinkage String?
+  linkageCategory   String?
+
+  topLink          String?
+  draftSensitivity String?
+
+  externalHydraulicCylinder Boolean @default(false)
+  selfLevelling             Boolean @default(false)
+  quickHitch                Boolean @default(false)
+  downPositionControl       Boolean @default(false)
+  loadSensing               Boolean @default(false)
+  flowControl               Boolean @default(false)
+  returnToDepth             Boolean @default(false)
+  transportLock             Boolean @default(false)
+
+  // =========================
+  // PRICE & LOCATION
+  // =========================
+  exShowroomPrice Float?
+  onRoadPrice     Float?
+
+  currency String?
+  gst      Float?
+
+  tcsApplicable String?
+  tcsPercentage Float?
+
+  financeAvailable String?
+  emiAvailable     String?
+
+  downPayment Float?
+  offerPrice  Float?
+
+  negotiable    String?
+  exchangeOffer String?
+
+  state    String?
+  district String?
+  taluka   String?
+  city     String?
+
+  pincode  String?
+  landmark String?
+
+  fullAddress    String? @db.Text
+  searchLocation String?
+
+  latitude  Float?
+  longitude Float?
+
+  // =========================
+  // IMAGES
+  // =========================
+  frontView String?
+  leftView  String?
+  rightView String?
+  rearView  String?
+
+  engineView    String?
+  dashboardView String?
+  tyreView      String?
+  hydraulicView String?
+  ptoView       String?
+
+  chassisNumber String?
+  rcBook        String?
+
+  additionalImage1 String?
+  additionalImage2 String?
+  additionalImage3 String?
+  additionalImage4 String?
+  additionalImage5 String?
+
+  // =========================
+  // VIDEOS
+  // =========================
+
+  // =========================
+  // DOCUMENTS
+  // =========================
+  brochure             String?
+  warrantyCard         String?
+  insuranceCertificate String?
+  invoice              String?
+  others               String?
+
+  // =========================
+  // SUBMISSION
+  // =========================
+  agreed Boolean @default(false)
 }

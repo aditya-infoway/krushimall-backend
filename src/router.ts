@@ -6,6 +6,7 @@ import brandRoutes from "./routes/brand.js";
 import modelRoutes from "./routes/model.js";
 import modelYearRoutes from "./routes/modelYear.js";
 import variantRoutes from "./routes/variant.js";
+import websiteVariantRoutes from "./routes/websiteVariant.js";
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -15,4 +16,5 @@ router.use("/brand", brandRoutes);
 router.use("/model", modelRoutes);
 router.use("/model-year", modelYearRoutes);
 router.use("/variant", variantRoutes);
+router.use("/website-variants", websiteVariantRoutes);
 export default router;
