@@ -123,6 +123,7 @@ model Model {
   showroomVariants ShowroomVariant[]
   variants         Variant[]
   websiteVariants  WebsiteVariant[]
+    colours          Colour[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 }
@@ -216,6 +217,7 @@ model Variant {
   variantCode     String           @unique
   variantName     String
   websiteVariants WebsiteVariant[]
+    colours          Colour[]
   image           String?
   status          String           @default("ACTIVE")
 
@@ -451,4 +453,137 @@ model WebsiteVariant {
   // SUBMISSION
   // =========================
   agreed Boolean @default(false)
+}
+model Colour {
+  id Int @id @default(autoincrement())
+
+  modelId Int
+  model   Model @relation(fields: [modelId], references: [id])
+
+  variantId Int
+  variant   Variant @relation(fields: [variantId], references: [id])
+
+  colourName String
+  colourCode String
+
+  status String @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Account {
+  id               Int      @id @default(autoincrement())
+
+  accountName      String
+  printName        String
+  group            String
+  openingBalance   Float    @default(0)
+  drCr             String
+
+  country          String?
+  countryCode      String?
+
+  state            String?
+  stateCode        String?
+
+  district         String?
+  taluka           String?
+  city             String?
+  area             String?
+
+  address1         String?
+  address2         String?
+
+  pincode          String?
+
+  phone            String?
+  mobile           String?
+
+  email            String?
+  contactPerson    String?
+
+  birthday         DateTime?
+  anniversary      DateTime?
+
+  bankAccountNo    String?
+  bankName         String?
+  ifscCode         String?
+  branch           String?
+
+  gstNo            String?
+  panCard          String?
+  aadharNo         String?
+
+  status           String   @default("ACTIVE")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+model EnquiryType {
+  id            Int      @id @default(autoincrement())
+  enquiryType   String
+  status        String   @default("ACTIVE")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+model EnquirySource {
+  id              Int      @id @default(autoincrement())
+  enquirySource   String
+  status          String   @default("ACTIVE")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+model Profession {
+  id          Int      @id @default(autoincrement())
+  profession  String
+  status      String   @default("ACTIVE")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+model Banker {
+  id         Int      @id @default(autoincrement())
+  banker     String
+  status     String   @default("ACTIVE")
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+model Finance {
+  id         Int      @id @default(autoincrement())
+  finance    String
+  status     String   @default("ACTIVE")
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+model EnquiryStatus {
+  id               Int      @id @default(autoincrement())
+  enquiryStatus    String
+  status           String   @default("ACTIVE")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+model Employee {
+  id                Int      @id @default(autoincrement())
+
+  department        String
+  branch            String
+  role              String
+
+  employeeName      String
+
+  mobileNumber      String   @unique
+  alternateNumber   String?
+
+  email             String   @unique
+  password          String
+
+  status            String   @default("ACTIVE")
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
