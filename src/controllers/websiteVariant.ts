@@ -239,3 +239,47 @@ export const deleteWebsiteVariant = async (req: Request, res: Response) => {
     });
   }
 };
+export const toggleWebsiteVariantStatus = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const id = Number(req.params.id);
+
+    const existing = await prisma.websiteVariant.findUnique({
+      where: { id },
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: "Website Variant not found",
+      });
+    }
+
+    const newStatus =
+      existing.status === "ACTIVE"
+        ? "INACTIVE"
+        : "ACTIVE";
+
+    const updated = await prisma.websiteVariant.update({
+      where: { id },
+      data: {
+        status: newStatus,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Status changed to ${newStatus}`,
+      data: updated,
+    });
+  } catch (error) {
+    console.error("Toggle Status Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update status",
+    });
+  }
+};

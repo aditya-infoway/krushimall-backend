@@ -123,6 +123,7 @@ model Model {
   showroomVariants ShowroomVariant[]
   variants         Variant[]
   websiteVariants  WebsiteVariant[]
+   tractors Tractor[]
     colours          Colour[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -217,6 +218,7 @@ model Variant {
   variantCode     String           @unique
   variantName     String
   websiteVariants WebsiteVariant[]
+   tractors Tractor[]
     colours          Colour[]
   image           String?
   status          String           @default("ACTIVE")
@@ -467,18 +469,18 @@ model Colour {
   colourCode String
 
   status String @default("ACTIVE")
-
+ tractors Tractor[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 model Account {
   id               Int      @id @default(autoincrement())
 
-  accountName      String
-  printName        String
-  group            String
+  accountName      String?
+  printName        String?
+  group            String?
   openingBalance   Float    @default(0)
-  drCr             String
+  drCr             String?
 
   country          String?
   countryCode      String?
@@ -515,7 +517,7 @@ model Account {
   aadharNo         String?
 
   status           String   @default("ACTIVE")
-
+Purchase  Purchase[]
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -586,4 +588,92 @@ model Employee {
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+model Tractor {
+  id                         Int      @id @default(autoincrement())
+
+  modelId                    Int
+  variantId                  Int
+  colourId                   Int
+
+  itemName                   String
+  codeNo                     String   @unique
+  shortName                  String?
+  hsnCode                    String?
+  taxSlab                    String?
+  listOfGroup                String?
+  typeOfFuel                 String?
+  fuelCapacity               String?
+
+  purchasePriceNoGST         Float    @default(0)
+  purchasePriceTaxable       Float    @default(0)
+
+  status                     String   @default("ACTIVE")
+
+  model                      Model    @relation(fields: [modelId], references: [id])
+  variant                    Variant  @relation(fields: [variantId], references: [id])
+  colour                     Colour   @relation(fields: [colourId], references: [id])
+
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+}
+model ProfilePrefix {
+  id        Int      @id @default(autoincrement())
+
+  prefixFor String   @unique
+  prefix    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Purchase {
+  id               Int      @id @default(autoincrement())
+
+  billNo           String   @unique
+
+  accountId        Int?
+  account          Account? @relation(fields: [accountId], references: [id])
+
+  purchaseDate     DateTime?
+  purchaseBillNo   String?
+
+  terms            String?
+  narration        String?
+
+  freightCharge    Float @default(0)
+  insurance        Float @default(0)
+  otherCharge      Float @default(0)
+  roundAmount      Float @default(0)
+
+  totalQty         Int   @default(0)
+  totalAmount      Float @default(0)
+  grandTotal       Float @default(0)
+
+  status           String @default("PENDING")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items            PurchaseItem[]
+}
+
+model PurchaseItem {
+  id            Int @id @default(autoincrement())
+
+  purchaseId    Int
+  purchase      Purchase @relation(fields: [purchaseId], references: [id])
+
+  itemName      String
+  itemCode      String
+
+  color         String
+
+  chassisNo     String
+  engineNo      String
+
+  qty           Int
+
+  ratePer       Float
+  gstPercent    Float
+  amount        Float
 }
