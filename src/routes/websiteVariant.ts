@@ -6,6 +6,7 @@ getWebsiteVariantById,
 updateWebsiteVariant,
 saveStep,
 submitWebsiteVariant,
+toggleWebsiteVariantStatus,
 deleteWebsiteVariant,
 } from "../controllers/websiteVariant.js";
 
@@ -81,7 +82,12 @@ router.put(
 "/:id/submit",
 submitWebsiteVariant
 );
+;
 
+router.patch(
+  "/:id/toggle-status",
+  toggleWebsiteVariantStatus
+);
 // Delete
 router.delete(
 "/:id",
