@@ -20,6 +20,7 @@ import showroomVariantRoutes from "./routes/showroomVariant.js";
 import tractorRoutes from "./routes/tractor.js";
 import profilePrefixRoutes from "./routes/profilePrefix.js";
 import purchaseRoutes from "./routes/purchase.js";
+import leadRoutes from "./routes/lead.js";
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -41,8 +42,9 @@ router.use("/enquiry-statuses", enquiryStatusRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/showroom-variant", showroomVariantRoutes);
 router.use("/profile-prefix", profilePrefixRoutes);
-
-
 router.use("/purchases", purchaseRoutes);
 router.use("/tractors", tractorRoutes);
+
+
+router.use("/leads", leadRoutes);
 export default router;

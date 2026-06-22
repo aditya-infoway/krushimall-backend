@@ -123,8 +123,9 @@ model Model {
   showroomVariants ShowroomVariant[]
   variants         Variant[]
   websiteVariants  WebsiteVariant[]
-   tractors Tractor[]
-    colours          Colour[]
+  tractors         Tractor[]
+  leads            Lead[]
+  colours          Colour[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 }
@@ -218,8 +219,9 @@ model Variant {
   variantCode     String           @unique
   variantName     String
   websiteVariants WebsiteVariant[]
-   tractors Tractor[]
-    colours          Colour[]
+  tractors        Tractor[]
+  colours         Colour[]
+  leads           Lead[]
   image           String?
   status          String           @default("ACTIVE")
 
@@ -456,6 +458,7 @@ model WebsiteVariant {
   // =========================
   agreed Boolean @default(false)
 }
+
 model Colour {
   id Int @id @default(autoincrement())
 
@@ -468,212 +471,306 @@ model Colour {
   colourName String
   colourCode String
 
-  status String @default("ACTIVE")
- tractors Tractor[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String    @default("ACTIVE")
+  tractors  Tractor[]
+  leads     Lead[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
+
 model Account {
-  id               Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  accountName      String?
-  printName        String?
-  group            String?
-  openingBalance   Float    @default(0)
-  drCr             String?
+  accountName    String?
+  printName      String?
+  group          String?
+  openingBalance Float   @default(0)
+  drCr           String?
 
-  country          String?
-  countryCode      String?
+  country     String?
+  countryCode String?
 
-  state            String?
-  stateCode        String?
+  state     String?
+  stateCode String?
 
-  district         String?
-  taluka           String?
-  city             String?
-  area             String?
+  district String?
+  taluka   String?
+  city     String?
+  area     String?
 
-  address1         String?
-  address2         String?
+  address1 String?
+  address2 String?
 
-  pincode          String?
+  pincode String?
 
-  phone            String?
-  mobile           String?
+  phone  String?
+  mobile String?
 
-  email            String?
-  contactPerson    String?
+  email         String?
+  contactPerson String?
 
-  birthday         DateTime?
-  anniversary      DateTime?
+  birthday    DateTime?
+  anniversary DateTime?
 
-  bankAccountNo    String?
-  bankName         String?
-  ifscCode         String?
-  branch           String?
+  bankAccountNo String?
+  bankName      String?
+  ifscCode      String?
+  branch        String?
 
-  gstNo            String?
-  panCard          String?
-  aadharNo         String?
-
-  status           String   @default("ACTIVE")
-Purchase  Purchase[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  gstNo         String?
+  panCard       String?
+  aadharNo      String?
+  customerLeads Lead[]     @relation("LeadCustomer")
+  accountLeads  Lead[]     @relation("LeadAccount")
+  status        String     @default("ACTIVE")
+  Purchase      Purchase[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 }
+
 model EnquiryType {
-  id            Int      @id @default(autoincrement())
-  enquiryType   String
-  status        String   @default("ACTIVE")
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-model EnquirySource {
-  id              Int      @id @default(autoincrement())
-  enquirySource   String
-  status          String   @default("ACTIVE")
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-model Profession {
   id          Int      @id @default(autoincrement())
-  profession  String
+  enquiryType String
   status      String   @default("ACTIVE")
-
+  leads       Lead[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model EnquirySource {
+  id            Int      @id @default(autoincrement())
+  enquirySource String
+  status        String   @default("ACTIVE")
+  leads         Lead[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Profession {
+  id         Int      @id @default(autoincrement())
+  profession String
+  status     String   @default("ACTIVE")
+  leads      Lead[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
 model Banker {
-  id         Int      @id @default(autoincrement())
-  banker     String
-  status     String   @default("ACTIVE")
+  id     Int    @id @default(autoincrement())
+  banker String
+  status String @default("ACTIVE")
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 model Finance {
-  id         Int      @id @default(autoincrement())
-  finance    String
-  status     String   @default("ACTIVE")
+  id      Int    @id @default(autoincrement())
+  finance String
+  status  String @default("ACTIVE")
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 model EnquiryStatus {
-  id               Int      @id @default(autoincrement())
-  enquiryStatus    String
-  status           String   @default("ACTIVE")
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  enquiryStatus String
+  status        String   @default("ACTIVE")
+  leads         Lead[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
+
 model Employee {
-  id                Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  department        String
-  branch            String
-  role              String
+  department String
+  branch     String
+  role       String
 
-  employeeName      String
+  employeeName String
 
-  mobileNumber      String   @unique
-  alternateNumber   String?
+  mobileNumber    String  @unique
+  alternateNumber String?
 
-  email             String   @unique
-  password          String
+  email    String @unique
+  password String
 
-  status            String   @default("ACTIVE")
-
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  status    String   @default("ACTIVE")
+  leads     Lead[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 model Tractor {
-  id                         Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  modelId                    Int
-  variantId                  Int
-  colourId                   Int
+  modelId   Int
+  variantId Int
+  colourId  Int
 
-  itemName                   String
-  codeNo                     String   @unique
-  shortName                  String?
-  hsnCode                    String?
-  taxSlab                    String?
-  listOfGroup                String?
-  typeOfFuel                 String?
-  fuelCapacity               String?
+  itemName     String
+  codeNo       String  @unique
+  shortName    String?
+  hsnCode      String?
+  taxSlab      String?
+  listOfGroup  String?
+  typeOfFuel   String?
+  fuelCapacity String?
 
-  purchasePriceNoGST         Float    @default(0)
-  purchasePriceTaxable       Float    @default(0)
+  purchasePriceNoGST   Float @default(0)
+  purchasePriceTaxable Float @default(0)
 
-  status                     String   @default("ACTIVE")
+  status String @default("ACTIVE")
 
-  model                      Model    @relation(fields: [modelId], references: [id])
-  variant                    Variant  @relation(fields: [variantId], references: [id])
-  colour                     Colour   @relation(fields: [colourId], references: [id])
+  model   Model   @relation(fields: [modelId], references: [id])
+  variant Variant @relation(fields: [variantId], references: [id])
+  colour  Colour  @relation(fields: [colourId], references: [id])
 
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
-model ProfilePrefix {
-  id        Int      @id @default(autoincrement())
 
-  prefixFor String   @unique
+model ProfilePrefix {
+  id Int @id @default(autoincrement())
+
+  prefixFor String @unique
   prefix    String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 model Purchase {
-  id               Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  billNo           String   @unique
+  billNo String @unique
 
-  accountId        Int?
-  account          Account? @relation(fields: [accountId], references: [id])
+  accountId Int?
+  account   Account? @relation(fields: [accountId], references: [id])
 
-  purchaseDate     DateTime?
-  purchaseBillNo   String?
+  purchaseDate   DateTime?
+  purchaseBillNo String?
 
-  terms            String?
-  narration        String?
+  terms     String?
+  narration String?
 
-  freightCharge    Float @default(0)
-  insurance        Float @default(0)
-  otherCharge      Float @default(0)
-  roundAmount      Float @default(0)
+  freightCharge Float @default(0)
+  insurance     Float @default(0)
+  otherCharge   Float @default(0)
+  roundAmount   Float @default(0)
 
-  totalQty         Int   @default(0)
-  totalAmount      Float @default(0)
-  grandTotal       Float @default(0)
+  totalQty    Int   @default(0)
+  totalAmount Float @default(0)
+  grandTotal  Float @default(0)
 
-  status           String @default("PENDING")
+  status String @default("PENDING")
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  items            PurchaseItem[]
+  items PurchaseItem[]
 }
 
 model PurchaseItem {
-  id            Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  purchaseId    Int
-  purchase      Purchase @relation(fields: [purchaseId], references: [id])
+  purchaseId Int
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
 
-  itemName      String
-  itemCode      String
+  itemName String
+  itemCode String
 
-  color         String
+  color String
 
-  chassisNo     String
-  engineNo      String
+  chassisNo String
+  engineNo  String
 
-  qty           Int
+  qty Int
 
-  ratePer       Float
-  gstPercent    Float
-  amount        Float
+  ratePer    Float
+  gstPercent Float
+  amount     Float
+}
+
+model Lead {
+  id Int @id @default(autoincrement())
+
+  // Vehicle
+  modelId Int?
+  model   Model? @relation(fields: [modelId], references: [id])
+
+  variantId Int?
+  variant   Variant? @relation(fields: [variantId], references: [id])
+
+  colourId Int?
+  colour   Colour? @relation(fields: [colourId], references: [id])
+
+  customerId  Int?
+  customer    Account? @relation("LeadCustomer", fields: [customerId], references: [id])
+  executiveId Int?
+
+  executive Employee? @relation(fields: [executiveId], references: [id])
+
+  // Exchange Vehicle
+  wantsFinance            Boolean @default(false)
+  existingCustomerModel   String?
+  existingCustomerVariant String?
+  existingVehicleYear     String?
+  customerExpectedPrice   Float?
+  marketPrice             Float?
+  exchangeBonus           Float?
+  smiplShares             Float?
+  dealerShares            Float?
+  valueAddAccessories     Float?
+  insurance               Float?
+  totalValue              Float?
+
+  // Review Summary
+  expectedPurchaseDate DateTime?
+  expectedDeliveryDate DateTime?
+  expectedDeliveryTime String?
+
+  purchaseType String?
+  professionId Int?
+  profession   Profession? @relation(fields: [professionId], references: [id])
+
+  enquiryTypeId     Int?
+  enquiryTypeMaster EnquiryType? @relation(fields: [enquiryTypeId], references: [id])
+
+  enquirySourceId     Int?
+  enquirySourceMaster EnquirySource? @relation(fields: [enquirySourceId], references: [id])
+  enquiryStatusId     Int?
+  enquiryStatus       EnquiryStatus? @relation(fields: [enquiryStatusId], references: [id])
+  executiveName       String?
+
+  bookingDate  DateTime?
+  followUpDate DateTime?
+
+  dmsEnquiryNo   String?
+  dmsEnquiryDate DateTime?
+
+  otherModel         String?
+  competitorTestRide String?
+
+  salesManagerRemarks String?
+  dealerRemarks       String?
+
+  advancePayment Boolean @default(false)
+  listOfBooking  Float?
+
+  paymentMode String?
+  bankMode    String?
+
+  accountId Int?
+  account   Account? @relation("LeadAccount", fields: [accountId], references: [id])
+  narration String?
+
+  chequeNo        String?
+  chequeDate      DateTime?
+  chequeClearDate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
