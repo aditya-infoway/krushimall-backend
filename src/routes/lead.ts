@@ -2,7 +2,8 @@ import { Router } from "express";
 import {
   createLead,
   getLeads,
-  generateOrderBillPdf
+  generateOrderBillPdf,
+  getLeadById
 } from "../controllers/lead.js";
 
 const router = Router();
@@ -10,7 +11,8 @@ const router = Router();
 router.post("/", createLead);
 router.get("/", getLeads);
 router.get(
-  "/:id/order-bill",
+  "/:id/Quotation",
   generateOrderBillPdf
 );
+router.get("/:id", getLeadById);
 export default router;
