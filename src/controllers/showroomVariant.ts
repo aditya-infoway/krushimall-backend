@@ -62,12 +62,20 @@ export const createShowroomVariant = async (
           status,
 
           accessories: {
-            create: accessories.map((a: any) => ({
-              accessoryName: a.name,
-              price: Number(a.price),
-              taxPercent: Number(a.taxPercent),
-              totalPrice: Number(a.totalPrice),
-            })),
+        create: accessories.map((a: any) => ({
+  accessory: {
+      connect: {
+        id: Number(a.accessoryId),
+      },
+    },
+
+  
+
+  qty: Number(a.qty || 1),
+  price: Number(a.price),
+  taxPercent: Number(a.taxPercent),
+  totalPrice: Number(a.totalPrice),
+}))
           },
         },
 
@@ -236,8 +244,10 @@ export const getShowroomVariantById =
             accessories: {
               create: accessories.map(
                 (a: any) => ({
-                  accessoryName: a.name,
+                    accessoryId: Number(a.accessoryId),
+                
                   price: Number(a.price),
+                    qty: Number(a.qty || 1),
                   taxPercent: Number(
                     a.taxPercent
                   ),

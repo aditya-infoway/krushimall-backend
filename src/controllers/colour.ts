@@ -9,7 +9,12 @@ export const createColour = async (
     const colour = await prisma.colour.create({
       data: {
         modelId: Number(req.body.modelId),
-        variantId: Number(req.body.variantId),
+       variantId: req.body.variantId
+  ? Number(req.body.variantId)
+  : null,
+          showroomVariantId: req.body.showroomVariantId
+      ? Number(req.body.showroomVariantId)
+      : null,
         colourName: req.body.colourName,
         colourCode: req.body.colourCode,
         status: req.body.status || "ACTIVE",
@@ -40,6 +45,7 @@ export const getColours = async (
       include: {
         model: true,
         variant: true,
+        showroomVariant: true,
       },
       orderBy: {
         id: "desc",
@@ -72,6 +78,7 @@ export const getColourById = async (
       include: {
         model: true,
         variant: true,
+           showroomVariant: true,
       },
     });
 
@@ -98,7 +105,11 @@ export const updateColour = async (
 
     if (req.body.variantId)
       updateData.variantId = Number(req.body.variantId);
-
+if (req.body.showroomVariantId !== undefined)
+  updateData.showroomVariantId =
+    req.body.showroomVariantId
+      ? Number(req.body.showroomVariantId)
+      : null;
     if (req.body.colourName !== undefined)
       updateData.colourName = req.body.colourName;
 

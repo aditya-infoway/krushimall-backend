@@ -24,7 +24,8 @@ CREATE TABLE "ShowroomVariant" (
 CREATE TABLE "ShowroomVariantAccessory" (
     "id" SERIAL NOT NULL,
     "showroomVariantId" INTEGER NOT NULL,
-    "accessoryName" TEXT NOT NULL,
+  "accessoryId" INTEGER NOT NULL,
+  "qty" INTEGER NOT NULL DEFAULT 1,
     "price" DOUBLE PRECISION NOT NULL,
     "taxPercent" DOUBLE PRECISION NOT NULL,
     "totalPrice" DOUBLE PRECISION NOT NULL,
