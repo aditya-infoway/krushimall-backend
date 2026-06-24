@@ -5,6 +5,9 @@ export const createLead = async (req: Request, res: Response) => {
   try {
     const data: any = {
       ...req.body,
+        showroomVariantId: req.body.showroomVariantId
+    ? Number(req.body.showroomVariantId)
+    : null,
       expectedPurchaseDate: req.body.expectedPurchaseDate
         ? new Date(req.body.expectedPurchaseDate)
         : null,
@@ -89,7 +92,8 @@ export const createLead = async (req: Request, res: Response) => {
     delete data.enquirySource;
     delete data.enquiryStatus;
     delete data.selectAccount;
-
+delete data.variantId;       // add
+delete data.showroomVariant;
     delete data.exWarranty23;
     delete data.exWarranty28;
     console.log(data);
@@ -119,7 +123,7 @@ export const getLeads = async (req: Request, res: Response) => {
       include: {
         customer: true,
         model: true,
-        variant: true,
+        showroomVariant: true,
         colour: true,
         executive: true,
         profession: true,
@@ -155,7 +159,7 @@ export const getLeadById = async (
     include: {
       customer: true,
       model: true,
-      variant: true,
+        showroomVariant: true,
       colour: true,
       executive: true,
     },
@@ -176,7 +180,7 @@ const company = await prisma.company.findFirst();
       include: {
         customer: true,
         model: true,
-        variant: true,
+      showroomVariant: true,
         colour: true,
         executive: true,
         profession: true,
@@ -707,7 +711,7 @@ const company = await prisma.company.findFirst();
 
   <tr>
     <td><b>Variant</b></td>
-    <td>${lead.variant?.variantName || "EX"}</td>
+    <td>${lead.showroomVariant?.variantName || "EX"}</td>
     <td><b>Colour</b></td>
     <td>${lead.colour?.colourName || "RED"}</td>
   </tr>

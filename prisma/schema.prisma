@@ -175,27 +175,27 @@ model ShowroomVariant {
 
   salesPrice Float
 
-  status String @default("ACTIVE")
-
+  status      String                     @default("ACTIVE")
+  leads       Lead[]
   accessories ShowroomVariantAccessory[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  colours     Colour[]
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
 }
 
 model ShowroomVariantAccessory {
   id Int @id @default(autoincrement())
 
   showroomVariantId Int
+  showroomVariant   ShowroomVariant @relation(fields: [showroomVariantId], references: [id], onDelete: Cascade)
 
-  showroomVariant ShowroomVariant @relation(fields: [showroomVariantId], references: [id], onDelete: Cascade)
+  accessoryId Int
+  accessory   Accessory @relation(fields: [accessoryId], references: [id])
 
-  accessoryName String
+  qty Int @default(1)
 
-  price Float
-
+  price      Float
   taxPercent Float
-
   totalPrice Float
 
   createdAt DateTime @default(now())
@@ -465,17 +465,22 @@ model Colour {
   modelId Int
   model   Model @relation(fields: [modelId], references: [id])
 
-  variantId Int
-  variant   Variant @relation(fields: [variantId], references: [id])
+  variantId Int?
+  variant   Variant? @relation(fields: [variantId], references: [id])
+
+  showroomVariantId Int?
+  showroomVariant   ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
 
   colourName String
   colourCode String
 
-  status    String    @default("ACTIVE")
-  tractors  Tractor[]
-  leads     Lead[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  status String @default("ACTIVE")
+
+  tractors Tractor[]
+  leads    Lead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Account {
@@ -701,8 +706,9 @@ model Lead {
   modelId Int?
   model   Model? @relation(fields: [modelId], references: [id])
 
-  variantId Int?
-  variant   Variant? @relation(fields: [variantId], references: [id])
+  showroomVariantId Int?
+
+  showroomVariant ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
 
   colourId Int?
   colour   Colour? @relation(fields: [colourId], references: [id])
@@ -770,24 +776,54 @@ model Lead {
   chequeNo        String?
   chequeDate      DateTime?
   chequeClearDate DateTime?
-followUpStatus String? @default("New")
+  followUpStatus  String?   @default("New")
 
-followUps FollowUp[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  followUps FollowUp[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  variant   Variant?   @relation(fields: [variantId], references: [id])
+  variantId Int?
 }
-model FollowUp {
-  id                   Int      @id @default(autoincrement())
 
-  leadId               Int
-  lead                 Lead     @relation(fields: [leadId], references: [id])
+model FollowUp {
+  id Int @id @default(autoincrement())
+
+  leadId Int
+  lead   Lead @relation(fields: [leadId], references: [id])
 
   expectedPurchaseDate DateTime?
   nextScheduledDate    DateTime?
   callTime             String?
   callResponse         String?
   discussion           String?
-followupCount Int @default(0)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  followupCount        Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model Accessory {
+  id Int @id @default(autoincrement())
+
+  type String
+
+  itemName  String
+  codeNo    String  @unique
+  shortName String?
+
+  hsnCode String?
+  taxSlab String?
+  group   String?
+
+  purchasePrice Float?
+  salesPrice    Float?
+  mrp           Float?
+
+  opStock Int @default(0)
+
+  showroomVariants           Json?
+  showroomVariantAccessories ShowroomVariantAccessory[]
+  status                     String                     @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
