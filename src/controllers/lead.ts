@@ -5,6 +5,9 @@ export const createLead = async (req: Request, res: Response) => {
   try {
     const data: any = {
       ...req.body,
+        showroomVariantId: req.body.showroomVariantId
+    ? Number(req.body.showroomVariantId)
+    : null,
       expectedPurchaseDate: req.body.expectedPurchaseDate
         ? new Date(req.body.expectedPurchaseDate)
         : null,
@@ -89,7 +92,8 @@ export const createLead = async (req: Request, res: Response) => {
     delete data.enquirySource;
     delete data.enquiryStatus;
     delete data.selectAccount;
-
+delete data.variantId;       // add
+delete data.showroomVariant;
     delete data.exWarranty23;
     delete data.exWarranty28;
     console.log(data);
@@ -114,11 +118,12 @@ export const createLead = async (req: Request, res: Response) => {
 
 export const getLeads = async (req: Request, res: Response) => {
   try {
+    
     const leads = await prisma.lead.findMany({
       include: {
         customer: true,
         model: true,
-        variant: true,
+        showroomVariant: true,
         colour: true,
         executive: true,
         profession: true,
@@ -143,16 +148,39 @@ export const getLeads = async (req: Request, res: Response) => {
     });
   }
 };
+export const getLeadById = async (
+  req: Request,
+  res: Response
+) => {
+  const id = Number(req.params.id);
+
+  const lead = await prisma.lead.findUnique({
+    where: { id },
+    include: {
+      customer: true,
+      model: true,
+        showroomVariant: true,
+      colour: true,
+      executive: true,
+    },
+  });
+
+  return res.json({
+    success: true,
+    data: lead,
+  });
+};
 export const generateOrderBillPdf = async (req: Request, res: Response) => {
   try {
     const leadId = Number(req.params.id);
 const company = await prisma.company.findFirst();
+
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
       include: {
         customer: true,
         model: true,
-        variant: true,
+      showroomVariant: true,
         colour: true,
         executive: true,
         profession: true,
@@ -289,7 +317,7 @@ const company = await prisma.company.findFirst();
   font-family: Arial, sans-serif;
   background: #fff;
   margin: 0;
-  padding: 12px;
+  padding: 0;
   font-size: 9px;
   color: #000;
   line-height: 1.2;
@@ -315,8 +343,8 @@ const company = await prisma.company.findFirst();
 }
 
 .company-logo {
-  max-width: 90px;
-  max-height: 90px;
+  max-width: 110px;
+  max-height: 110px;
   object-fit: contain;
 }
 
@@ -326,7 +354,7 @@ const company = await prisma.company.findFirst();
 }
 
 .company-details {
-  font-size: 8px;
+  font-size: 11px;
   line-height: 1.2;
   margin: 0;
 }
@@ -539,7 +567,7 @@ const company = await prisma.company.findFirst();
 .main-table td {
   border: 1px solid #000;
   padding: 4px 6px;
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .blue-header {
@@ -558,7 +586,7 @@ const company = await prisma.company.findFirst();
 .payment-table td {
   border: 1px solid #000;
   padding: 6px 8px;
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .payment-header {
@@ -576,12 +604,12 @@ const company = await prisma.company.findFirst();
 }
           /* Footer */
           .footer {
-            margin-top: 25px;
+            margin-top: 16px;
             text-align: center;
             font-size: 9pt;
             color: #666666;
-            border-top: 1px solid #cccccc;
-            padding-top: 12px;
+            
+            padding-top: 8px;
             font-family: 'Arial', sans-serif;
           }
           
@@ -595,7 +623,7 @@ const company = await prisma.company.findFirst();
       </head>
       <body>
         <!-- Company Header -->
-       
+        <div class="title">QUOTATION / PROGRAMA INVOICE</div>
         <div class="header-section">
 
   <div class="company-left">
@@ -629,7 +657,7 @@ const company = await prisma.company.findFirst();
   <div class="company-right">
     ${
       company?.logo
-        ? `<img src="http://192.168.1.38:5000${company.logo}" class="company-logo" />`
+        ? `<img src="http://192.168.1.38:5000/uploads/${company.logo}" class="company-logo" />`
         : ""
     }
   </div>
@@ -638,7 +666,7 @@ const company = await prisma.company.findFirst();
         </div>
 
         <!-- Title -->
-        <div class="title">QUOTATION / PROGRAMA INVOICE</div>
+       
 
         <!-- Customer Details -->
        <table class="main-table">
@@ -683,7 +711,7 @@ const company = await prisma.company.findFirst();
 
   <tr>
     <td><b>Variant</b></td>
-    <td>${lead.variant?.variantName || "EX"}</td>
+    <td>${lead.showroomVariant?.variantName || "EX"}</td>
     <td><b>Colour</b></td>
     <td>${lead.colour?.colourName || "RED"}</td>
   </tr>
@@ -786,21 +814,34 @@ const company = await prisma.company.findFirst();
         </div>
 
         <!-- Enquiry Type -->
-        <div class="enquiry-type">
-          <strong>Enquiry Type:</strong> ${lead.enquiryTypeMaster?.enquiryTypeName || "Corporate"}
-        </div>
+   <table class="main-table">
+  <tr>
+    <td width="50%">
+      <b>Enquiry Type:</b>
+      ${lead.enquiryTypeMaster?.enquiryType || "Corporate"}
+    </td>
+    <td width="50%">
+      <b>Enquiry Source:</b>
+      ${lead.enquirySourceMaster?.enquirySource || "Instagram"}
+    </td>
+  </tr>
 
-        <!-- Terms & Conditions -->
-        <div class="terms">
-          <strong>Terms &amp; Conditions:</strong>
-          <ul>
-            <li>This is a system generated quotation/invoice.</li>
-            <li>Subject to Jalgaon jurisdiction.</li>
-            <li>All disputes subject to Jalgaon court only.</li>
-            <li>Goods once sold will not be taken back.</li>
-            <li>Interest @ 18% p.a. will be charged on delayed payments.</li>
-          </ul>
-        </div>
+  <tr>
+    <td colspan="2">
+      <b>Terms & Conditions:</b>
+    </td>
+  </tr>
+
+  <tr>
+    <td colspan="2" style="height:40px; vertical-align:top;">
+      1. This is a system generated quotation/invoice.<br>
+      2. Subject to Jalgaon jurisdiction.<br>
+      3. All disputes subject to Jalgaon court only.<br>
+      4. Goods once sold will not be taken back.<br>
+      5. Interest @ 18% p.a. will be charged on delayed payments.
+    </td>
+  </tr>
+</table>
 
         <!-- Signatures -->
         <div class="signature-section">
@@ -813,9 +854,7 @@ const company = await prisma.company.findFirst();
         </div>
 
         <!-- Footer -->
-        <div class="footer">
-          Generated on: ${currentDate} | Thank you for your business!
-        </div>
+      
       </body>
       </html>
     `;
@@ -835,10 +874,10 @@ const company = await prisma.company.findFirst();
       format: "A4",
       printBackground: true,
       margin: {
-        top: "15mm",
-        bottom: "15mm",
-        left: "15mm",
-        right: "15mm",
+        top: "0",
+        bottom: "0",
+        left: "0",
+        right: "0",
       },
       displayHeaderFooter: false,
       preferCSSPageSize: false,
@@ -864,3 +903,6 @@ const company = await prisma.company.findFirst();
     });
   }
 };
+  // <div class="footer">
+        //   Generated on: ${currentDate} | Thank you for your business!
+        // </div>
