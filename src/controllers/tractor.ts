@@ -6,32 +6,39 @@ export const createTractor = async (
   res: Response
 ) => {
   try {
-    const tractor = await prisma.tractor.create({
-      data: {
-        modelId: Number(req.body.modelId),
-        variantId: Number(req.body.variantId),
-        colourId: Number(req.body.colourId),
-
-        itemName: req.body.itemName,
-        codeNo: req.body.codeNo,
-        shortName: req.body.shortName,
-        hsnCode: req.body.hsnCode,
-        taxSlab: req.body.taxSlab,
-        listOfGroup: req.body.listOfGroup,
-        typeOfFuel: req.body.typeOfFuel,
-        fuelCapacity: req.body.fuelCapacity,
-
-        purchasePriceNoGST: Number(
-          req.body.purchasePriceNoGST || 0
-        ),
-
-        purchasePriceTaxable: Number(
-          req.body.purchasePriceTaxable || 0
-        ),
-
-        status: req.body.status || "ACTIVE",
+  const tractor = await prisma.tractor.create({
+  data: {
+    model: {
+      connect: {
+        id: Number(req.body.modelId),
       },
-    });
+    },
+
+    showroomVariant: {
+      connect: {
+        id: Number(req.body.showroomVariantId),
+      },
+    },
+
+    colour: {
+      connect: {
+        id: Number(req.body.colourId),
+      },
+    },
+
+    itemName: req.body.itemName,
+    codeNo: req.body.codeNo,
+    shortName: req.body.shortName,
+    hsnCode: req.body.hsnCode,
+    taxSlab: req.body.taxSlab,
+    listOfGroup: req.body.listOfGroup,
+    typeOfFuel: req.body.typeOfFuel,
+    fuelCapacity: req.body.fuelCapacity,
+    purchasePriceNoGST: Number(req.body.purchasePriceNoGST || 0),
+    purchasePriceTaxable: Number(req.body.purchasePriceTaxable || 0),
+    status: req.body.status || "ACTIVE",
+  },
+});
 
     return res.status(201).json({
       success: true,
@@ -56,7 +63,7 @@ export const getTractors = async (
     const tractors = await prisma.tractor.findMany({
       include: {
         model: true,
-        variant: true,
+         showroomVariant: true,
         colour: true,
       },
       orderBy: {
@@ -89,7 +96,7 @@ export const getTractorById = async (
       },
       include: {
         model: true,
-        variant: true,
+          showroomVariant: true,
         colour: true,
       },
     });
@@ -117,9 +124,9 @@ export const updateTractor = async (
           ? Number(req.body.modelId)
           : undefined,
 
-        variantId: req.body.variantId
-          ? Number(req.body.variantId)
-          : undefined,
+      showroomVariantId: req.body.showroomVariantId
+  ? Number(req.body.showroomVariantId)
+  : undefined,
 
         colourId: req.body.colourId
           ? Number(req.body.colourId)
