@@ -24,556 +24,407 @@ model Admin {
 }
 
 model Company {
-  id Int @id @default(autoincrement())
-
-  companyName String
-  logo        String?
-  country     String
-  state       String
-  stateCode   String
-  district    String
-  city        String
-
-  pincode String
-
-  addressLine1 String
-  addressLine2 String?
-
-  mobileNumber String
-  phoneNumber  String?
-
-  gstNumber String
-  panNumber String
-
+  id             Int             @id @default(autoincrement())
+  companyName    String
+  country        String
+  state          String
+  stateCode      String
+  district       String
+  city           String
+  pincode        String
+  addressLine1   String
+  addressLine2   String?
+  mobileNumber   String
+  phoneNumber    String?
+  gstNumber      String
+  panNumber      String
   bankName       String
   bankHolderName String
   ifscCode       String
   branchLocation String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  logo           String?
   financialYears FinancialYear[]
 }
 
 model FinancialYear {
-  id Int @id @default(autoincrement())
-
-  companyId Int
-  company   Company @relation(fields: [companyId], references: [id])
-
-  companyName String
-
+  id            Int      @id @default(autoincrement())
+  companyId     Int
+  companyName   String
   financialYear String
   fyStartDate   DateTime
   fyEndDate     DateTime
-
-  createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  company       Company  @relation(fields: [companyId], references: [id])
 
   @@unique([companyId, financialYear])
 }
 
 model Category {
-  id Int @id @default(autoincrement())
-
-  categoryName String @unique
-  status       String @default("ACTIVE")
-
+  id              Int              @id @default(autoincrement())
+  categoryName    String           @unique
+  status          String           @default("ACTIVE")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   brands          Brand[]
   models          Model[]
   modelYears      ModelYear[]
   variants        Variant[]
   websiteVariants WebsiteVariant[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
 }
 
 model Brand {
-  id Int @id @default(autoincrement())
-
-  categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id])
-
-  brandName String
-  image     String?
-  status    String  @default("ACTIVE")
-
+  id              Int              @id @default(autoincrement())
+  categoryId      Int
+  brandName       String
+  image           String?
+  status          String           @default("ACTIVE")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  category        Category         @relation(fields: [categoryId], references: [id])
   models          Model[]
   modelYears      ModelYear[]
   variants        Variant[]
   websiteVariants WebsiteVariant[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
 }
 
 model Model {
-  id Int @id @default(autoincrement())
-
-  categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id])
-
-  brandId Int
-  brand   Brand @relation(fields: [brandId], references: [id])
-
-  modelName String
-  image     String?
-  status    String  @default("ACTIVE")
-
-  modelYears       ModelYear[]
-  showroomVariants ShowroomVariant[]
-  variants         Variant[]
-  websiteVariants  WebsiteVariant[]
-  tractors         Tractor[]
-  leads            Lead[]
-  colours          Colour[]
+  id               Int               @id @default(autoincrement())
+  categoryId       Int
+  brandId          Int
+  modelName        String
+  image            String?
+  status           String            @default("ACTIVE")
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  colours          Colour[]
+  leads            Lead[]
+  brand            Brand             @relation(fields: [brandId], references: [id])
+  category         Category          @relation(fields: [categoryId], references: [id])
+  modelYears       ModelYear[]
+  showroomVariants ShowroomVariant[]
+  tractors         Tractor[]
+  variants         Variant[]
+  websiteVariants  WebsiteVariant[]
 }
 
 model ModelYear {
-  id Int @id @default(autoincrement())
-
-  categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id])
-
-  brandId Int
-  brand   Brand @relation(fields: [brandId], references: [id])
-
-  modelId Int
-  model   Model @relation(fields: [modelId], references: [id])
-
-  modelYear String
-
+  id              Int              @id @default(autoincrement())
+  categoryId      Int
+  brandId         Int
+  modelId         Int
+  modelYear       String
   image           String?
   status          String           @default("ACTIVE")
-  variants        Variant[]
-  websiteVariants WebsiteVariant[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  brand           Brand            @relation(fields: [brandId], references: [id])
+  category        Category         @relation(fields: [categoryId], references: [id])
+  model           Model            @relation(fields: [modelId], references: [id])
+  variants        Variant[]
+  websiteVariants WebsiteVariant[]
 }
 
 model ShowroomVariant {
-  id Int @id @default(autoincrement())
-
-  modelId Int
-  model   Model @relation(fields: [modelId], references: [id])
-
-  variantName String
-
-  purPrice      Float
-  purTaxPercent Float
-
+  id                   Int                        @id @default(autoincrement())
+  modelId              Int
+  variantName          String
+  purPrice             Float
+  purTaxPercent        Float
   exShowroomPrice      Float
   exShowroomTaxPercent Float
-
-  insurance           Float
-  insuranceTaxPercent Float
-
-  rtoCharge     Float
-  rtoTaxType    String
-  rtoTaxPercent Float
-
-  salesPrice Float
-
-  status      String                     @default("ACTIVE")
-  leads       Lead[]
-  accessories ShowroomVariantAccessory[]
-  colours     Colour[]
-  createdAt   DateTime                   @default(now())
-  updatedAt   DateTime                   @updatedAt
+  insurance            Float
+  insuranceTaxPercent  Float
+  rtoCharge            Float
+  rtoTaxType           String
+  rtoTaxPercent        Float
+  salesPrice           Float
+  status               String                     @default("ACTIVE")
+  createdAt            DateTime                   @default(now())
+  updatedAt            DateTime                   @updatedAt
+  colours              Colour[]
+  leads                Lead[]
+  tractors             Tractor[]
+  model                Model                      @relation(fields: [modelId], references: [id])
+  accessories          ShowroomVariantAccessory[]
 }
 
 model ShowroomVariantAccessory {
-  id Int @id @default(autoincrement())
-
+  id                Int             @id @default(autoincrement())
   showroomVariantId Int
+  accessoryId       Int
+  qty               Int             @default(1)
+  price             Float
+  taxPercent        Float
+  totalPrice        Float
+  createdAt         DateTime        @default(now())
+  accessory         Accessory       @relation(fields: [accessoryId], references: [id])
   showroomVariant   ShowroomVariant @relation(fields: [showroomVariantId], references: [id], onDelete: Cascade)
-
-  accessoryId Int
-  accessory   Accessory @relation(fields: [accessoryId], references: [id])
-
-  qty Int @default(1)
-
-  price      Float
-  taxPercent Float
-  totalPrice Float
-
-  createdAt DateTime @default(now())
 }
 
 model Variant {
-  id Int @id @default(autoincrement())
-
-  categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id])
-
-  brandId Int
-  brand   Brand @relation(fields: [brandId], references: [id])
-
-  modelId Int
-  model   Model @relation(fields: [modelId], references: [id])
-
-  modelYearId Int
-  modelYear   ModelYear @relation(fields: [modelYearId], references: [id])
-
+  id              Int              @id @default(autoincrement())
+  categoryId      Int
+  brandId         Int
+  modelId         Int
+  modelYearId     Int
   variantCode     String           @unique
   variantName     String
-  websiteVariants WebsiteVariant[]
-  tractors        Tractor[]
+  status          String           @default("ACTIVE")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  image           String?
   colours         Colour[]
   leads           Lead[]
-  image           String?
-  status          String           @default("ACTIVE")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+ 
+  brand           Brand            @relation(fields: [brandId], references: [id])
+  category        Category         @relation(fields: [categoryId], references: [id])
+  model           Model            @relation(fields: [modelId], references: [id])
+  modelYear       ModelYear        @relation(fields: [modelYearId], references: [id])
+  websiteVariants WebsiteVariant[]
 }
 
 model WebsiteVariant {
-  id Int @id @default(autoincrement())
-
-  // =========================
-  // SYSTEM
-  // =========================
-  currentStep Int     @default(1)
-  status      String  @default("DRAFT")
-  isCompleted Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // =========================
-  // BASIC INFORMATION
-  // =========================
-  categoryId Int?
-  category   Category? @relation(fields: [categoryId], references: [id])
-
-  brandId Int?
-  brand   Brand? @relation(fields: [brandId], references: [id])
-
-  modelId Int?
-  model   Model? @relation(fields: [modelId], references: [id])
-
-  modelYearId Int?
-  modelYear   ModelYear? @relation(fields: [modelYearId], references: [id])
-
-  variantId Int?
-  variant   Variant? @relation(fields: [variantId], references: [id])
-
-  variantCode String?
-  productName String?
-  productCode String?
-  skuCode     String?
-
-  launchYear DateTime?
-
-  country       String?
-  tractorStatus String?
-
-  shortDescription String? @db.Text
-
-  highlight1 String?
-  highlight2 String?
-  highlight3 String?
-  highlight4 String?
-  highlight5 String?
-
-  redColor    Boolean @default(false)
-  blueColor   Boolean @default(false)
-  greenColor  Boolean @default(false)
-  orangeColor Boolean @default(false)
-  blackColor  Boolean @default(false)
-  whiteColor  Boolean @default(false)
-  customColor Boolean @default(false)
-
-  customColorName String?
-  customColorCode String?
-
-  availableStates    Json?
-  availableDistricts Json?
-  availableDealers   Json?
-
-  stockStatus String?
-
-  seoTitle        String?
-  seoUrl          String?
-  metaDescription String? @db.Text
-  keywords        String?
-
-  // =========================
-  // ENGINE DETAILS
-  // =========================
-  engineType String?
-  fuelType   String?
-
-  horsePower        Int?
-  numberOfCylinders String?
-
-  cubicCapacity Int?
-  ratedRpm      Int?
-
-  aspiratedType String?
-  emissionNorms String?
-
-  coolingSystem String?
-  airFilterType String?
-
-  maximumTorque Float?
-  torqueRpm     Float?
-  torqueBackup  Float?
-
-  engineCondition String?
-
-  // =========================
-  // TRANSMISSION
-  // =========================
-  clutchType String?
-
-  forwardGears Int?
-  reverseGears Int?
-
-  gearType         String?
-  transmissionType String?
-
-  ptoHp  Int?
-  ptoRpm Int?
-
-  ptoType     String?
-  ptoPosition String?
-
-  creeperGears  Boolean @default(false)
-  shuttleShift  Boolean @default(false)
-  sideShiftGear Boolean @default(false)
-  powerShuttle  Boolean @default(false)
-  hiLoGears     Boolean @default(false)
-  multiSpeedPto Boolean @default(false)
-  reversePto    Boolean @default(false)
-  superReducer  Boolean @default(false)
-
-  // =========================
-  // HYDRAULIC
-  // =========================
-  liftingCapacity        Int?
-  liftingCapacityAt610mm Int?
-
-  hydraulicType String?
-
-  addc            Boolean @default(false)
-  positionControl Boolean @default(false)
-  draftControl    Boolean @default(false)
-
-  controlType String?
-
-  remoteValveType      String?
-  numberOfRemoteValves String?
-
-  threePointLinkage String?
-  linkageCategory   String?
-
-  topLink          String?
-  draftSensitivity String?
-
-  externalHydraulicCylinder Boolean @default(false)
-  selfLevelling             Boolean @default(false)
-  quickHitch                Boolean @default(false)
-  downPositionControl       Boolean @default(false)
-  loadSensing               Boolean @default(false)
-  flowControl               Boolean @default(false)
-  returnToDepth             Boolean @default(false)
-  transportLock             Boolean @default(false)
-
-  // =========================
-  // PRICE & LOCATION
-  // =========================
-  exShowroomPrice Float?
-  onRoadPrice     Float?
-
-  currency String?
-  gst      Float?
-
-  tcsApplicable String?
-  tcsPercentage Float?
-
-  financeAvailable String?
-  emiAvailable     String?
-
-  downPayment Float?
-  offerPrice  Float?
-
-  negotiable    String?
-  exchangeOffer String?
-
-  state    String?
-  district String?
-  taluka   String?
-  city     String?
-
-  pincode  String?
-  landmark String?
-
-  fullAddress    String? @db.Text
-  searchLocation String?
-
-  latitude  Float?
-  longitude Float?
-
-  // =========================
-  // IMAGES
-  // =========================
-  frontView String?
-  leftView  String?
-  rightView String?
-  rearView  String?
-
-  engineView    String?
-  dashboardView String?
-  tyreView      String?
-  hydraulicView String?
-  ptoView       String?
-
-  chassisNumber String?
-  rcBook        String?
-
-  additionalImage1 String?
-  additionalImage2 String?
-  additionalImage3 String?
-  additionalImage4 String?
-  additionalImage5 String?
-
-  // =========================
-  // VIDEOS
-  // =========================
-
-  // =========================
-  // DOCUMENTS
-  // =========================
-  brochure             String?
-  warrantyCard         String?
-  insuranceCertificate String?
-  invoice              String?
-  others               String?
-
-  // =========================
-  // SUBMISSION
-  // =========================
-  agreed Boolean @default(false)
+  id                        Int        @id @default(autoincrement())
+  currentStep               Int        @default(1)
+  status                    String     @default("DRAFT")
+  isCompleted               Boolean    @default(false)
+  createdAt                 DateTime   @default(now())
+  updatedAt                 DateTime   @updatedAt
+  categoryId                Int?
+  brandId                   Int?
+  modelId                   Int?
+  modelYearId               Int?
+  variantId                 Int?
+  variantCode               String?
+  productCode               String?
+  skuCode                   String?
+  country                   String?
+  tractorStatus             String?
+  shortDescription          String?
+  highlight1                String?
+  highlight2                String?
+  highlight3                String?
+  highlight4                String?
+  highlight5                String?
+  redColor                  Boolean    @default(false)
+  blueColor                 Boolean    @default(false)
+  greenColor                Boolean    @default(false)
+  orangeColor               Boolean    @default(false)
+  blackColor                Boolean    @default(false)
+  whiteColor                Boolean    @default(false)
+  customColor               Boolean    @default(false)
+  customColorName           String?
+  customColorCode           String?
+  availableStates           Json?
+  availableDistricts        Json?
+  availableDealers          Json?
+  stockStatus               String?
+  seoTitle                  String?
+  seoUrl                    String?
+  metaDescription           String?
+  keywords                  String?
+  engineType                String?
+  fuelType                  String?
+  horsePower                Int?
+  numberOfCylinders         String?
+  cubicCapacity             Int?
+  ratedRpm                  Int?
+  aspiratedType             String?
+  emissionNorms             String?
+  coolingSystem             String?
+  airFilterType             String?
+  maximumTorque             Float?
+  torqueRpm                 Float?
+  torqueBackup              Float?
+  engineCondition           String?
+  clutchType                String?
+  forwardGears              Int?
+  reverseGears              Int?
+  gearType                  String?
+  transmissionType          String?
+  ptoHp                     Int?
+  ptoRpm                    Int?
+  ptoType                   String?
+  ptoPosition               String?
+  creeperGears              Boolean    @default(false)
+  shuttleShift              Boolean    @default(false)
+  sideShiftGear             Boolean    @default(false)
+  powerShuttle              Boolean    @default(false)
+  hiLoGears                 Boolean    @default(false)
+  multiSpeedPto             Boolean    @default(false)
+  reversePto                Boolean    @default(false)
+  superReducer              Boolean    @default(false)
+  liftingCapacity           Int?
+  liftingCapacityAt610mm    Int?
+  hydraulicType             String?
+  addc                      Boolean    @default(false)
+  positionControl           Boolean    @default(false)
+  draftControl              Boolean    @default(false)
+  controlType               String?
+  remoteValveType           String?
+  numberOfRemoteValves      String?
+  threePointLinkage         String?
+  linkageCategory           String?
+  topLink                   String?
+  draftSensitivity          String?
+  externalHydraulicCylinder Boolean    @default(false)
+  selfLevelling             Boolean    @default(false)
+  quickHitch                Boolean    @default(false)
+  downPositionControl       Boolean    @default(false)
+  loadSensing               Boolean    @default(false)
+  flowControl               Boolean    @default(false)
+  returnToDepth             Boolean    @default(false)
+  transportLock             Boolean    @default(false)
+  exShowroomPrice           Float?
+  onRoadPrice               Float?
+  currency                  String?
+  gst                       Float?
+  tcsApplicable             String?
+  tcsPercentage             Float?
+  financeAvailable          String?
+  emiAvailable              String?
+  downPayment               Float?
+  offerPrice                Float?
+  negotiable                String?
+  exchangeOffer             String?
+  state                     String?
+  district                  String?
+  taluka                    String?
+  city                      String?
+  pincode                   String?
+  landmark                  String?
+  fullAddress               String?
+  searchLocation            String?
+  latitude                  Float?
+  longitude                 Float?
+  frontView                 String?
+  leftView                  String?
+  rightView                 String?
+  rearView                  String?
+  engineView                String?
+  dashboardView             String?
+  tyreView                  String?
+  hydraulicView             String?
+  ptoView                   String?
+  chassisNumber             String?
+  rcBook                    String?
+  additionalImage1          String?
+  additionalImage2          String?
+  additionalImage3          String?
+  additionalImage4          String?
+  additionalImage5          String?
+  brochure                  String?
+  warrantyCard              String?
+  insuranceCertificate      String?
+  invoice                   String?
+  others                    String?
+  agreed                    Boolean    @default(false)
+  productName               String?
+  launchYear                DateTime?
+  brand                     Brand?     @relation(fields: [brandId], references: [id])
+  category                  Category?  @relation(fields: [categoryId], references: [id])
+  model                     Model?     @relation(fields: [modelId], references: [id])
+  modelYear                 ModelYear? @relation(fields: [modelYearId], references: [id])
+  variant                   Variant?   @relation(fields: [variantId], references: [id])
 }
 
 model Colour {
-  id Int @id @default(autoincrement())
-
-  modelId Int
-  model   Model @relation(fields: [modelId], references: [id])
-
-  variantId Int?
-  variant   Variant? @relation(fields: [variantId], references: [id])
-
+  id                Int              @id @default(autoincrement())
+  modelId           Int
+  variantId         Int?
+  colourName        String
+  colourCode        String
+  status            String           @default("ACTIVE")
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
   showroomVariantId Int?
+  model             Model            @relation(fields: [modelId], references: [id])
   showroomVariant   ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
-
-  colourName String
-  colourCode String
-
-  status String @default("ACTIVE")
-
-  tractors Tractor[]
-  leads    Lead[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  variant           Variant?         @relation(fields: [variantId], references: [id])
+  leads             Lead[]
+  tractors          Tractor[]
 }
 
 model Account {
-  id Int @id @default(autoincrement())
-
+  id             Int        @id @default(autoincrement())
   accountName    String?
   printName      String?
-  group          String?
-  openingBalance Float   @default(0)
+  openingBalance Float      @default(0)
   drCr           String?
-
-  country     String?
-  countryCode String?
-
-  state     String?
-  stateCode String?
-
-  district String?
-  taluka   String?
-  city     String?
-  area     String?
-
-  address1 String?
-  address2 String?
-
-  pincode String?
-
-  phone  String?
-  mobile String?
-
-  email         String?
-  contactPerson String?
-
-  birthday    DateTime?
-  anniversary DateTime?
-
-  bankAccountNo String?
-  bankName      String?
-  ifscCode      String?
-  branch        String?
-
-  gstNo         String?
-  panCard       String?
-  aadharNo      String?
-  customerLeads Lead[]     @relation("LeadCustomer")
-  accountLeads  Lead[]     @relation("LeadAccount")
-  status        String     @default("ACTIVE")
-  Purchase      Purchase[]
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  country        String?
+  countryCode    String?
+  state          String?
+  stateCode      String?
+  district       String?
+  taluka         String?
+  city           String?
+  area           String?
+  address1       String?
+  address2       String?
+  pincode        String?
+  phone          String?
+  mobile         String?
+  email          String?
+  contactPerson  String?
+  birthday       DateTime?
+  anniversary    DateTime?
+  bankAccountNo  String?
+  bankName       String?
+  ifscCode       String?
+  branch         String?
+  gstNo          String?
+  panCard        String?
+  aadharNo       String?
+  status         String     @default("ACTIVE")
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  group          String?
+  accountLeads   Lead[]     @relation("LeadAccount")
+  customerLeads  Lead[]     @relation("LeadCustomer")
+  Purchase       Purchase[]
 }
 
 model EnquiryType {
   id          Int      @id @default(autoincrement())
   enquiryType String
   status      String   @default("ACTIVE")
-  leads       Lead[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  leads       Lead[]
 }
 
 model EnquirySource {
   id            Int      @id @default(autoincrement())
   enquirySource String
   status        String   @default("ACTIVE")
-  leads         Lead[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  leads         Lead[]
 }
 
 model Profession {
   id         Int      @id @default(autoincrement())
   profession String
   status     String   @default("ACTIVE")
-  leads      Lead[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  leads      Lead[]
 }
 
 model Banker {
-  id     Int    @id @default(autoincrement())
-  banker String
-  status String @default("ACTIVE")
-
+  id        Int      @id @default(autoincrement())
+  banker    String
+  status    String   @default("ACTIVE")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Finance {
-  id      Int    @id @default(autoincrement())
-  finance String
-  status  String @default("ACTIVE")
-
+  id        Int      @id @default(autoincrement())
+  finance   String
+  status    String   @default("ACTIVE")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -582,38 +433,38 @@ model EnquiryStatus {
   id            Int      @id @default(autoincrement())
   enquiryStatus String
   status        String   @default("ACTIVE")
-  leads         Lead[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  leads         Lead[]
 }
 
 model Employee {
-  id Int @id @default(autoincrement())
-
-  department String
-  branch     String
-  role       String
-
-  employeeName String
-
-  mobileNumber    String  @unique
+  id              Int      @id @default(autoincrement())
+  department      String
+  branch          String
+  role            String
+  employeeName    String
+  mobileNumber    String   @unique
   alternateNumber String?
-
-  email    String @unique
-  password String
-
-  status    String   @default("ACTIVE")
-  leads     Lead[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  email           String   @unique
+  password        String
+  status          String   @default("ACTIVE")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  leads           Lead[]
 }
 
 model Tractor {
   id Int @id @default(autoincrement())
 
-  modelId   Int
-  variantId Int
-  colourId  Int
+  modelId Int
+  model   Model @relation(fields: [modelId], references: [id])
+
+  showroomVariantId Int
+  showroomVariant   ShowroomVariant @relation(fields: [showroomVariantId], references: [id])
+
+  colourId Int
+  colour   Colour @relation(fields: [colourId], references: [id])
 
   itemName     String
   codeNo       String  @unique
@@ -623,104 +474,66 @@ model Tractor {
   listOfGroup  String?
   typeOfFuel   String?
   fuelCapacity String?
-
   purchasePriceNoGST   Float @default(0)
   purchasePriceTaxable Float @default(0)
-
   status String @default("ACTIVE")
-
-  model   Model   @relation(fields: [modelId], references: [id])
-  variant Variant @relation(fields: [variantId], references: [id])
-  colour  Colour  @relation(fields: [colourId], references: [id])
-
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @updatedAt 
 }
 
 model ProfilePrefix {
-  id Int @id @default(autoincrement())
-
-  prefixFor String @unique
+  id        Int      @id @default(autoincrement())
+  prefixFor String   @unique
   prefix    String
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Purchase {
-  id Int @id @default(autoincrement())
-
-  billNo String @unique
-
-  accountId Int?
-  account   Account? @relation(fields: [accountId], references: [id])
-
+  id             Int            @id @default(autoincrement())
+  billNo         String         @unique
+  accountId      Int?
   purchaseDate   DateTime?
   purchaseBillNo String?
-
-  terms     String?
-  narration String?
-
-  freightCharge Float @default(0)
-  insurance     Float @default(0)
-  otherCharge   Float @default(0)
-  roundAmount   Float @default(0)
-
-  totalQty    Int   @default(0)
-  totalAmount Float @default(0)
-  grandTotal  Float @default(0)
-
-  status String @default("PENDING")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  items PurchaseItem[]
+  terms          String?
+  narration      String?
+  freightCharge  Float          @default(0)
+  insurance      Float          @default(0)
+  otherCharge    Float          @default(0)
+  roundAmount    Float          @default(0)
+  totalQty       Int            @default(0)
+  totalAmount    Float          @default(0)
+  grandTotal     Float          @default(0)
+  status         String         @default("PENDING")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  account        Account?       @relation(fields: [accountId], references: [id])
+  items          PurchaseItem[]
 }
 
 model PurchaseItem {
-  id Int @id @default(autoincrement())
-
+  id         Int      @id @default(autoincrement())
   purchaseId Int
-  purchase   Purchase @relation(fields: [purchaseId], references: [id])
-
-  itemName String
-  itemCode String
-
-  color String
-
-  chassisNo String
-  engineNo  String
-
-  qty Int
-
+  itemName   String
+  itemCode   String
+  color      String
+  chassisNo  String
+  engineNo   String
+  qty        Int
   ratePer    Float
   gstPercent Float
   amount     Float
+  purchase   Purchase @relation(fields: [purchaseId], references: [id])
 }
 
 model Lead {
-  id Int @id @default(autoincrement())
-
-  // Vehicle
-  modelId Int?
-  model   Model? @relation(fields: [modelId], references: [id])
-
-  showroomVariantId Int?
-
-  showroomVariant ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
-
-  colourId Int?
-  colour   Colour? @relation(fields: [colourId], references: [id])
-
-  customerId  Int?
-  customer    Account? @relation("LeadCustomer", fields: [customerId], references: [id])
-  executiveId Int?
-
-  executive Employee? @relation(fields: [executiveId], references: [id])
-
-  // Exchange Vehicle
-  wantsFinance            Boolean @default(false)
+  id                      Int              @id @default(autoincrement())
+  modelId                 Int?
+  variantId               Int?
+  colourId                Int?
+  customerId              Int?
+  executiveId             Int?
+  wantsFinance            Boolean          @default(false)
   existingCustomerModel   String?
   existingCustomerVariant String?
   existingVehicleYear     String?
@@ -732,98 +545,80 @@ model Lead {
   valueAddAccessories     Float?
   insurance               Float?
   totalValue              Float?
-
-  // Review Summary
-  expectedPurchaseDate DateTime?
-  expectedDeliveryDate DateTime?
-  expectedDeliveryTime String?
-
-  purchaseType String?
-  professionId Int?
-  profession   Profession? @relation(fields: [professionId], references: [id])
-
-  enquiryTypeId     Int?
-  enquiryTypeMaster EnquiryType? @relation(fields: [enquiryTypeId], references: [id])
-
-  enquirySourceId     Int?
-  enquirySourceMaster EnquirySource? @relation(fields: [enquirySourceId], references: [id])
-  enquiryStatusId     Int?
-  enquiryStatus       EnquiryStatus? @relation(fields: [enquiryStatusId], references: [id])
-  executiveName       String?
-
-  bookingDate  DateTime?
-  followUpDate DateTime?
-
-  dmsEnquiryNo   String?
-  dmsEnquiryDate DateTime?
-
-  otherModel         String?
-  competitorTestRide String?
-
-  salesManagerRemarks String?
-  dealerRemarks       String?
-
-  advancePayment Boolean @default(false)
-  listOfBooking  Float?
-
-  paymentMode String?
-  bankMode    String?
-
-  accountId Int?
-  account   Account? @relation("LeadAccount", fields: [accountId], references: [id])
-  narration String?
-
-  chequeNo        String?
-  chequeDate      DateTime?
-  chequeClearDate DateTime?
-  followUpStatus  String?   @default("New")
-
-  followUps FollowUp[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  variant   Variant?   @relation(fields: [variantId], references: [id])
-  variantId Int?
+  expectedPurchaseDate    DateTime?
+  expectedDeliveryDate    DateTime?
+  expectedDeliveryTime    String?
+  purchaseType            String?
+  professionId            Int?
+  enquiryTypeId           Int?
+  enquirySourceId         Int?
+  enquiryStatusId         Int?
+  bookingDate             DateTime?
+  followUpDate            DateTime?
+  dmsEnquiryNo            String?
+  dmsEnquiryDate          DateTime?
+  otherModel              String?
+  competitorTestRide      String?
+  salesManagerRemarks     String?
+  dealerRemarks           String?
+  advancePayment          Boolean          @default(false)
+  listOfBooking           Float?
+  paymentMode             String?
+  bankMode                String?
+  accountId               Int?
+  narration               String?
+  chequeNo                String?
+  chequeDate              DateTime?
+  chequeClearDate         DateTime?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  executiveName           String?
+  followUpStatus          String?          @default("New")
+  showroomVariantId       Int?
+  followUps               FollowUp[]
+  account                 Account?         @relation("LeadAccount", fields: [accountId], references: [id])
+  colour                  Colour?          @relation(fields: [colourId], references: [id])
+  customer                Account?         @relation("LeadCustomer", fields: [customerId], references: [id])
+  enquirySourceMaster     EnquirySource?   @relation(fields: [enquirySourceId], references: [id])
+  enquiryStatus           EnquiryStatus?   @relation(fields: [enquiryStatusId], references: [id])
+  enquiryTypeMaster       EnquiryType?     @relation(fields: [enquiryTypeId], references: [id])
+  executive               Employee?        @relation(fields: [executiveId], references: [id])
+  model                   Model?           @relation(fields: [modelId], references: [id])
+  profession              Profession?      @relation(fields: [professionId], references: [id])
+  showroomVariant         ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
+  variant                 Variant?         @relation(fields: [variantId], references: [id])
 }
 
 model FollowUp {
-  id Int @id @default(autoincrement())
-
-  leadId Int
-  lead   Lead @relation(fields: [leadId], references: [id])
-
+  id                   Int       @id @default(autoincrement())
+  leadId               Int
   expectedPurchaseDate DateTime?
   nextScheduledDate    DateTime?
   callTime             String?
   callResponse         String?
   discussion           String?
-  followupCount        Int       @default(0)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+  followupCount        Int       @default(0)
+  lead                 Lead      @relation(fields: [leadId], references: [id])
 }
 
 model Accessory {
-  id Int @id @default(autoincrement())
-
-  type String
-
-  itemName  String
-  codeNo    String  @unique
-  shortName String?
-
-  hsnCode String?
-  taxSlab String?
-  group   String?
-
-  purchasePrice Float?
-  salesPrice    Float?
-  mrp           Float?
-
-  opStock Int @default(0)
-
+  id                         Int                        @id @default(autoincrement())
+  type                       String
+  itemName                   String
+  codeNo                     String                     @unique
+  shortName                  String?
+  hsnCode                    String?
+  taxSlab                    String?
+  group                      String?
+  purchasePrice              Float?
+  salesPrice                 Float?
+  mrp                        Float?
+  opStock                    Int                        @default(0)
   showroomVariants           Json?
-  showroomVariantAccessories ShowroomVariantAccessory[]
   status                     String                     @default("ACTIVE")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt                  DateTime                   @default(now())
+  updatedAt                  DateTime                   @updatedAt
+  showroomVariantAccessories ShowroomVariantAccessory[]
 }
