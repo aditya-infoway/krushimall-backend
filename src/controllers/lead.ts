@@ -209,24 +209,19 @@ const company = await prisma.company.findFirst();
     };
 
     // Calculate totals from lead data or use default values
-    const exShowroomPrice = lead.exShowroomPrice || 59000;
-    const insurance = lead.insurance || 500;
-    const roadSideAssistance = lead.roadSideAssistance || 590;
-    const exWarranty23 = lead.exWarranty23 || 590;
-    const hypothecationCharges = lead.hypothecationCharges || 500;
-    const exWarranty28 = lead.exWarranty28 || 0;
-    const rtoRegistrationCharges = lead.rtoRegistrationCharges || 111;
-    const rtoOtherCharge = lead.rtoOtherCharge || 0;
+  const exShowroomPrice =
+  lead.showroomVariant?.exShowroomPrice ?? 0;
 
-    const total =
-      exShowroomPrice +
-      insurance +
-      roadSideAssistance +
-      exWarranty23 +
-      hypothecationCharges +
-      exWarranty28 +
-      rtoRegistrationCharges +
-      rtoOtherCharge;
+const insurance =
+  lead.showroomVariant?.insurance ?? 0;
+
+const rtoCharge =
+  lead.showroomVariant?.rtoCharge ?? 0;
+
+ const total =
+  exShowroomPrice +
+  insurance +
+  rtoCharge;
 
     // Convert number to words (Indian format)
     const numberToWords = (num: number) => {
@@ -731,46 +726,20 @@ const company = await prisma.company.findFirst();
       AMOUNT
     </td>
   </tr>
+<tr>
+  <td>EX-showroom price</td>
+  <td align="right">${formatCurrency(exShowroomPrice)}</td>
+</tr>
 
-  <tr>
-    <td>EX-showroom price</td>
-    <td align="right">${formatCurrency(exShowroomPrice)}</td>
-  </tr>
+<tr>
+  <td>Insurance</td>
+  <td align="right">${formatCurrency(insurance)}</td>
+</tr>
 
-  <tr>
-    <td>Insurance</td>
-    <td align="right">${formatCurrency(insurance)}</td>
-  </tr>
-
-  <tr>
-    <td>Road Side Assistance</td>
-    <td align="right">${formatCurrency(roadSideAssistance)}</td>
-  </tr>
-
-  <tr>
-    <td>Ex. Warranty (2+3)</td>
-    <td align="right">${formatCurrency(exWarranty23)}</td>
-  </tr>
-
-  <tr>
-    <td>Hypothecation Charges</td>
-    <td align="right">${formatCurrency(hypothecationCharges)}</td>
-  </tr>
-
-  <tr>
-    <td>Ex. Warranty (2+8)</td>
-    <td align="right">${formatCurrency(exWarranty28)}</td>
-  </tr>
-
-  <tr>
-    <td>RTO Registration Charges</td>
-    <td align="right">${formatCurrency(rtoRegistrationCharges)}</td>
-  </tr>
-
-  <tr>
-    <td>RTO Other Charge</td>
-    <td align="right">${formatCurrency(rtoOtherCharge)}</td>
-  </tr>
+<tr>
+  <td>RTO Charge</td>
+  <td align="right">${formatCurrency(rtoCharge)}</td>
+</tr>
 
   <tr>
     <td><b>Total</b></td>
@@ -906,3 +875,26 @@ const company = await prisma.company.findFirst();
   // <div class="footer">
         //   Generated on: ${currentDate} | Thank you for your business!
         // </div>
+  //       <tr>
+  //   <td>Road Side Assistance</td>
+  //   <td align="right">${formatCurrency(roadSideAssistance)}</td>
+  // </tr>
+  //  <tr>
+  //   <td>Ex. Warranty (2+3)</td>
+  //   <td align="right">${formatCurrency(exWarranty23)}</td>
+  // </tr>
+
+  // <tr>
+  //   <td>Hypothecation Charges</td>
+  //   <td align="right">${formatCurrency(hypothecationCharges)}</td>
+  // </tr>
+
+  // <tr>
+  //   <td>Ex. Warranty (2+8)</td>
+  //   <td align="right">${formatCurrency(exWarranty28)}</td>
+  // </tr>
+
+  // <tr>
+  //   <td>RTO Registration Charges</td>
+  //   <td align="right">${formatCurrency(rtoRegistrationCharges)}</td>
+  // </tr>
