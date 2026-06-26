@@ -517,8 +517,8 @@ model PurchaseItem {
   itemName   String
   itemCode   String
   color      String
-  chassisNo  String
-  engineNo   String
+  chassisNo  String   @unique
+  engineNo   String   @unique
   qty        Int
   ratePer    Float
   gstPercent Float

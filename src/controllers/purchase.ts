@@ -74,14 +74,38 @@ export const createPurchase = async (
       data: purchase,
       message: "Purchase created successfully",
     });
-  } catch (error) {
-    console.log(error);
+} catch (error: any) {
+  console.error(error);
 
-    return res.status(500).json({
+  if (error.code === "P2002") {
+    const originalMessage =
+      error.meta?.driverAdapterError?.cause?.originalMessage || "";
+
+    if (originalMessage.includes("PurchaseItem_chassisNo_key")) {
+      return res.status(400).json({
+        success: false,
+        message: "Chassis No already exists",
+      });
+    }
+
+    if (originalMessage.includes("PurchaseItem_engineNo_key")) {
+      return res.status(400).json({
+        success: false,
+        message: "Engine No already exists",
+      });
+    }
+
+    return res.status(400).json({
       success: false,
-      message: "Failed to create purchase",
+      message: "Duplicate value already exists",
     });
   }
+
+  return res.status(500).json({
+    success: false,
+    message: "Failed to create purchase",
+  });
+}
 };
 export const getPurchases = async (
   req: Request,
