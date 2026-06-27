@@ -7,6 +7,12 @@ export const createAccount = async (
   try {
     const payload = {
       ...req.body,
+
+      openingBalance: Number(req.body.openingBalance || 0),
+
+      // Initially Closing Balance = Opening Balance
+      closingBalance: Number(req.body.openingBalance || 0),
+
       birthday: req.body.birthday
         ? new Date(req.body.birthday)
         : null,
@@ -85,11 +91,23 @@ export const updateAccount = async (
   res: Response
 ) => {
   try {
+    const openingBalance = Number(req.body.openingBalance || 0);
+
     const account = await prisma.account.update({
       where: {
         id: Number(req.params.id),
       },
-      data: req.body,
+      data: {
+        ...req.body,
+        openingBalance,
+        closingBalance: openingBalance, // Update closing balance as well
+        birthday: req.body.birthday
+          ? new Date(req.body.birthday)
+          : null,
+        anniversary: req.body.anniversary
+          ? new Date(req.body.anniversary)
+          : null,
+      },
     });
 
     res.status(200).json({
