@@ -381,6 +381,7 @@ model Account {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   group          String?
+    closingBalance Float    @default(0)
   accountLeads   Lead[]     @relation("LeadAccount")
   customerLeads  Lead[]     @relation("LeadCustomer")
   Purchase       Purchase[]
@@ -504,6 +505,9 @@ model Purchase {
   totalQty       Int            @default(0)
   totalAmount    Float          @default(0)
   grandTotal     Float          @default(0)
+    cgst           Float          @default(0)
+  sgst           Float          @default(0)
+  igst           Float          @default(0)
   status         String         @default("PENDING")
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt

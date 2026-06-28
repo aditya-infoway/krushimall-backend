@@ -19,6 +19,9 @@ export const createPurchase = async (
       roundAmount,
       totalQty,
       totalAmount,
+        cgst,
+  sgst,
+  igst,
       grandTotal,
       items,
     } = req.body;
@@ -46,6 +49,9 @@ export const createPurchase = async (
 
         totalQty: Number(totalQty || 0),
         totalAmount: Number(totalAmount || 0),
+            cgst: Number(cgst || 0),
+    sgst: Number(sgst || 0),
+    igst: Number(igst || 0),
         grandTotal: Number(grandTotal || 0),
 
         items: {
@@ -68,7 +74,38 @@ export const createPurchase = async (
         items: true,
       },
     });
+if (terms?.toLowerCase() === "credit" && accountId) {
+  const account = await prisma.account.findUnique({
+    where: { id: Number(accountId) },
+  });
 
+  if (account) {
+    const currentBalance = Number(account.closingBalance || 0);
+    const purchaseAmount = Number(grandTotal || 0);
+
+    let closingBalance = currentBalance;
+    let balanceType = account.drCr;
+
+    if (balanceType === "Cr") {
+      closingBalance += purchaseAmount;
+    } else {
+      if (currentBalance >= purchaseAmount) {
+        closingBalance -= purchaseAmount;
+      } else {
+        closingBalance = purchaseAmount - currentBalance;
+        balanceType = "Cr";
+      }
+    }
+
+    await prisma.account.update({
+      where: { id: Number(accountId) },
+      data: {
+        closingBalance,
+        drCr: balanceType,
+      },
+    });
+  }
+}
     return res.status(201).json({
       success: true,
       data: purchase,
