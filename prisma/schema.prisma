@@ -164,20 +164,20 @@ model ShowroomVariantAccessory {
 }
 
 model Variant {
-  id              Int              @id @default(autoincrement())
-  categoryId      Int
-  brandId         Int
-  modelId         Int
-  modelYearId     Int
-  variantCode     String           @unique
-  variantName     String
-  status          String           @default("ACTIVE")
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  image           String?
-  colours         Colour[]
-  leads           Lead[]
- 
+  id          Int      @id @default(autoincrement())
+  categoryId  Int
+  brandId     Int
+  modelId     Int
+  modelYearId Int
+  variantCode String   @unique
+  variantName String
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  image       String?
+  colours     Colour[]
+  leads       Lead[]
+
   brand           Brand            @relation(fields: [brandId], references: [id])
   category        Category         @relation(fields: [categoryId], references: [id])
   model           Model            @relation(fields: [modelId], references: [id])
@@ -381,7 +381,7 @@ model Account {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   group          String?
-    closingBalance Float    @default(0)
+  closingBalance Float      @default(0)
   accountLeads   Lead[]     @relation("LeadAccount")
   customerLeads  Lead[]     @relation("LeadCustomer")
   Purchase       Purchase[]
@@ -467,19 +467,19 @@ model Tractor {
   colourId Int
   colour   Colour @relation(fields: [colourId], references: [id])
 
-  itemName     String
-  codeNo       String  @unique
-  shortName    String?
-  hsnCode      String?
-  taxSlab      String?
-  listOfGroup  String?
-  typeOfFuel   String?
-  fuelCapacity String?
-  purchasePriceNoGST   Float @default(0)
-  purchasePriceTaxable Float @default(0)
-  status String @default("ACTIVE")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt 
+  itemName             String
+  codeNo               String   @unique
+  shortName            String?
+  hsnCode              String?
+  taxSlab              String?
+  listOfGroup          String?
+  typeOfFuel           String?
+  fuelCapacity         String?
+  purchasePriceNoGST   Float    @default(0)
+  purchasePriceTaxable Float    @default(0)
+  status               String   @default("ACTIVE")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model ProfilePrefix {
@@ -491,47 +491,77 @@ model ProfilePrefix {
 }
 
 model Purchase {
-  id             Int            @id @default(autoincrement())
-  billNo         String         @unique
-  accountId      Int?
-  purchaseDate   DateTime?
-  purchaseBillNo String?
-  terms          String?
-  narration      String?
-  freightCharge  Float          @default(0)
-  insurance      Float          @default(0)
-  otherCharge    Float          @default(0)
-  roundAmount    Float          @default(0)
-  totalQty       Int            @default(0)
-  totalAmount    Float          @default(0)
-  grandTotal     Float          @default(0)
-    cgst           Float          @default(0)
-  sgst           Float          @default(0)
-  igst           Float          @default(0)
-  status         String         @default("PENDING")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  account        Account?       @relation(fields: [accountId], references: [id])
-  items          PurchaseItem[]
+  id               Int            @id @default(autoincrement())
+  billNo           String         @unique
+  accountId        Int?
+  purchaseDate     DateTime?
+  purchaseBillNo   String?
+  purchaseLocation String?
+  dueDate          DateTime?
+  terms            String?
+  narration        String?
+  freightCharge    Float          @default(0)
+  insurance        Float          @default(0)
+  otherCharge      Float          @default(0)
+  roundAmount      Float          @default(0)
+  totalQty         Int            @default(0)
+  totalAmount      Float          @default(0)
+  grandTotal       Float          @default(0)
+  cgst             Float          @default(0)
+  sgst             Float          @default(0)
+  igst             Float          @default(0)
+  status           String         @default("NOT_VERIFY")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  account          Account?       @relation(fields: [accountId], references: [id])
+  items            PurchaseItem[]
 }
 
 model PurchaseItem {
-  id         Int      @id @default(autoincrement())
+  id         Int @id @default(autoincrement())
   purchaseId Int
-  itemName   String
-  itemCode   String
-  color      String
-  chassisNo  String   @unique
-  engineNo   String   @unique
+
+  itemName  String
+  itemCode  String
+  shortName String?
+  hsnCode   String?
+  taxSlab   String?
+  groupName String?
+
+  modelName   String?
+  variantName String?
+  color       String?
+
+  fuelType     String?
+  fuelCapacity String?
+
+  chassisNo String @unique
+  engineNo  String @unique
+
   qty        Int
   ratePer    Float
   gstPercent Float
   amount     Float
-  purchase   Purchase @relation(fields: [purchaseId], references: [id])
+  vehicleSrNo     String?
+  mfgDate         DateTime?
+  keyNo           String?
+  batteryMake     String?
+  batteryNo       String?
+  first1TyerNo    String?
+  first2TyerNo    String?
+  second1TyerNo   String?
+  second2TyerNo   String?
+  location        String?
+  grnNumber       String?
+  grnDate         DateTime?
+  grnRecordDate   DateTime?
+  status String @default("Pending")
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
 }
 
 model Lead {
   id                      Int              @id @default(autoincrement())
+   quotationNo  String? @unique
   modelId                 Int?
   variantId               Int?
   colourId                Int?
@@ -591,6 +621,7 @@ model Lead {
   profession              Profession?      @relation(fields: [professionId], references: [id])
   showroomVariant         ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
   variant                 Variant?         @relation(fields: [variantId], references: [id])
+   
 }
 
 model FollowUp {
