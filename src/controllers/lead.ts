@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import puppeteer from "puppeteer";
+import { generateQuotationNo } from "../utils/generateQuotationNo.js";
 export const createLead = async (req: Request, res: Response) => {
   try {
     const data: any = {
@@ -97,6 +98,9 @@ delete data.showroomVariant;
     delete data.exWarranty23;
     delete data.exWarranty28;
     console.log(data);
+    const quotationNo = await generateQuotationNo();
+
+data.quotationNo = quotationNo;
     const lead = await prisma.lead.create({
       data,
     });
@@ -653,7 +657,7 @@ const rtoCharge =
   <div class="company-right">
     ${
       company?.logo
-        ? `<img src="http://192.168.1.38:5000/uploads/${company.logo}" class="company-logo" />`
+        ? `<img src="http://localhost:5000/uploads/${company.logo}" class="company-logo" />`
         : ""
     }
   </div>
@@ -674,7 +678,7 @@ const rtoCharge =
 
   <tr>
     <td><b>Quotation No</b></td>
-    <td>q/25-26/001</td>
+    <td>${lead.quotationNo || ""}</td>
     <td><b>Name</b></td>
     <td>${lead.customer?.accountName || "Danish pastel"}</td>
   </tr>
