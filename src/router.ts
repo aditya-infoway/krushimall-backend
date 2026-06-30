@@ -23,6 +23,7 @@ import purchaseRoutes from "./routes/purchase.js";
 import leadRoutes from "./routes/lead.js";
 import followupRoutes from "./routes/followup.js";
 import accessoryRoutes from "./routes/accessories.js";
+import accessoriesPurchaseRoutes from "./routes/accessoriesPurchase.js";
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -49,4 +50,8 @@ router.use("/tractors", tractorRoutes);
 router.use("/leads", leadRoutes);
 router.use("/followup", followupRoutes);
 router.use("/accessories", accessoryRoutes);
+router.use(
+  "/accessories-purchase",
+  accessoriesPurchaseRoutes
+);
 export default router;

@@ -141,10 +141,45 @@ export const getLeads = async (req: Request, res: Response) => {
       },
     });
 
-    return res.json({
-      success: true,
-      data: leads,
-    });
+  const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const data = leads.map((lead) => {
+  let leadTemperature = "Cold";
+  let leadColor = "sky";
+
+  if (lead.expectedPurchaseDate) {
+    const expectedDate = new Date(lead.expectedPurchaseDate);
+    expectedDate.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.ceil(
+      (expectedDate.getTime() - today.getTime()) /
+        (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays <= 7) {
+      leadTemperature = "Hot";
+      leadColor = "red";
+    } else if (diffDays <= 15) {
+      leadTemperature = "Warm";
+      leadColor = "orange";
+    } else {
+      leadTemperature = "Cold";
+      leadColor = "sky";
+    }
+  }
+
+  return {
+    ...lead,
+    leadTemperature,
+    leadColor,
+  };
+});
+
+return res.json({
+  success: true,
+  data,
+});
   } catch (error) {
        console.error("GET LEADS ERROR:", error); 
     return res.status(500).json({

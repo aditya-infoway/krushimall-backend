@@ -13,6 +13,7 @@ export const createAccessory = async (
         codeNo: req.body.codeNo,
         shortName: req.body.shortName,
         hsnCode: req.body.hsnCode,
+        unit: req.body.unit,
         taxSlab: req.body.taxSlab,
         group: req.body.group,
 
@@ -57,20 +58,49 @@ export const getAccessories = async (
   res: Response
 ) => {
   try {
-    const items = await prisma.accessory.findMany({
+    const accessories = await prisma.accessory.findMany({
       orderBy: {
         createdAt: "desc",
       },
     });
 
+   const data = await Promise.all(
+  accessories.map(async (item) => {
+    const variantIds = Array.isArray(item.showroomVariants)
+      ? item.showroomVariants
+          .map((v: any) => Number(v.id))
+          .filter((id) => !isNaN(id))
+      : [];
+
+    const variants = await prisma.showroomVariant.findMany({
+      where: {
+        id: {
+          in: variantIds,
+        },
+      },
+      include: {
+        model: true,
+      },
+    });
+
+    return {
+      ...item,
+      showroomVariantDetails: variants,
+    };
+  })
+);
+    
+
     return res.json({
       success: true,
-      data: items,
+      data,
     });
   } catch (error) {
+    console.log(error);
+
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch items",
+      message: "Failed to fetch accessories",
     });
   }
 };
@@ -90,6 +120,7 @@ export const updateAccessory = async (
         codeNo: req.body.codeNo,
         shortName: req.body.shortName,
         hsnCode: req.body.hsnCode,
+        unit: req.body.unit,
         taxSlab: req.body.taxSlab,
         group: req.body.group,
 
