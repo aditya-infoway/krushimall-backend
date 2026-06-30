@@ -8,29 +8,34 @@ import {
   updatePurchase,
   verifyPurchase,
   submitPurchaseItemInward,
-  getVehicleSerialNo
+  getVehicleSerialNo,
+  saveTransport,
+  getTransport,
+  getTractorInventory
 } from "../controllers/purchase.js";
 
 const router = express.Router();
 router.get("/generate-bill-no", getPurchaseBillNo);
-
-// 👇 Add here
 router.get("/vehicle-serial-no", getVehicleSerialNo);
 
 router.post("/", createPurchase);
 
-router.put("/:id", updatePurchase);
+router.get("/", getPurchases);
+
+// Fixed routes FIRST
+router.get("/tractor-inventory", getTractorInventory);
+
+router.put("/purchase-items/:id/inward", submitPurchaseItemInward);
 
 router.put("/:id/verify", verifyPurchase);
 
-router.put(
-  "/purchase-items/:id/inward",
-  submitPurchaseItemInward
-);
+router.put("/:id/transport", saveTransport);
+router.get("/:id/transport", getTransport);
 
-router.get("/", getPurchases);
-
+// Generic :id route LAST
 router.get("/:id", getPurchaseById);
+
+router.put("/:id", updatePurchase);
 
 router.delete("/:id", deletePurchase);
 export default router;

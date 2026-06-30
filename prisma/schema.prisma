@@ -348,43 +348,48 @@ model Colour {
 }
 
 model Account {
-  id             Int        @id @default(autoincrement())
-  accountName    String?
-  printName      String?
-  openingBalance Float      @default(0)
-  drCr           String?
-  country        String?
-  countryCode    String?
-  state          String?
-  stateCode      String?
-  district       String?
-  taluka         String?
-  city           String?
-  area           String?
-  address1       String?
-  address2       String?
-  pincode        String?
-  phone          String?
-  mobile         String?
-  email          String?
-  contactPerson  String?
-  birthday       DateTime?
-  anniversary    DateTime?
-  bankAccountNo  String?
-  bankName       String?
-  ifscCode       String?
-  branch         String?
-  gstNo          String?
-  panCard        String?
-  aadharNo       String?
-  status         String     @default("ACTIVE")
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  group          String?
-  closingBalance Float      @default(0)
-  accountLeads   Lead[]     @relation("LeadAccount")
-  customerLeads  Lead[]     @relation("LeadCustomer")
-  Purchase       Purchase[]
+  id                   Int                   @id @default(autoincrement())
+  accountName          String?
+  printName            String?
+  openingBalance       Float                 @default(0)
+  drCr                 String?
+  country              String?
+  countryCode          String?
+  state                String?
+  stateCode            String?
+  district             String?
+  taluka               String?
+  city                 String?
+  area                 String?
+  address1             String?
+  address2             String?
+  pincode              String?
+  phone                String?
+  mobile               String?
+  email                String?
+  contactPerson        String?
+  birthday             DateTime?
+  anniversary          DateTime?
+  bankAccountNo        String?
+  bankName             String?
+  ifscCode             String?
+  branch               String?
+  gstNo                String?
+  panCard              String?
+  aadharNo             String?
+  status               String                @default("ACTIVE")
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  group                String?
+  closingBalance       Float                 @default(0)
+  accountLeads         Lead[]                @relation("LeadAccount")
+  customerLeads        Lead[]                @relation("LeadCustomer")
+  accessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseParty")
+
+  cashAccessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseCash")
+
+  bankAccessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseBank")
+  Purchase                 Purchase[]
 }
 
 model EnquiryType {
@@ -510,6 +515,9 @@ model Purchase {
   cgst             Float          @default(0)
   sgst             Float          @default(0)
   igst             Float          @default(0)
+  transporterName  String?
+  mobileNumber     String?
+  vehicleNumber    String?
   status           String         @default("NOT_VERIFY")
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
@@ -538,30 +546,32 @@ model PurchaseItem {
   chassisNo String @unique
   engineNo  String @unique
 
-  qty        Int
-  ratePer    Float
-  gstPercent Float
-  amount     Float
-  vehicleSrNo     String?
-  mfgDate         DateTime?
-  keyNo           String?
-  batteryMake     String?
-  batteryNo       String?
-  first1TyerNo    String?
-  first2TyerNo    String?
-  second1TyerNo   String?
-  second2TyerNo   String?
-  location        String?
-  grnNumber       String?
-  grnDate         DateTime?
-  grnRecordDate   DateTime?
-  status String @default("Pending")
-  purchase Purchase @relation(fields: [purchaseId], references: [id])
+  qty           Int
+  ratePer       Float
+  gstPercent    Float
+  amount        Float
+  vehicleSrNo   String?
+  mfgDate       DateTime?
+  keyNo         String?
+  batteryMake   String?
+  batteryNo     String?
+  first1TyerNo  String?
+  first2TyerNo  String?
+  second1TyerNo String?
+  second2TyerNo String?
+  location      String?
+  grnNumber     String?
+  grnDate       DateTime?
+  grnRecordDate DateTime?
+  status        String    @default("Pending")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+  purchase      Purchase  @relation(fields: [purchaseId], references: [id])
 }
 
 model Lead {
   id                      Int              @id @default(autoincrement())
-   quotationNo  String? @unique
+  quotationNo             String?          @unique
   modelId                 Int?
   variantId               Int?
   colourId                Int?
@@ -621,7 +631,6 @@ model Lead {
   profession              Profession?      @relation(fields: [professionId], references: [id])
   showroomVariant         ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
   variant                 Variant?         @relation(fields: [variantId], references: [id])
-   
 }
 
 model FollowUp {
@@ -645,6 +654,7 @@ model Accessory {
   codeNo                     String                     @unique
   shortName                  String?
   hsnCode                    String?
+  unit                       String?
   taxSlab                    String?
   group                      String?
   purchasePrice              Float?
@@ -656,4 +666,90 @@ model Accessory {
   createdAt                  DateTime                   @default(now())
   updatedAt                  DateTime                   @updatedAt
   showroomVariantAccessories ShowroomVariantAccessory[]
+  purchaseItems              AccessoriesPurchaseItem[]
+}
+
+model AccessoriesPurchase {
+  id Int @id @default(autoincrement())
+
+  billNo         String  @unique
+  purchaseBillNo String?
+
+  accountId Int
+  account   Account @relation("AccessoriesPurchaseParty", fields: [accountId], references: [id])
+
+  purchaseDate DateTime
+  dueDate      DateTime?
+
+  purchaseLocation String?
+  narration        String?
+
+  terms String // Credit | Cash | Bank
+
+  // Cash / Bank Account
+  cashAccountId Int?
+  cashAccount   Account? @relation("AccessoriesPurchaseCash", fields: [cashAccountId], references: [id])
+
+  bankAccountId Int?
+  bankAccount   Account? @relation("AccessoriesPurchaseBank", fields: [bankAccountId], references: [id])
+
+  // Bank Details
+  paymentMode   String?
+  chequeNo      String?
+  chequeDate    DateTime?
+  clearDate     DateTime?
+  bankNarration String?
+
+  totalQty    Int
+  totalAmount Float
+
+  freightCharge Float @default(0)
+  insurance     Float @default(0)
+  otherCharge   Float @default(0)
+  roundAmount   Float @default(0)
+
+  taxableValue Float
+
+  cgst Float @default(0)
+  sgst Float @default(0)
+  igst Float @default(0)
+
+  grandTotal Float
+
+  verifyStatus String @default("not_verify")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items AccessoriesPurchaseItem[]
+}
+
+model AccessoriesPurchaseItem {
+  id Int @id @default(autoincrement())
+
+  purchaseId Int
+  purchase   AccessoriesPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  accessoryId Int?
+  accessory   Accessory? @relation(fields: [accessoryId], references: [id])
+
+  itemName  String
+  itemCode  String
+  shortName String?
+  hsnCode   String?
+  unit      String?
+  taxSlab   String?
+
+  modelName   String?
+  variantName String?
+
+  qty          Int
+  stock        Int
+  purchaseRate Float
+  gstPercent   Float
+  gstAmount    Float
+  netAmount    Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

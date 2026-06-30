@@ -332,7 +332,10 @@ const data = purchases.map((purchase) => {
     });
   }
 };
-export const getPurchaseById = async (req: Request, res: Response) => {
+export const getPurchaseById = async (
+  req: Request,
+  res: Response
+) => {
   try {
     const purchase = await prisma.purchase.findUnique({
       where: {
@@ -344,12 +347,30 @@ export const getPurchaseById = async (req: Request, res: Response) => {
       },
     });
 
+    if (!purchase) {
+      return res.status(404).json({
+        success: false,
+        message: "Purchase not found",
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      data: purchase,
+      data: {
+        ...purchase,
+        transportSaved:
+          !!purchase.transporterName &&
+          !!purchase.mobileNumber &&
+          !!purchase.vehicleNumber,
+      },
     });
   } catch (error) {
     console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch purchase",
+    });
   }
 };
 export const deletePurchase = async (req: Request, res: Response) => {
@@ -465,6 +486,152 @@ export const getVehicleSerialNo = async (
     return res.status(500).json({
       success: false,
       message: "Failed to generate Vehicle Serial No.",
+    });
+  }
+};
+export const saveTransport = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const id = Number(req.params.id);
+
+    const {
+      transporterName,
+      mobileNumber,
+      vehicleNumber,
+    } = req.body;
+
+    const purchase = await prisma.purchase.update({
+      where: { id },
+      data: {
+        transporterName,
+        mobileNumber,
+        vehicleNumber,
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: purchase,
+      message: "Transport details saved successfully",
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to save transport details",
+    });
+  }
+};
+export const getTransport = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const purchase = await prisma.purchase.findUnique({
+      where: {
+        id: Number(req.params.id),
+      },
+      select: {
+        transporterName: true,
+        mobileNumber: true,
+        vehicleNumber: true,
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: purchase,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+    });
+  }
+};
+export const getTractorInventory = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        status: "VERIFY",
+      },
+     include: {
+  account: true,
+  items: true,
+},
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    const data = purchases.flatMap((purchase) =>
+      purchase.items.map((item) => ({
+        id: item.id,
+
+        stock: "On",
+       status:
+  item.status === "Inward"
+    ? "Present"
+    : "In Transit",
+
+       location: purchase.purchaseLocation || "",
+currentLocation:  purchase.purchaseLocation || "",
+
+        billNo: purchase.billNo,
+        purchaseBillNo: purchase.purchaseBillNo,
+
+        supplierName:
+          purchase.account?.accountName || "",
+
+        itemName: item.itemName,
+        model: item.modelName,
+        variant: item.variantName,
+        colour: item.color,
+        fuelType: item.fuelType,
+
+        serialNo: item.vehicleSrNo,
+
+        mfgDate: item.mfgDate,
+        chassisNo: item.chassisNo,
+        engineNo: item.engineNo,
+
+        keyNumber: item.keyNo,
+
+        batteryMake: item.batteryMake,
+        batteryNo: item.batteryNo,
+
+        first1Tyer: item.first1TyerNo,
+        first2Tyer: item.first2TyerNo,
+
+        second1Tyer: item.second1TyerNo,
+        second2Tyer: item.second2TyerNo,
+
+        grnDate: item.grnDate,
+        grnRecordDate: item.grnRecordDate,
+        grnNo: item.grnNumber,
+
+        inWardDate: item.grnRecordDate,
+        inWardTime: item.updatedAt,
+      }))
+    );
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed",
     });
   }
 };
