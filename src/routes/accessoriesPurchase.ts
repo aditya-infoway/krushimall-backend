@@ -6,44 +6,28 @@ import {
   verifyAccessoriesPurchase,
   deleteAccessoriesPurchase,
   getAccessoriesPurchaseBillNo,
+  updateAccessoriesPurchase,
+  updateAccessoriesPurchaseItemStatus
 } from "../controllers/accessoriesPurchase.js";
 
 const router = express.Router();
 
 // Generate Bill No
-router.get(
-  "/generate-bill-no",
-  getAccessoriesPurchaseBillNo
-);
+router.get("/generate-bill-no", getAccessoriesPurchaseBillNo);
 
-// Create Purchase
-router.post(
-  "/",
-  createAccessoriesPurchase
-);
+router.post("/", createAccessoriesPurchase);
 
-// Get All Purchases
-router.get(
-  "/",
-  getAccessoriesPurchases
-);
+router.get("/", getAccessoriesPurchases);
 
-// Get Purchase By Id
-router.get(
-  "/:id",
-  getAccessoriesPurchaseById
-);
+router.get("/:id", getAccessoriesPurchaseById);
 
-// Verify Purchase
+router.put("/:id", updateAccessoriesPurchase);
+
+router.put("/verify/:id", verifyAccessoriesPurchase);
 router.put(
-  "/verify/:id",
-  verifyAccessoriesPurchase
+  "/item-status/:id",
+  updateAccessoriesPurchaseItemStatus
 );
-
-// Delete Purchase
-router.delete(
-  "/:id",
-  deleteAccessoriesPurchase
-);
+router.delete("/:id", deleteAccessoriesPurchase);
 
 export default router;
