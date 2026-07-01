@@ -14,6 +14,12 @@ export const createPurchase = async (req: Request, res: Response) => {
       dueDate,
       terms,
       narration,
+      bankAccountId,
+  paymentMode,
+  chequeNo,
+  chequeDate,
+  clearDate,
+  bankNarration,
       freightCharge,
       insurance,
       otherCharge,
@@ -40,7 +46,23 @@ export const createPurchase = async (req: Request, res: Response) => {
         dueDate: dueDate ? new Date(dueDate) : null,
         terms,
         narration,
+bankAccountId: bankAccountId
+  ? Number(bankAccountId)
+  : null,
 
+paymentMode,
+
+chequeNo,
+
+chequeDate: chequeDate
+  ? new Date(chequeDate)
+  : null,
+
+clearDate: clearDate
+  ? new Date(clearDate)
+  : null,
+
+bankNarration,
         freightCharge: Number(freightCharge || 0),
         insurance: Number(insurance || 0),
         otherCharge: Number(otherCharge || 0),
@@ -179,6 +201,12 @@ export const updatePurchase = async (req: Request, res: Response) => {
       dueDate,
       terms,
       narration,
+       bankAccountId,
+  paymentMode,
+  chequeNo,
+  chequeDate,
+  clearDate,
+  bankNarration,
       freightCharge,
       insurance,
       otherCharge,
@@ -209,7 +237,23 @@ export const updatePurchase = async (req: Request, res: Response) => {
         dueDate: dueDate ? new Date(dueDate) : null,
         terms,
         narration,
+bankAccountId: bankAccountId
+  ? Number(bankAccountId)
+  : null,
 
+paymentMode,
+
+chequeNo,
+
+chequeDate: chequeDate
+  ? new Date(chequeDate)
+  : null,
+
+clearDate: clearDate
+  ? new Date(clearDate)
+  : null,
+
+bankNarration,
         freightCharge: Number(freightCharge || 0),
         insurance: Number(insurance || 0),
         otherCharge: Number(otherCharge || 0),
