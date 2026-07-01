@@ -390,6 +390,8 @@ model Account {
 
   bankAccessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseBank")
   Purchase                 Purchase[]
+
+  purchaseBankAccounts Purchase[] @relation("PurchaseBank")
 }
 
 model EnquiryType {
@@ -496,33 +498,45 @@ model ProfilePrefix {
 }
 
 model Purchase {
-  id               Int            @id @default(autoincrement())
-  billNo           String         @unique
-  accountId        Int?
+  id        Int      @id @default(autoincrement())
+  billNo    String   @unique
+  accountId Int?
+  account   Account? @relation(fields: [accountId], references: [id])
+
+  bankAccountId    Int?
+  bankAccount      Account?  @relation("PurchaseBank", fields: [bankAccountId], references: [id])
   purchaseDate     DateTime?
   purchaseBillNo   String?
   purchaseLocation String?
   dueDate          DateTime?
   terms            String?
   narration        String?
-  freightCharge    Float          @default(0)
-  insurance        Float          @default(0)
-  otherCharge      Float          @default(0)
-  roundAmount      Float          @default(0)
-  totalQty         Int            @default(0)
-  totalAmount      Float          @default(0)
-  grandTotal       Float          @default(0)
-  cgst             Float          @default(0)
-  sgst             Float          @default(0)
-  igst             Float          @default(0)
-  transporterName  String?
-  mobileNumber     String?
-  vehicleNumber    String?
-  status           String         @default("NOT_VERIFY")
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  account          Account?       @relation(fields: [accountId], references: [id])
-  items            PurchaseItem[]
+  freightCharge    Float     @default(0)
+  insurance        Float     @default(0)
+  otherCharge      Float     @default(0)
+  roundAmount      Float     @default(0)
+  totalQty         Int       @default(0)
+  totalAmount      Float     @default(0)
+  grandTotal       Float     @default(0)
+  cgst             Float     @default(0)
+  sgst             Float     @default(0)
+  igst             Float     @default(0)
+
+  paymentMode String?
+
+  chequeNo   String?
+  chequeDate DateTime?
+  clearDate  DateTime?
+
+  bankNarration   String?
+  transporterName String?
+  mobileNumber    String?
+  vehicleNumber   String?
+  status          String   @default("NOT_VERIFY")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items PurchaseItem[]
 }
 
 model PurchaseItem {
@@ -733,13 +747,13 @@ model AccessoriesPurchaseItem {
   accessoryId Int?
   accessory   Accessory? @relation(fields: [accessoryId], references: [id])
 
-  itemName  String
-  itemCode  String
-  shortName String?
-  hsnCode   String?
-  unit      String?
-  taxSlab   String?
-
+  itemName    String
+  itemCode    String
+  shortName   String?
+  hsnCode     String?
+  unit        String?
+  taxSlab     String?
+  groupName   String?
   modelName   String?
   variantName String?
 
@@ -749,7 +763,7 @@ model AccessoriesPurchaseItem {
   gstPercent   Float
   gstAmount    Float
   netAmount    Float
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status       String   @default("Pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
