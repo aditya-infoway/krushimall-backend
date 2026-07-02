@@ -19,7 +19,8 @@ export const verifyToken = (
       token,
       process.env.JWT_SECRET!
     );
-
+    console.log(decoded);
+  (req as any).user = decoded;
     next();
   } catch (error) {
     return res.status(401).json({
