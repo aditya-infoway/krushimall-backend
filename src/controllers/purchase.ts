@@ -14,6 +14,7 @@ export const createPurchase = async (req: Request, res: Response) => {
       dueDate,
       terms,
       narration,
+        cashAccountId,
       bankAccountId,
   paymentMode,
   chequeNo,
@@ -46,6 +47,9 @@ export const createPurchase = async (req: Request, res: Response) => {
         dueDate: dueDate ? new Date(dueDate) : null,
         terms,
         narration,
+         cashAccountId: cashAccountId
+    ? Number(cashAccountId)
+    : null,
 bankAccountId: bankAccountId
   ? Number(bankAccountId)
   : null,
@@ -140,6 +144,142 @@ bankNarration,
         });
       }
     }
+   else if (terms?.toLowerCase() === "cash" && cashAccountId) {
+  const account = await prisma.account.findUnique({
+    where: { id: Number(cashAccountId) },
+  });
+
+  if (account) {
+    const currentBalance = Number(account.closingBalance || 0);
+    const purchaseAmount = Number(grandTotal || 0);
+
+    let closingBalance = currentBalance;
+    let balanceType = account.drCr;
+
+    // Cash Account (-)
+    if (balanceType === "Dr") {
+      if (currentBalance >= purchaseAmount) {
+        closingBalance = currentBalance - purchaseAmount;
+      } else {
+        closingBalance = purchaseAmount - currentBalance;
+        balanceType = "Cr";
+      }
+    } else {
+      closingBalance = currentBalance + purchaseAmount;
+    }
+
+    await prisma.account.update({
+      where: { id: Number(cashAccountId) },
+      data: {
+        closingBalance,
+        drCr: balanceType,
+      },
+    });
+  }
+
+  // Supplier (+)
+  if (accountId) {
+    const supplier = await prisma.account.findUnique({
+      where: { id: Number(accountId) },
+    });
+
+    if (supplier) {
+      const currentBalance = Number(supplier.closingBalance || 0);
+      const purchaseAmount = Number(grandTotal || 0);
+
+      let closingBalance = currentBalance;
+      let balanceType = supplier.drCr;
+
+      if (balanceType === "Cr") {
+        closingBalance += purchaseAmount;
+      } else {
+        if (currentBalance >= purchaseAmount) {
+          closingBalance -= purchaseAmount;
+        } else {
+          closingBalance = purchaseAmount - currentBalance;
+          balanceType = "Cr";
+        }
+      }
+
+      await prisma.account.update({
+        where: { id: Number(accountId) },
+        data: {
+          closingBalance,
+          drCr: balanceType,
+        },
+      });
+    }
+  }
+}
+
+// BANK PURCHASE
+else if (terms?.toLowerCase() === "bank" && bankAccountId) {
+  const account = await prisma.account.findUnique({
+    where: { id: Number(bankAccountId) },
+  });
+
+  if (account) {
+    const currentBalance = Number(account.closingBalance || 0);
+    const purchaseAmount = Number(grandTotal || 0);
+
+    let closingBalance = currentBalance;
+    let balanceType = account.drCr;
+
+    // Bank Account (-)
+    if (balanceType === "Dr") {
+      if (currentBalance >= purchaseAmount) {
+        closingBalance = currentBalance - purchaseAmount;
+      } else {
+        closingBalance = purchaseAmount - currentBalance;
+        balanceType = "Cr";
+      }
+    } else {
+      closingBalance = currentBalance + purchaseAmount;
+    }
+
+    await prisma.account.update({
+      where: { id: Number(bankAccountId) },
+      data: {
+        closingBalance,
+        drCr: balanceType,
+      },
+    });
+  }
+
+  // Supplier (+)
+  if (accountId) {
+    const supplier = await prisma.account.findUnique({
+      where: { id: Number(accountId) },
+    });
+
+    if (supplier) {
+      const currentBalance = Number(supplier.closingBalance || 0);
+      const purchaseAmount = Number(grandTotal || 0);
+
+      let closingBalance = currentBalance;
+      let balanceType = supplier.drCr;
+
+      if (balanceType === "Cr") {
+        closingBalance += purchaseAmount;
+      } else {
+        if (currentBalance >= purchaseAmount) {
+          closingBalance -= purchaseAmount;
+        } else {
+          closingBalance = purchaseAmount - currentBalance;
+          balanceType = "Cr";
+        }
+      }
+
+      await prisma.account.update({
+        where: { id: Number(accountId) },
+        data: {
+          closingBalance,
+          drCr: balanceType,
+        },
+      });
+    }
+  }
+}
     return res.status(201).json({
       success: true,
       data: purchase,
@@ -201,7 +341,8 @@ export const updatePurchase = async (req: Request, res: Response) => {
       dueDate,
       terms,
       narration,
-       bankAccountId,
+         cashAccountId,
+  bankAccountId,
   paymentMode,
   chequeNo,
   chequeDate,
@@ -237,6 +378,9 @@ export const updatePurchase = async (req: Request, res: Response) => {
         dueDate: dueDate ? new Date(dueDate) : null,
         terms,
         narration,
+          cashAccountId: cashAccountId
+    ? Number(cashAccountId)
+    : null,
 bankAccountId: bankAccountId
   ? Number(bankAccountId)
   : null,
