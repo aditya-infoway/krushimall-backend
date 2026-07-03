@@ -19,7 +19,7 @@ model Admin {
   id        Int      @id @default(autoincrement())
   name      String
   email     String   @unique
-    role      String   @default("Admin")
+  role      String   @default("Admin")
   password  String
   createdAt DateTime @default(now())
 }
@@ -48,6 +48,8 @@ model Company {
   logo           String?
   financialYears FinancialYear[]
   cashPayments   CashPayment[]
+  purchases      Purchase[]
+  bankPayments   BankPayment[]
 }
 
 model FinancialYear {
@@ -60,6 +62,8 @@ model FinancialYear {
   createdAt     DateTime      @default(now())
   company       Company       @relation(fields: [companyId], references: [id])
   cashPayments  CashPayment[]
+  purchases     Purchase[]
+  bankPayments  BankPayment[]
 
   @@unique([companyId, financialYear])
 }
@@ -397,6 +401,8 @@ model Account {
   purchaseBankAccounts     Purchase[]            @relation("PurchaseBank")
   cashPayments             CashPayment[]         @relation("CashPaymentCashAccount")
   oppPayments              CashPayment[]         @relation("CashPaymentOppAccount")
+  bankPayments             BankPayment[]         @relation("BankPaymentBankAccount")
+  oppBankPayments          BankPayment[]         @relation("BankPaymentOppAccount")
 }
 
 model EnquiryType {
@@ -503,30 +509,35 @@ model ProfilePrefix {
 }
 
 model Purchase {
-  id               Int       @id @default(autoincrement())
-  billNo           String    @unique
+  id              Int  @id @default(autoincrement())
+  companyId       Int?
+  financialYearId Int?
+
+  company          Company?       @relation(fields: [companyId], references: [id])
+  financialYear    FinancialYear? @relation(fields: [financialYearId], references: [id])
+  billNo           String         @unique
   accountId        Int?
-  account          Account?  @relation(fields: [accountId], references: [id])
+  account          Account?       @relation(fields: [accountId], references: [id])
   cashAccountId    Int?
-  cashAccount      Account?  @relation("PurchaseCash", fields: [cashAccountId], references: [id])
+  cashAccount      Account?       @relation("PurchaseCash", fields: [cashAccountId], references: [id])
   bankAccountId    Int?
-  bankAccount      Account?  @relation("PurchaseBank", fields: [bankAccountId], references: [id])
+  bankAccount      Account?       @relation("PurchaseBank", fields: [bankAccountId], references: [id])
   purchaseDate     DateTime?
   purchaseBillNo   String?
   purchaseLocation String?
   dueDate          DateTime?
   terms            String?
   narration        String?
-  freightCharge    Float     @default(0)
-  insurance        Float     @default(0)
-  otherCharge      Float     @default(0)
-  roundAmount      Float     @default(0)
-  totalQty         Int       @default(0)
-  totalAmount      Float     @default(0)
-  grandTotal       Float     @default(0)
-  cgst             Float     @default(0)
-  sgst             Float     @default(0)
-  igst             Float     @default(0)
+  freightCharge    Float          @default(0)
+  insurance        Float          @default(0)
+  otherCharge      Float          @default(0)
+  roundAmount      Float          @default(0)
+  totalQty         Int            @default(0)
+  totalAmount      Float          @default(0)
+  grandTotal       Float          @default(0)
+  cgst             Float          @default(0)
+  sgst             Float          @default(0)
+  igst             Float          @default(0)
 
   paymentMode String?
 
@@ -544,6 +555,7 @@ model Purchase {
 
   items        PurchaseItem[]
   cashPayments CashPayment[]
+  bankPayments BankPayment[]
 }
 
 model PurchaseItem {
@@ -591,68 +603,74 @@ model PurchaseItem {
 }
 
 model Lead {
-  id                      Int              @id @default(autoincrement())
-  quotationNo             String?          @unique
-  modelId                 Int?
-  variantId               Int?
-  colourId                Int?
-  customerId              Int?
-  executiveId             Int?
-  wantsFinance            Boolean          @default(false)
+  id          Int     @id @default(autoincrement())
+  quotationNo String? @unique
+  modelId     Int?
+  variantId   Int?
+  colourId    Int?
+  customerId  Int?
+  executiveId Int?
+
+  wantsFinance            Boolean @default(false)
   existingCustomerModel   String?
   existingCustomerVariant String?
   existingVehicleYear     String?
   customerExpectedPrice   Float?
   marketPrice             Float?
-  exchangeBonus           Float?
-  smiplShares             Float?
-  dealerShares            Float?
-  valueAddAccessories     Float?
-  insurance               Float?
-  totalValue              Float?
-  expectedPurchaseDate    DateTime?
-  expectedDeliveryDate    DateTime?
-  expectedDeliveryTime    String?
-  purchaseType            String?
-  professionId            Int?
-  enquiryTypeId           Int?
-  enquirySourceId         Int?
-  enquiryStatusId         Int?
-  bookingDate             DateTime?
-  followUpDate            DateTime?
-  dmsEnquiryNo            String?
-  dmsEnquiryDate          DateTime?
-  otherModel              String?
-  competitorTestRide      String?
-  salesManagerRemarks     String?
-  dealerRemarks           String?
-  advancePayment          Boolean          @default(false)
-  listOfBooking           Float?
-  paymentMode             String?
-  bankMode                String?
-  accountId               Int?
-  narration               String?
-  chequeNo                String?
-  chequeDate              DateTime?
-  chequeClearDate         DateTime?
-  createdAt               DateTime         @default(now())
-  updatedAt               DateTime         @updatedAt
-  executiveName           String?
-  followUpStatus          String?          @default("New")
-  showroomVariantId       Int?
-  followUps               FollowUp[]
-  account                 Account?         @relation("LeadAccount", fields: [accountId], references: [id])
-  colour                  Colour?          @relation(fields: [colourId], references: [id])
-  customer                Account?         @relation("LeadCustomer", fields: [customerId], references: [id])
-  enquirySourceMaster     EnquirySource?   @relation(fields: [enquirySourceId], references: [id])
-  enquiryStatus           EnquiryStatus?   @relation(fields: [enquiryStatusId], references: [id])
-  enquiryTypeMaster       EnquiryType?     @relation(fields: [enquiryTypeId], references: [id])
-  executive               Employee?        @relation(fields: [executiveId], references: [id])
-  model                   Model?           @relation(fields: [modelId], references: [id])
-  profession              Profession?      @relation(fields: [professionId], references: [id])
-  showroomVariant         ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
-  variant                 Variant?         @relation(fields: [variantId], references: [id])
-  cashPayments            CashPayment[]
+
+  chassisNo    String?
+  companyShare Float?
+  dealerShares Float?
+  rcNo         String?
+  insurance    Float?
+  vehicleNo    String?
+
+  expectedPurchaseDate DateTime?
+  expectedDeliveryDate DateTime?
+  expectedDeliveryTime String?
+  purchaseType         String?
+  professionId         Int?
+  enquiryTypeId        Int?
+  enquirySourceId      Int?
+  enquiryStatusId      Int?
+  bookingDate          DateTime?
+  followUpDate         DateTime?
+  dmsEnquiryNo         String?
+  dmsEnquiryDate       DateTime?
+  otherModel           String?
+  competitorTestRide   String?
+  salesManagerRemarks  String?
+  dealerRemarks        String?
+  advancePayment       Boolean   @default(false)
+  listOfBooking        Float?
+  paymentMode          String?
+  bankMode             String?
+  accountId            Int?
+  narration            String?
+  chequeNo             String?
+  chequeDate           DateTime?
+  chequeClearDate      DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  executiveName     String?
+  followUpStatus    String? @default("New")
+  showroomVariantId Int?
+
+  followUps           FollowUp[]
+  account             Account?         @relation("LeadAccount", fields: [accountId], references: [id])
+  colour              Colour?          @relation(fields: [colourId], references: [id])
+  customer            Account?         @relation("LeadCustomer", fields: [customerId], references: [id])
+  enquirySourceMaster EnquirySource?   @relation(fields: [enquirySourceId], references: [id])
+  enquiryStatus       EnquiryStatus?   @relation(fields: [enquiryStatusId], references: [id])
+  enquiryTypeMaster   EnquiryType?     @relation(fields: [enquiryTypeId], references: [id])
+  executive           Employee?        @relation(fields: [executiveId], references: [id])
+  model               Model?           @relation(fields: [modelId], references: [id])
+  profession          Profession?      @relation(fields: [professionId], references: [id])
+  showroomVariant     ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
+  variant             Variant?         @relation(fields: [variantId], references: [id])
+  cashPayments        CashPayment[]
+  bankPayments        BankPayment[]
 }
 
 model FollowUp {
@@ -803,6 +821,50 @@ model CashPayment {
   lead   Lead? @relation(fields: [leadId], references: [id])
 
   amount Float
+
+  narration String?
+
+  createdType String?
+  createdBy   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BankPayment {
+  id Int @id @default(autoincrement())
+
+  voucherNo String   @unique
+  date      DateTime
+
+  // BP / TPBP
+  type String
+
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+
+  financialYearId Int
+  financialYear   FinancialYear @relation(fields: [financialYearId], references: [id])
+
+  bankAccountId Int
+  bankAccount   Account @relation("BankPaymentBankAccount", fields: [bankAccountId], references: [id])
+
+  oppAccountId Int
+  oppAccount   Account @relation("BankPaymentOppAccount", fields: [oppAccountId], references: [id])
+
+  purchaseId Int?
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
+
+  leadId Int?
+  lead   Lead? @relation(fields: [leadId], references: [id])
+
+  amount Float
+
+  paymentMode String?
+
+  chequeNo   String?
+  chequeDate DateTime?
+  clearDate  DateTime?
 
   narration String?
 

@@ -2,11 +2,13 @@ import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import { generateBillNo } from "../utils/generatepurchaseBillNo.js";
 import { generateVehicleSerialNo } from "../utils/generateVehicleSerialNo.js";
-
-
+import { generateCashPaymentVoucher } from "../utils/generateCashPaymentVoucher.js";
+import { generateBankPaymentVoucher } from "../utils/generateBankPaymentVoucher.js";
 export const createPurchase = async (req: Request, res: Response) => {
   try {
     const {
+       companyId,
+  financialYearId,
       accountId,
       purchaseDate,
       purchaseBillNo,
@@ -35,9 +37,12 @@ export const createPurchase = async (req: Request, res: Response) => {
     } = req.body;
 
     const billNo = await generateBillNo("PURCHASE", "purchase");
-
+ const role = (req as any).user?.role || "Admin";
+  const name = (req as any).user?.name || "Admin";
     const purchase = await prisma.purchase.create({
       data: {
+          companyId: Number(companyId),
+    financialYearId: Number(financialYearId),
         billNo,
         accountId: Number(accountId),
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
@@ -279,6 +284,79 @@ else if (terms?.toLowerCase() === "bank" && bankAccountId) {
       });
     }
   }
+}
+if (terms?.toLowerCase() === "cash" && cashAccountId) {
+  const voucherNo = await generateCashPaymentVoucher();
+
+ 
+
+  await prisma.cashPayment.create({
+    data: {
+      companyId: Number(companyId),
+    financialYearId: Number(financialYearId),
+
+      voucherNo,
+
+      // Transaction Purchase Cash Payment
+      type: "TPCP",
+
+      date: purchase.purchaseDate ?? new Date(),
+
+      cashAccountId: Number(cashAccountId),
+
+      // Supplier Account
+      oppAccountId: Number(accountId),
+
+      purchaseId: purchase.id,
+
+      amount: Number(grandTotal),
+
+      narration: narration || "",
+
+      createdBy: name,
+      createdType: role,
+    },
+  });
+}
+if (terms?.toLowerCase() === "bank" && bankAccountId) {
+  const voucherNo = await generateBankPaymentVoucher();
+
+ await prisma.bankPayment.create({
+  data: {
+    companyId: Number(companyId),
+    financialYearId: Number(financialYearId),
+
+    voucherNo,
+
+    type: "TPBP",
+
+    date: purchase.purchaseDate ?? new Date(),
+
+    bankAccountId: Number(bankAccountId),
+    oppAccountId: Number(accountId),
+
+    purchaseId: purchase.id,
+
+    amount: Number(grandTotal),
+
+    paymentMode: paymentMode || null,
+
+    chequeNo: chequeNo || null,
+
+    chequeDate: chequeDate
+      ? new Date(chequeDate)
+      : null,
+
+    clearDate: clearDate
+      ? new Date(clearDate)
+      : null,
+
+    narration: narration || "",
+
+    createdBy: name,
+    createdType: role,
+  },
+});
 }
     return res.status(201).json({
       success: true,

@@ -152,9 +152,7 @@ export const createCashPayment = async (
     }
 
   const voucherNo = await generateCashPaymentVoucher();
-console.log("req.user =", (req as any).user);
-console.log("role =", (req as any).user?.role);
-console.log("name =", (req as any).user?.name);
+
     const role = (req as any).user?.role;
     const name = (req as any).user?.name;
 
