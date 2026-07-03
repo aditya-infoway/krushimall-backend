@@ -25,6 +25,7 @@ import followupRoutes from "./routes/followup.js";
 import accessoryRoutes from "./routes/accessories.js";
 import accessoriesPurchaseRoutes from "./routes/accessoriesPurchase.js";
 import cashPaymentRoutes from "./routes/cashPayment.js";
+import bankPaymentRoutes from "./routes/bankPayment.js";
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -56,4 +57,5 @@ router.use(
   accessoriesPurchaseRoutes
 );
 router.use("/cash-payment", cashPaymentRoutes);
+router.use("/bank-payment", bankPaymentRoutes);
 export default router;

@@ -32,19 +32,20 @@ export const createLead = async (req: Request, res: Response) => {
 
       marketPrice: req.body.marketPrice ? Number(req.body.marketPrice) : null,
 
-      exchangeBonus: req.body.exchangeBonus
-        ? Number(req.body.exchangeBonus)
-        : null,
+     chassisNo: req.body.chassisNo || null,
 
-      smiplShares: req.body.smiplShares ? Number(req.body.smiplShares) : null,
+     companyShare: req.body.companyShare
+  ? Number(req.body.companyShare)
+  : null,
 
       dealerShares: req.body.dealerShares
         ? Number(req.body.dealerShares)
         : null,
 
+
       insurance: req.body.insurance ? Number(req.body.insurance) : null,
 
-      totalValue: req.body.totalValue ? Number(req.body.totalValue) : null,
+     vehicleNo: req.body.vehicleNo || null,
 
       accountId: req.body.selectAccount ? Number(req.body.selectAccount) : null,
 
@@ -64,9 +65,7 @@ export const createLead = async (req: Request, res: Response) => {
         ? Number(req.body.listOfBooking)
         : null,
 
-      valueAddAccessories: req.body.valueAddAccessories
-        ? Number(req.body.valueAddAccessories)
-        : null,
+    rcNo: req.body.rcNo || null,
       chequeDate: req.body.chequeDate ? new Date(req.body.chequeDate) : null,
 
       chequeClearDate: req.body.chequeClearDate
@@ -81,12 +80,12 @@ export const createLead = async (req: Request, res: Response) => {
       data.existingVehicleYear = null;
       data.customerExpectedPrice = null;
       data.marketPrice = null;
-      data.exchangeBonus = null;
-      data.smiplShares = null;
+     data.chassisNo = null;
+data.companyShare = null;
       data.dealerShares = null;
-      data.valueAddAccessories = null;
+    data.rcNo = null;
       data.insurance = null;
-      data.totalValue = null;
+      data.vehicleNo = null;
     }
     delete data.profession;
     delete data.enquiryType;
