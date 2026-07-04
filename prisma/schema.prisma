@@ -50,6 +50,7 @@ model Company {
   cashPayments   CashPayment[]
   purchases      Purchase[]
   bankPayments   BankPayment[]
+  contras        Contra[]
 }
 
 model FinancialYear {
@@ -64,6 +65,7 @@ model FinancialYear {
   cashPayments  CashPayment[]
   purchases     Purchase[]
   bankPayments  BankPayment[]
+  contras       Contra[]
 
   @@unique([companyId, financialYear])
 }
@@ -403,6 +405,8 @@ model Account {
   oppPayments              CashPayment[]         @relation("CashPaymentOppAccount")
   bankPayments             BankPayment[]         @relation("BankPaymentBankAccount")
   oppBankPayments          BankPayment[]         @relation("BankPaymentOppAccount")
+  contraCashBankAccounts   Contra[]              @relation("ContraCashBankAccount")
+  contraOppAccounts        Contra[]              @relation("ContraOppAccount")
 }
 
 model EnquiryType {
@@ -873,4 +877,42 @@ model BankPayment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Contra {
+  id Int @id @default(autoincrement())
+
+  voucherNo String   @unique
+  date      DateTime
+
+  // Cash Deposit | Cash Withdrawal | Bank Transfer
+  type String
+
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+
+  financialYearId Int
+  financialYear   FinancialYear @relation(fields: [financialYearId], references: [id])
+
+  cashBankAccountId Int
+  cashBankAccount   Account @relation("ContraCashBankAccount", fields: [cashBankAccountId], references: [id])
+
+  oppAccountId Int
+  oppAccount   Account @relation("ContraOppAccount", fields: [oppAccountId], references: [id])
+
+  amount Float
+
+  narration String?
+
+  createdType String? @default("Manual")
+  createdBy   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([financialYearId])
+  @@index([cashBankAccountId])
+  @@index([oppAccountId])
+  @@index([date])
 }

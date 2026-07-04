@@ -1,347 +1,289 @@
-import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import puppeteer from "puppeteer";
 import { generateQuotationNo } from "../utils/generateQuotationNo.js";
-export const createLead = async (req: Request, res: Response) => {
-  try {
-    const data: any = {
-      ...req.body,
-        showroomVariantId: req.body.showroomVariantId
-    ? Number(req.body.showroomVariantId)
-    : null,
-      expectedPurchaseDate: req.body.expectedPurchaseDate
-        ? new Date(req.body.expectedPurchaseDate)
-        : null,
-
-      expectedDeliveryDate: req.body.expectedDeliveryDate
-        ? new Date(req.body.expectedDeliveryDate)
-        : null,
-
-      bookingDate: req.body.bookingDate ? new Date(req.body.bookingDate) : null,
-
-      followUpDate: req.body.followUpDate
-        ? new Date(req.body.followUpDate)
-        : null,
-
-      dmsEnquiryDate: req.body.dmsEnquiryDate
-        ? new Date(req.body.dmsEnquiryDate)
-        : null,
-      customerExpectedPrice: req.body.customerExpectedPrice
-        ? Number(req.body.customerExpectedPrice)
-        : null,
-
-      marketPrice: req.body.marketPrice ? Number(req.body.marketPrice) : null,
-
-     chassisNo: req.body.chassisNo || null,
-
-     companyShare: req.body.companyShare
-  ? Number(req.body.companyShare)
-  : null,
-
-      dealerShares: req.body.dealerShares
-        ? Number(req.body.dealerShares)
-        : null,
-
-
-      insurance: req.body.insurance ? Number(req.body.insurance) : null,
-
-     vehicleNo: req.body.vehicleNo || null,
-
-      accountId: req.body.selectAccount ? Number(req.body.selectAccount) : null,
-
-      professionId: req.body.profession ? Number(req.body.profession) : null,
-
-      enquiryTypeId: req.body.enquiryType ? Number(req.body.enquiryType) : null,
-
-      enquirySourceId: req.body.enquirySource
-        ? Number(req.body.enquirySource)
-        : null,
-
-      enquiryStatusId: req.body.enquiryStatus
-        ? Number(req.body.enquiryStatus)
-        : null,
-
-      listOfBooking: req.body.listOfBooking
-        ? Number(req.body.listOfBooking)
-        : null,
-
-    rcNo: req.body.rcNo || null,
-      chequeDate: req.body.chequeDate ? new Date(req.body.chequeDate) : null,
-
-      chequeClearDate: req.body.chequeClearDate
-        ? new Date(req.body.chequeClearDate)
-        : null,
-    };
-
-    // Change Current Vehicle checkbox OFF
-    if (!req.body.wantsFinance) {
-      data.existingCustomerModel = null;
-      data.existingCustomerVariant = null;
-      data.existingVehicleYear = null;
-      data.customerExpectedPrice = null;
-      data.marketPrice = null;
-     data.chassisNo = null;
-data.companyShare = null;
-      data.dealerShares = null;
-    data.rcNo = null;
-      data.insurance = null;
-      data.vehicleNo = null;
+export const createLead = async (req, res) => {
+    try {
+        const data = {
+            ...req.body,
+            showroomVariantId: req.body.showroomVariantId
+                ? Number(req.body.showroomVariantId)
+                : null,
+            expectedPurchaseDate: req.body.expectedPurchaseDate
+                ? new Date(req.body.expectedPurchaseDate)
+                : null,
+            expectedDeliveryDate: req.body.expectedDeliveryDate
+                ? new Date(req.body.expectedDeliveryDate)
+                : null,
+            bookingDate: req.body.bookingDate ? new Date(req.body.bookingDate) : null,
+            followUpDate: req.body.followUpDate
+                ? new Date(req.body.followUpDate)
+                : null,
+            dmsEnquiryDate: req.body.dmsEnquiryDate
+                ? new Date(req.body.dmsEnquiryDate)
+                : null,
+            customerExpectedPrice: req.body.customerExpectedPrice
+                ? Number(req.body.customerExpectedPrice)
+                : null,
+            marketPrice: req.body.marketPrice ? Number(req.body.marketPrice) : null,
+            chassisNo: req.body.chassisNo || null,
+            companyShare: req.body.companyShare
+                ? Number(req.body.companyShare)
+                : null,
+            dealerShares: req.body.dealerShares
+                ? Number(req.body.dealerShares)
+                : null,
+            insurance: req.body.insurance ? Number(req.body.insurance) : null,
+            vehicleNo: req.body.vehicleNo || null,
+            accountId: req.body.selectAccount ? Number(req.body.selectAccount) : null,
+            professionId: req.body.profession ? Number(req.body.profession) : null,
+            enquiryTypeId: req.body.enquiryType ? Number(req.body.enquiryType) : null,
+            enquirySourceId: req.body.enquirySource
+                ? Number(req.body.enquirySource)
+                : null,
+            enquiryStatusId: req.body.enquiryStatus
+                ? Number(req.body.enquiryStatus)
+                : null,
+            listOfBooking: req.body.listOfBooking
+                ? Number(req.body.listOfBooking)
+                : null,
+            rcNo: req.body.rcNo || null,
+            chequeDate: req.body.chequeDate ? new Date(req.body.chequeDate) : null,
+            chequeClearDate: req.body.chequeClearDate
+                ? new Date(req.body.chequeClearDate)
+                : null,
+        };
+        // Change Current Vehicle checkbox OFF
+        if (!req.body.wantsFinance) {
+            data.existingCustomerModel = null;
+            data.existingCustomerVariant = null;
+            data.existingVehicleYear = null;
+            data.customerExpectedPrice = null;
+            data.marketPrice = null;
+            data.chassisNo = null;
+            data.companyShare = null;
+            data.dealerShares = null;
+            data.rcNo = null;
+            data.insurance = null;
+            data.vehicleNo = null;
+        }
+        delete data.profession;
+        delete data.enquiryType;
+        delete data.enquirySource;
+        delete data.enquiryStatus;
+        delete data.selectAccount;
+        delete data.variantId; // add
+        delete data.showroomVariant;
+        delete data.exWarranty23;
+        delete data.exWarranty28;
+        console.log(data);
+        const quotationNo = await generateQuotationNo();
+        data.quotationNo = quotationNo;
+        const lead = await prisma.lead.create({
+            data,
+        });
+        return res.status(201).json({
+            success: true,
+            data: lead,
+        });
     }
-    delete data.profession;
-    delete data.enquiryType;
-    delete data.enquirySource;
-    delete data.enquiryStatus;
-    delete data.selectAccount;
-delete data.variantId;       // add
-delete data.showroomVariant;
-    delete data.exWarranty23;
-    delete data.exWarranty28;
-    console.log(data);
-    const quotationNo = await generateQuotationNo();
-
-data.quotationNo = quotationNo;
-    const lead = await prisma.lead.create({
-      data,
-    });
-
-    return res.status(201).json({
-      success: true,
-      data: lead,
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create lead",
-      error,
-    });
-  }
-};
-
-export const getLeads = async (req: Request, res: Response) => {
-  try {
-    
-    const leads = await prisma.lead.findMany({
-      include: {
-        customer: true,
-        model: true,
-        showroomVariant: true,
-        colour: true,
-        executive: true,
-        profession: true,
-        enquiryTypeMaster: true,
-        enquirySourceMaster: true,
-        enquiryStatus: true,
-        account: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-  const today = new Date();
-today.setHours(0, 0, 0, 0);
-
-const data = leads.map((lead) => {
-  let leadTemperature = "Cold";
-  let leadColor = "sky";
-
-  if (lead.expectedPurchaseDate) {
-    const expectedDate = new Date(lead.expectedPurchaseDate);
-    expectedDate.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.ceil(
-      (expectedDate.getTime() - today.getTime()) /
-        (1000 * 60 * 60 * 24)
-    );
-
-    if (diffDays <= 7) {
-      leadTemperature = "Hot";
-      leadColor = "red";
-    } else if (diffDays <= 15) {
-      leadTemperature = "Warm";
-      leadColor = "orange";
-    } else {
-      leadTemperature = "Cold";
-      leadColor = "sky";
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to create lead",
+            error,
+        });
     }
-  }
-
-  return {
-    ...lead,
-    leadTemperature,
-    leadColor,
-  };
-});
-
-return res.json({
-  success: true,
-  data,
-});
-  } catch (error) {
-       console.error("GET LEADS ERROR:", error); 
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch leads",
-    });
-  }
 };
-export const getLeadById = async (
-  req: Request,
-  res: Response
-) => {
-  const id = Number(req.params.id);
-
-  const lead = await prisma.lead.findUnique({
-    where: { id },
-    include: {
-      customer: true,
-      model: true,
-        showroomVariant: true,
-      colour: true,
-      executive: true,
-    },
-  });
-
-  return res.json({
-    success: true,
-    data: lead,
-  });
+export const getLeads = async (req, res) => {
+    try {
+        const leads = await prisma.lead.findMany({
+            include: {
+                customer: true,
+                model: true,
+                showroomVariant: true,
+                colour: true,
+                executive: true,
+                profession: true,
+                enquiryTypeMaster: true,
+                enquirySourceMaster: true,
+                enquiryStatus: true,
+                account: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const data = leads.map((lead) => {
+            let leadTemperature = "Cold";
+            let leadColor = "sky";
+            if (lead.expectedPurchaseDate) {
+                const expectedDate = new Date(lead.expectedPurchaseDate);
+                expectedDate.setHours(0, 0, 0, 0);
+                const diffDays = Math.ceil((expectedDate.getTime() - today.getTime()) /
+                    (1000 * 60 * 60 * 24));
+                if (diffDays <= 7) {
+                    leadTemperature = "Hot";
+                    leadColor = "red";
+                }
+                else if (diffDays <= 15) {
+                    leadTemperature = "Warm";
+                    leadColor = "orange";
+                }
+                else {
+                    leadTemperature = "Cold";
+                    leadColor = "sky";
+                }
+            }
+            return {
+                ...lead,
+                leadTemperature,
+                leadColor,
+            };
+        });
+        return res.json({
+            success: true,
+            data,
+        });
+    }
+    catch (error) {
+        console.error("GET LEADS ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch leads",
+        });
+    }
 };
-export const generateOrderBillPdf = async (req: Request, res: Response) => {
-  try {
-    const leadId = Number(req.params.id);
-const company = await prisma.company.findFirst();
-
+export const getLeadById = async (req, res) => {
+    const id = Number(req.params.id);
     const lead = await prisma.lead.findUnique({
-      where: { id: leadId },
-      include: {
-        customer: true,
-        model: true,
-      showroomVariant: true,
-        colour: true,
-        executive: true,
-        profession: true,
-        enquiryTypeMaster: true,
-        enquirySourceMaster: true,
-        enquiryStatus: true,
-        account: true,
-      },
+        where: { id },
+        include: {
+            customer: true,
+            model: true,
+            showroomVariant: true,
+            colour: true,
+            executive: true,
+        },
     });
-
-    if (!lead) {
-      return res.status(404).json({
-        success: false,
-        message: "Lead not found",
-      });
-    }
-
-    // Helper function to format currency
-    const formatCurrency = (amount: number) => {
-      return (
-        amount?.toLocaleString("en-IN", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }) || "0.00"
-      );
-    };
-
-    // Calculate totals from lead data or use default values
-  const exShowroomPrice =
-  lead.showroomVariant?.exShowroomPrice ?? 0;
-
-const insurance =
-  lead.showroomVariant?.insurance ?? 0;
-
-const rtoCharge =
-  lead.showroomVariant?.rtoCharge ?? 0;
-
- const total =
-  exShowroomPrice +
-  insurance +
-  rtoCharge;
-
-    // Convert number to words (Indian format)
-    const numberToWords = (num: number) => {
-      const ones = [
-        "",
-        "One",
-        "Two",
-        "Three",
-        "Four",
-        "Five",
-        "Six",
-        "Seven",
-        "Eight",
-        "Nine",
-        "Ten",
-        "Eleven",
-        "Twelve",
-        "Thirteen",
-        "Fourteen",
-        "Fifteen",
-        "Sixteen",
-        "Seventeen",
-        "Eighteen",
-        "Nineteen",
-      ];
-      const tens = [
-        "",
-        "",
-        "Twenty",
-        "Thirty",
-        "Forty",
-        "Fifty",
-        "Sixty",
-        "Seventy",
-        "Eighty",
-        "Ninety",
-      ];
-
-     const convertHundreds = (n: number): string => {
-  if (n < 20) return ones[n];
-
-  if (n < 100) {
-    return (
-      tens[Math.floor(n / 10)] +
-      (n % 10 ? " " + ones[n % 10] : "")
-    );
-  }
-
-  return (
-    ones[Math.floor(n / 100)] +
-    " Hundred" +
-    (n % 100 ? " " + convertHundreds(n % 100) : "")
-  );
+    return res.json({
+        success: true,
+        data: lead,
+    });
 };
-
-      if (num === 0) return "Zero";
-
-      const crore = Math.floor(num / 10000000);
-      const lakh = Math.floor((num % 10000000) / 100000);
-      const thousand = Math.floor((num % 100000) / 1000);
-      const remainder = num % 1000;
-
-      let result = "";
-      if (crore) result += convertHundreds(crore) + " Crore ";
-      if (lakh) result += convertHundreds(lakh) + " Lakh ";
-      if (thousand) result += convertHundreds(thousand) + " Thousand ";
-      if (remainder) result += convertHundreds(remainder);
-
-      return result.trim() + " Only";
-    };
-
-    const totalInWords = numberToWords(Math.round(total));
-
-    // Generate current date
-    const currentDate = new Date().toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-
-    const html = `
+export const generateOrderBillPdf = async (req, res) => {
+    try {
+        const leadId = Number(req.params.id);
+        const company = await prisma.company.findFirst();
+        const lead = await prisma.lead.findUnique({
+            where: { id: leadId },
+            include: {
+                customer: true,
+                model: true,
+                showroomVariant: true,
+                colour: true,
+                executive: true,
+                profession: true,
+                enquiryTypeMaster: true,
+                enquirySourceMaster: true,
+                enquiryStatus: true,
+                account: true,
+            },
+        });
+        if (!lead) {
+            return res.status(404).json({
+                success: false,
+                message: "Lead not found",
+            });
+        }
+        // Helper function to format currency
+        const formatCurrency = (amount) => {
+            return (amount?.toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }) || "0.00");
+        };
+        // Calculate totals from lead data or use default values
+        const exShowroomPrice = lead.showroomVariant?.exShowroomPrice ?? 0;
+        const insurance = lead.showroomVariant?.insurance ?? 0;
+        const rtoCharge = lead.showroomVariant?.rtoCharge ?? 0;
+        const total = exShowroomPrice +
+            insurance +
+            rtoCharge;
+        // Convert number to words (Indian format)
+        const numberToWords = (num) => {
+            const ones = [
+                "",
+                "One",
+                "Two",
+                "Three",
+                "Four",
+                "Five",
+                "Six",
+                "Seven",
+                "Eight",
+                "Nine",
+                "Ten",
+                "Eleven",
+                "Twelve",
+                "Thirteen",
+                "Fourteen",
+                "Fifteen",
+                "Sixteen",
+                "Seventeen",
+                "Eighteen",
+                "Nineteen",
+            ];
+            const tens = [
+                "",
+                "",
+                "Twenty",
+                "Thirty",
+                "Forty",
+                "Fifty",
+                "Sixty",
+                "Seventy",
+                "Eighty",
+                "Ninety",
+            ];
+            const convertHundreds = (n) => {
+                if (n < 20)
+                    return ones[n];
+                if (n < 100) {
+                    return (tens[Math.floor(n / 10)] +
+                        (n % 10 ? " " + ones[n % 10] : ""));
+                }
+                return (ones[Math.floor(n / 100)] +
+                    " Hundred" +
+                    (n % 100 ? " " + convertHundreds(n % 100) : ""));
+            };
+            if (num === 0)
+                return "Zero";
+            const crore = Math.floor(num / 10000000);
+            const lakh = Math.floor((num % 10000000) / 100000);
+            const thousand = Math.floor((num % 100000) / 1000);
+            const remainder = num % 1000;
+            let result = "";
+            if (crore)
+                result += convertHundreds(crore) + " Crore ";
+            if (lakh)
+                result += convertHundreds(lakh) + " Lakh ";
+            if (thousand)
+                result += convertHundreds(thousand) + " Thousand ";
+            if (remainder)
+                result += convertHundreds(remainder);
+            return result.trim() + " Only";
+        };
+        const totalInWords = numberToWords(Math.round(total));
+        // Generate current date
+        const currentDate = new Date().toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        });
+        const html = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -695,11 +637,9 @@ const rtoCharge =
   </div>
 
   <div class="company-right">
-    ${
-      company?.logo
-        ? `<img src="http://localhost:5000/uploads/${company.logo}" class="company-logo" />`
-        : ""
-    }
+    ${company?.logo
+            ? `<img src="http://localhost:5000/uploads/${company.logo}" class="company-logo" />`
+            : ""}
   </div>
 
 </div>
@@ -744,7 +684,7 @@ const rtoCharge =
 
   <tr>
     <td><b>Mobile</b></td>
-    <td>${ lead.customer?.mobile || ""}</td>
+    <td>${lead.customer?.mobile || ""}</td>
     <td><b>Model</b></td>
     <td>${lead.model?.modelName || "C12"}</td>
   </tr>
@@ -872,74 +812,62 @@ const rtoCharge =
       </body>
       </html>
     `;
-
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-
-    const page = await browser.newPage();
-
-   await page.setContent(html, {
-  waitUntil: "domcontentloaded",
-});
-
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "0",
-        bottom: "0",
-        left: "0",
-        right: "0",
-      },
-      displayHeaderFooter: false,
-      preferCSSPageSize: false,
-    });
-
-    await browser.close();
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename=quotation-${leadId}-${Date.now()}.pdf`,
-    );
-    res.setHeader("Content-Length", pdf.length);
-
-    res.end(pdf);
-  } catch (error) {
-    console.error("PDF Generation Error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate PDF",
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-  }
+        const browser = await puppeteer.launch({
+            headless: true,
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        });
+        const page = await browser.newPage();
+        await page.setContent(html, {
+            waitUntil: "domcontentloaded",
+        });
+        const pdf = await page.pdf({
+            format: "A4",
+            printBackground: true,
+            margin: {
+                top: "0",
+                bottom: "0",
+                left: "0",
+                right: "0",
+            },
+            displayHeaderFooter: false,
+            preferCSSPageSize: false,
+        });
+        await browser.close();
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `inline; filename=quotation-${leadId}-${Date.now()}.pdf`);
+        res.setHeader("Content-Length", pdf.length);
+        res.end(pdf);
+    }
+    catch (error) {
+        console.error("PDF Generation Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to generate PDF",
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
 };
-  // <div class="footer">
-        //   Generated on: ${currentDate} | Thank you for your business!
-        // </div>
-  //       <tr>
-  //   <td>Road Side Assistance</td>
-  //   <td align="right">${formatCurrency(roadSideAssistance)}</td>
-  // </tr>
-  //  <tr>
-  //   <td>Ex. Warranty (2+3)</td>
-  //   <td align="right">${formatCurrency(exWarranty23)}</td>
-  // </tr>
-
-  // <tr>
-  //   <td>Hypothecation Charges</td>
-  //   <td align="right">${formatCurrency(hypothecationCharges)}</td>
-  // </tr>
-
-  // <tr>
-  //   <td>Ex. Warranty (2+8)</td>
-  //   <td align="right">${formatCurrency(exWarranty28)}</td>
-  // </tr>
-
-  // <tr>
-  //   <td>RTO Registration Charges</td>
-  //   <td align="right">${formatCurrency(rtoRegistrationCharges)}</td>
-  // </tr>
+// <div class="footer">
+//   Generated on: ${currentDate} | Thank you for your business!
+// </div>
+//       <tr>
+//   <td>Road Side Assistance</td>
+//   <td align="right">${formatCurrency(roadSideAssistance)}</td>
+// </tr>
+//  <tr>
+//   <td>Ex. Warranty (2+3)</td>
+//   <td align="right">${formatCurrency(exWarranty23)}</td>
+// </tr>
+// <tr>
+//   <td>Hypothecation Charges</td>
+//   <td align="right">${formatCurrency(hypothecationCharges)}</td>
+// </tr>
+// <tr>
+//   <td>Ex. Warranty (2+8)</td>
+//   <td align="right">${formatCurrency(exWarranty28)}</td>
+// </tr>
+// <tr>
+//   <td>RTO Registration Charges</td>
+//   <td align="right">${formatCurrency(rtoRegistrationCharges)}</td>
+// </tr>
+//# sourceMappingURL=lead.js.map
