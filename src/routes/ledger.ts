@@ -3,6 +3,8 @@ import { verifyToken } from "../middleware/middleware.js";
 import {
   getLedgerReport,
   getLedgerDetails,
+  exportLedgerReport,
+  exportLedgerDetails
 } from "../controllers/ledger.js";
 
 const router = express.Router();
@@ -20,5 +22,7 @@ router.get(
   verifyToken,
   getLedgerDetails
 );
-
+// routes
+router.get("/export", verifyToken, exportLedgerReport);
+router.get("/details/:id/export", exportLedgerDetails);
 export default router;
