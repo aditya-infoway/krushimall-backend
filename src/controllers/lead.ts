@@ -2,13 +2,16 @@ import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import puppeteer from "puppeteer";
 import { generateQuotationNo } from "../utils/generateQuotationNo.js";
+import { generateCashReceiptVoucher } from "../utils/generateCashReceiptVoucher.js";
 export const createLead = async (req: Request, res: Response) => {
   try {
     const data: any = {
       ...req.body,
-        showroomVariantId: req.body.showroomVariantId
-    ? Number(req.body.showroomVariantId)
-    : null,
+        companyId: Number(req.body.companyId),
+  financialYearId: Number(req.body.financialYearId),
+      showroomVariantId: req.body.showroomVariantId
+        ? Number(req.body.showroomVariantId)
+        : null,
       expectedPurchaseDate: req.body.expectedPurchaseDate
         ? new Date(req.body.expectedPurchaseDate)
         : null,
@@ -32,20 +35,19 @@ export const createLead = async (req: Request, res: Response) => {
 
       marketPrice: req.body.marketPrice ? Number(req.body.marketPrice) : null,
 
-     chassisNo: req.body.chassisNo || null,
+      chassisNo: req.body.chassisNo || null,
 
-     companyShare: req.body.companyShare
-  ? Number(req.body.companyShare)
-  : null,
+      companyShare: req.body.companyShare
+        ? Number(req.body.companyShare)
+        : null,
 
       dealerShares: req.body.dealerShares
         ? Number(req.body.dealerShares)
         : null,
 
-
       insurance: req.body.insurance ? Number(req.body.insurance) : null,
 
-     vehicleNo: req.body.vehicleNo || null,
+      vehicleNo: req.body.vehicleNo || null,
 
       accountId: req.body.selectAccount ? Number(req.body.selectAccount) : null,
 
@@ -65,7 +67,7 @@ export const createLead = async (req: Request, res: Response) => {
         ? Number(req.body.listOfBooking)
         : null,
 
-    rcNo: req.body.rcNo || null,
+      rcNo: req.body.rcNo || null,
       chequeDate: req.body.chequeDate ? new Date(req.body.chequeDate) : null,
 
       chequeClearDate: req.body.chequeClearDate
@@ -80,10 +82,10 @@ export const createLead = async (req: Request, res: Response) => {
       data.existingVehicleYear = null;
       data.customerExpectedPrice = null;
       data.marketPrice = null;
-     data.chassisNo = null;
-data.companyShare = null;
+      data.chassisNo = null;
+      data.companyShare = null;
       data.dealerShares = null;
-    data.rcNo = null;
+      data.rcNo = null;
       data.insurance = null;
       data.vehicleNo = null;
     }
@@ -92,18 +94,94 @@ data.companyShare = null;
     delete data.enquirySource;
     delete data.enquiryStatus;
     delete data.selectAccount;
-delete data.variantId;       // add
-delete data.showroomVariant;
+    delete data.variantId; // add
+    delete data.showroomVariant;
     delete data.exWarranty23;
     delete data.exWarranty28;
     console.log(data);
     const quotationNo = await generateQuotationNo();
 
-data.quotationNo = quotationNo;
+    data.quotationNo = quotationNo;
     const lead = await prisma.lead.create({
       data,
     });
+if (
+  req.body.advancePayment &&
+  Number(req.body.listOfBooking) > 0 &&
+  req.body.selectAccount
+) {
+  const amount = Number(req.body.listOfBooking);
 
+  if (req.body.paymentMode === "CASH") {
+    await prisma.cashReceipt.create({
+      data: {
+        voucherNo: await generateCashReceiptVoucher(),
+        date: new Date(),
+        companyId: Number(req.body.companyId),
+        financialYearId: Number(req.body.financialYearId),
+
+        cashAccountId: Number(req.body.selectAccount),
+        oppAccountId: Number(req.body.customerId),
+
+        leadId: lead.id,
+
+        amount,
+        narration: req.body.narration,
+
+        type: "LCR", // ✅ Lead Cash Receipt
+
+        createdType: (req as any).user?.role,
+        createdBy: (req as any).user?.name,
+      },
+    });
+
+    await prisma.account.update({
+      where: {
+        id: Number(req.body.selectAccount),
+      },
+      data: {
+        closingBalance: {
+          increment: amount,
+        },
+      },
+    });
+  }
+
+  // if (req.body.paymentMode === "BANK") {
+  //   await prisma.bankReceipt.create({
+  //     data: {
+  //       voucherNo: await generateBankReceiptVoucher(),
+  //       date: new Date(),
+  //       companyId: Number(req.body.companyId),
+  //       financialYearId: Number(req.body.financialYearId),
+
+  //       bankAccountId: Number(req.body.selectAccount),
+  //       oppAccountId: Number(req.body.customerId),
+
+  //       leadId: lead.id,
+
+  //       amount,
+  //       narration: req.body.narration,
+
+  //       type: "LBR", // ✅ Lead Bank Receipt
+
+  //       createdType: (req as any).user?.role,
+  //       createdBy: (req as any).user?.name,
+  //     },
+  //   });
+
+  //   await prisma.account.update({
+  //     where: {
+  //       id: Number(req.body.selectAccount),
+  //     },
+  //     data: {
+  //       closingBalance: {
+  //         increment: amount,
+  //       },
+  //     },
+  //   });
+  // }
+}
     return res.status(201).json({
       success: true,
       data: lead,
@@ -121,7 +199,6 @@ data.quotationNo = quotationNo;
 
 export const getLeads = async (req: Request, res: Response) => {
   try {
-    
     const leads = await prisma.lead.findMany({
       include: {
         customer: true,
@@ -140,57 +217,53 @@ export const getLeads = async (req: Request, res: Response) => {
       },
     });
 
-  const today = new Date();
-today.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-const data = leads.map((lead) => {
-  let leadTemperature = "Cold";
-  let leadColor = "sky";
+    const data = leads.map((lead) => {
+      let leadTemperature = "Cold";
+      let leadColor = "sky";
 
-  if (lead.expectedPurchaseDate) {
-    const expectedDate = new Date(lead.expectedPurchaseDate);
-    expectedDate.setHours(0, 0, 0, 0);
+      if (lead.expectedPurchaseDate) {
+        const expectedDate = new Date(lead.expectedPurchaseDate);
+        expectedDate.setHours(0, 0, 0, 0);
 
-    const diffDays = Math.ceil(
-      (expectedDate.getTime() - today.getTime()) /
-        (1000 * 60 * 60 * 24)
-    );
+        const diffDays = Math.ceil(
+          (expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+        );
 
-    if (diffDays <= 7) {
-      leadTemperature = "Hot";
-      leadColor = "red";
-    } else if (diffDays <= 15) {
-      leadTemperature = "Warm";
-      leadColor = "orange";
-    } else {
-      leadTemperature = "Cold";
-      leadColor = "sky";
-    }
-  }
+        if (diffDays <= 7) {
+          leadTemperature = "Hot";
+          leadColor = "red";
+        } else if (diffDays <= 15) {
+          leadTemperature = "Warm";
+          leadColor = "orange";
+        } else {
+          leadTemperature = "Cold";
+          leadColor = "sky";
+        }
+      }
 
-  return {
-    ...lead,
-    leadTemperature,
-    leadColor,
-  };
-});
+      return {
+        ...lead,
+        leadTemperature,
+        leadColor,
+      };
+    });
 
-return res.json({
-  success: true,
-  data,
-});
+    return res.json({
+      success: true,
+      data,
+    });
   } catch (error) {
-       console.error("GET LEADS ERROR:", error); 
+    console.error("GET LEADS ERROR:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch leads",
     });
   }
 };
-export const getLeadById = async (
-  req: Request,
-  res: Response
-) => {
+export const getLeadById = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
 
   const lead = await prisma.lead.findUnique({
@@ -198,7 +271,7 @@ export const getLeadById = async (
     include: {
       customer: true,
       model: true,
-        showroomVariant: true,
+      showroomVariant: true,
       colour: true,
       executive: true,
     },
@@ -212,14 +285,14 @@ export const getLeadById = async (
 export const generateOrderBillPdf = async (req: Request, res: Response) => {
   try {
     const leadId = Number(req.params.id);
-const company = await prisma.company.findFirst();
+    const company = await prisma.company.findFirst();
 
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
       include: {
         customer: true,
         model: true,
-      showroomVariant: true,
+        showroomVariant: true,
         colour: true,
         executive: true,
         profession: true,
@@ -248,19 +321,13 @@ const company = await prisma.company.findFirst();
     };
 
     // Calculate totals from lead data or use default values
-  const exShowroomPrice =
-  lead.showroomVariant?.exShowroomPrice ?? 0;
+    const exShowroomPrice = lead.showroomVariant?.exShowroomPrice ?? 0;
 
-const insurance =
-  lead.showroomVariant?.insurance ?? 0;
+    const insurance = lead.showroomVariant?.insurance ?? 0;
 
-const rtoCharge =
-  lead.showroomVariant?.rtoCharge ?? 0;
+    const rtoCharge = lead.showroomVariant?.rtoCharge ?? 0;
 
- const total =
-  exShowroomPrice +
-  insurance +
-  rtoCharge;
+    const total = exShowroomPrice + insurance + rtoCharge;
 
     // Convert number to words (Indian format)
     const numberToWords = (num: number) => {
@@ -299,22 +366,19 @@ const rtoCharge =
         "Ninety",
       ];
 
-     const convertHundreds = (n: number): string => {
-  if (n < 20) return ones[n];
+      const convertHundreds = (n: number): string => {
+        if (n < 20) return ones[n];
 
-  if (n < 100) {
-    return (
-      tens[Math.floor(n / 10)] +
-      (n % 10 ? " " + ones[n % 10] : "")
-    );
-  }
+        if (n < 100) {
+          return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
+        }
 
-  return (
-    ones[Math.floor(n / 100)] +
-    " Hundred" +
-    (n % 100 ? " " + convertHundreds(n % 100) : "")
-  );
-};
+        return (
+          ones[Math.floor(n / 100)] +
+          " Hundred" +
+          (n % 100 ? " " + convertHundreds(n % 100) : "")
+        );
+      };
 
       if (num === 0) return "Zero";
 
@@ -744,7 +808,7 @@ const rtoCharge =
 
   <tr>
     <td><b>Mobile</b></td>
-    <td>${ lead.customer?.mobile || ""}</td>
+    <td>${lead.customer?.mobile || ""}</td>
     <td><b>Model</b></td>
     <td>${lead.model?.modelName || "C12"}</td>
   </tr>
@@ -880,9 +944,9 @@ const rtoCharge =
 
     const page = await browser.newPage();
 
-   await page.setContent(html, {
-  waitUntil: "domcontentloaded",
-});
+    await page.setContent(html, {
+      waitUntil: "domcontentloaded",
+    });
 
     const pdf = await page.pdf({
       format: "A4",
@@ -917,29 +981,29 @@ const rtoCharge =
     });
   }
 };
-  // <div class="footer">
-        //   Generated on: ${currentDate} | Thank you for your business!
-        // </div>
-  //       <tr>
-  //   <td>Road Side Assistance</td>
-  //   <td align="right">${formatCurrency(roadSideAssistance)}</td>
-  // </tr>
-  //  <tr>
-  //   <td>Ex. Warranty (2+3)</td>
-  //   <td align="right">${formatCurrency(exWarranty23)}</td>
-  // </tr>
+// <div class="footer">
+//   Generated on: ${currentDate} | Thank you for your business!
+// </div>
+//       <tr>
+//   <td>Road Side Assistance</td>
+//   <td align="right">${formatCurrency(roadSideAssistance)}</td>
+// </tr>
+//  <tr>
+//   <td>Ex. Warranty (2+3)</td>
+//   <td align="right">${formatCurrency(exWarranty23)}</td>
+// </tr>
 
-  // <tr>
-  //   <td>Hypothecation Charges</td>
-  //   <td align="right">${formatCurrency(hypothecationCharges)}</td>
-  // </tr>
+// <tr>
+//   <td>Hypothecation Charges</td>
+//   <td align="right">${formatCurrency(hypothecationCharges)}</td>
+// </tr>
 
-  // <tr>
-  //   <td>Ex. Warranty (2+8)</td>
-  //   <td align="right">${formatCurrency(exWarranty28)}</td>
-  // </tr>
+// <tr>
+//   <td>Ex. Warranty (2+8)</td>
+//   <td align="right">${formatCurrency(exWarranty28)}</td>
+// </tr>
 
-  // <tr>
-  //   <td>RTO Registration Charges</td>
-  //   <td align="right">${formatCurrency(rtoRegistrationCharges)}</td>
-  // </tr>
+// <tr>
+//   <td>RTO Registration Charges</td>
+//   <td align="right">${formatCurrency(rtoRegistrationCharges)}</td>
+// </tr>

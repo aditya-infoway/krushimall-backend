@@ -51,6 +51,8 @@ model Company {
   purchases      Purchase[]
   bankPayments   BankPayment[]
   contras        Contra[]
+  cashReceipts   CashReceipt[]
+    leads Lead[]
 }
 
 model FinancialYear {
@@ -66,6 +68,8 @@ model FinancialYear {
   purchases     Purchase[]
   bankPayments  BankPayment[]
   contras       Contra[]
+  cashReceipts  CashReceipt[]
+    leads Lead[]
 
   @@unique([companyId, financialYear])
 }
@@ -407,6 +411,8 @@ model Account {
   oppBankPayments          BankPayment[]         @relation("BankPaymentOppAccount")
   contraCashBankAccounts   Contra[]              @relation("ContraCashBankAccount")
   contraOppAccounts        Contra[]              @relation("ContraOppAccount")
+  cashReceiptsCash         CashReceipt[]         @relation("CashReceiptCash")
+  cashReceiptsOpp          CashReceipt[]         @relation("CashReceiptOpp")
 }
 
 model EnquiryType {
@@ -609,6 +615,8 @@ model PurchaseItem {
 model Lead {
   id          Int     @id @default(autoincrement())
   quotationNo String? @unique
+   
+
   modelId     Int?
   variantId   Int?
   colourId    Int?
@@ -662,6 +670,11 @@ model Lead {
   showroomVariantId Int?
 
   followUps           FollowUp[]
+ companyId       Int?
+financialYearId Int?
+
+company         Company?       @relation(fields: [companyId], references: [id])
+financialYear   FinancialYear? @relation(fields: [financialYearId], references: [id])
   account             Account?         @relation("LeadAccount", fields: [accountId], references: [id])
   colour              Colour?          @relation(fields: [colourId], references: [id])
   customer            Account?         @relation("LeadCustomer", fields: [customerId], references: [id])
@@ -675,6 +688,7 @@ model Lead {
   variant             Variant?         @relation(fields: [variantId], references: [id])
   cashPayments        CashPayment[]
   bankPayments        BankPayment[]
+  cashReceipts        CashReceipt[]
 }
 
 model FollowUp {
@@ -915,4 +929,37 @@ model Contra {
   @@index([cashBankAccountId])
   @@index([oppAccountId])
   @@index([date])
+}
+
+model CashReceipt {
+  id Int @id @default(autoincrement())
+
+  voucherNo String   @unique
+  date      DateTime
+
+  companyId       Int
+  financialYearId Int
+
+  cashAccountId Int
+  oppAccountId  Int
+
+  leadId    Int?
+  jobCardId Int?
+
+  amount    Float
+  narration String?
+  type      String @default("CR")
+
+  company       Company       @relation(fields: [companyId], references: [id])
+  financialYear FinancialYear @relation(fields: [financialYearId], references: [id])
+
+  cashAccount Account @relation("CashReceiptCash", fields: [cashAccountId], references: [id])
+  oppAccount  Account @relation("CashReceiptOpp", fields: [oppAccountId], references: [id])
+
+  lead Lead? @relation(fields: [leadId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdType String?
+  createdBy   String?
 }

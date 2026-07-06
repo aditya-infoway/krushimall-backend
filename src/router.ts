@@ -28,6 +28,7 @@ import cashPaymentRoutes from "./routes/cashPayment.js";
 import bankPaymentRoutes from "./routes/bankPayment.js";
 import ledgerRoutes from "./routes/ledger.js";
 import contraRoutes from "./routes/contra.js";
+import cashReceiptRoutes from "./routes/cashReceipt.js";
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -62,4 +63,7 @@ router.use("/cash-payment", cashPaymentRoutes);
 router.use("/bank-payment", bankPaymentRoutes);
 router.use("/ledger", ledgerRoutes);
 router.use("/contra", contraRoutes);
+
+
+router.use("/cash-receipt", cashReceiptRoutes);
 export default router;
