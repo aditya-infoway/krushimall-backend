@@ -1,0 +1,386 @@
+import { Request, Response } from "express";
+import prisma from "../lib/prisma.js";
+import bcrypt from "bcrypt";
+
+export const createBranch = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const {
+      companyId,
+      financialYearId,
+      branchCode,
+      branchName,
+      branchType,
+      managerId,
+      mobileNo,
+      gmailId,
+      password,
+      gstNo,
+      panCardNo,
+      address1,
+      address2,
+      country,
+      countryCode,
+      state,
+      stateCode,
+      district,
+      city,
+      pinCode,
+    } = req.body;
+
+    if (
+      !companyId ||
+      !financialYearId ||
+      !branchCode ||
+      !branchName ||
+      !branchType ||
+      !managerId ||
+      !mobileNo ||
+      !gmailId ||
+      !password
+    ) {
+      res.status(400).json({
+        success: false,
+        message: "Please fill all required fields.",
+      });
+      return;
+    }
+
+  const existingBranch = await prisma.branch.findUnique({
+  where: {
+    branchCode,
+  },
+});
+
+if (existingBranch) {
+  res.status(400).json({
+    success: false,
+    message: "Branch code already exists.",
+  });
+  return;
+}
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const role = (req as any).user?.role;
+    const name = (req as any).user?.name;
+
+    const branch = await prisma.branch.create({
+      data: {
+        companyId: Number(companyId),
+        financialYearId: Number(financialYearId),
+
+        branchCode,
+        branchName,
+        branchType,
+
+        managerId: Number(managerId),
+
+        mobileNo,
+        gmailId,
+        password: hashedPassword,
+
+        gstNo,
+        panCardNo,
+
+        address1,
+        address2,
+
+        country,
+        countryCode,
+
+        state,
+        stateCode,
+
+        district,
+        city,
+        pinCode,
+
+        createdBy: name,
+        createdType: role,
+      },
+      include: {
+        manager: {
+          select: {
+            id: true,
+            accountName: true,
+          },
+        },
+        company: true,
+        financialYear: true,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Branch created successfully.",
+      branch,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to create branch.",
+    });
+  }
+};
+export const getBranches = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const branches = await prisma.branch.findMany({
+      orderBy: {
+        id: "desc",
+      },
+      include: {
+        manager: {
+          select: {
+            id: true,
+            accountName: true,
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            companyName: true,
+          },
+        },
+        financialYear: {
+          select: {
+            id: true,
+            financialYear: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json(branches);
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch branches.",
+    });
+  }
+};
+export const getBranchById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+
+    const branch = await prisma.branch.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        manager: true,
+        company: true,
+        financialYear: true,
+      },
+    });
+
+    if (!branch) {
+      res.status(404).json({
+        success: false,
+        message: "Branch not found.",
+      });
+      return;
+    }
+
+    res.status(200).json(branch);
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to fetch branch.",
+    });
+  }
+};
+export const updateBranch = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+
+    const {
+      branchCode,
+      branchName,
+      branchType,
+      managerId,
+      mobileNo,
+      gmailId,
+      password,
+      gstNo,
+      panCardNo,
+      address1,
+      address2,
+      country,
+      countryCode,
+      state,
+      stateCode,
+      district,
+      city,
+      pinCode,
+      isActive,
+    } = req.body;
+
+    const existing = await prisma.branch.findFirst({
+      where: {
+        id: {
+          not: id,
+        },
+        OR: [
+          {
+            branchCode,
+          },
+          {
+            gmailId,
+          },
+          {
+            gstNo,
+          },
+        ],
+      },
+    });
+
+    if (existing) {
+      res.status(400).json({
+        success: false,
+        message: "Branch already exists.",
+      });
+      return;
+    }
+
+    const data: any = {
+      branchCode,
+      branchName,
+      branchType,
+      managerId: Number(managerId),
+      mobileNo,
+      gmailId,
+      gstNo,
+      panCardNo,
+      address1,
+      address2,
+      country,
+      countryCode,
+      state,
+      stateCode,
+      district,
+      city,
+      pinCode,
+      isActive,
+    };
+
+    if (password) {
+      data.password = await bcrypt.hash(password, 10);
+    }
+
+    const branch = await prisma.branch.update({
+      where: {
+        id,
+      },
+      data,
+      include: {
+        manager: {
+          select: {
+            id: true,
+            accountName: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Branch updated successfully.",
+      branch,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to update branch.",
+    });
+  }
+};
+export const deleteBranch = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+
+    await prisma.branch.delete({
+      where: {
+        id,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Branch deleted successfully.",
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to delete branch.",
+    });
+  }
+};
+export const toggleBranchStatus = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const id = Number(req.params.id);
+
+    const branch = await prisma.branch.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        isActive: true,
+      },
+    });
+
+    if (!branch) {
+      res.status(404).json({
+        success: false,
+        message: "Branch not found.",
+      });
+      return;
+    }
+
+    const updated = await prisma.branch.update({
+      where: { id },
+      data: {
+        isActive: !branch.isActive,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "Status updated successfully.",
+      data: updated,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to update status.",
+    });
+  }
+};

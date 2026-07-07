@@ -4,6 +4,7 @@ import {
   getContras,
   getContraById,
   getNextContraVoucher,
+  exportContraExcel
 } from "../controllers/contra.js";
 import { verifyToken } from "../middleware/middleware.js";
 
@@ -16,5 +17,9 @@ router.get("/voucher", verifyToken, getNextContraVoucher);
 router.get("/:id", verifyToken, getContraById);
 
 router.post("/", verifyToken, createContra);
-
+router.get(
+  "/export/excel",
+  verifyToken,
+  exportContraExcel
+);
 export default router;

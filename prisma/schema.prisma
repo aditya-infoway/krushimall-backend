@@ -52,7 +52,9 @@ model Company {
   bankPayments   BankPayment[]
   contras        Contra[]
   cashReceipts   CashReceipt[]
-    leads Lead[]
+  bankReceipts   BankReceipt[]
+  leads          Lead[]
+  branches       Branch[]
 }
 
 model FinancialYear {
@@ -69,7 +71,9 @@ model FinancialYear {
   bankPayments  BankPayment[]
   contras       Contra[]
   cashReceipts  CashReceipt[]
-    leads Lead[]
+  bankReceipts  BankReceipt[]
+  leads         Lead[]
+  branches      Branch[]
 
   @@unique([companyId, financialYear])
 }
@@ -402,6 +406,8 @@ model Account {
   cashAccessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseCash")
 
   bankAccessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseBank")
+  bankReceiptBankAccounts  BankReceipt[]         @relation("BankReceiptBankAccount")
+  bankReceiptOppAccounts   BankReceipt[]         @relation("BankReceiptOppAccount")
   Purchase                 Purchase[]
   purchaseCash             Purchase[]            @relation("PurchaseCash")
   purchaseBankAccounts     Purchase[]            @relation("PurchaseBank")
@@ -413,6 +419,7 @@ model Account {
   contraOppAccounts        Contra[]              @relation("ContraOppAccount")
   cashReceiptsCash         CashReceipt[]         @relation("CashReceiptCash")
   cashReceiptsOpp          CashReceipt[]         @relation("CashReceiptOpp")
+  branches                 Branch[]              @relation("BranchManager")
 }
 
 model EnquiryType {
@@ -615,7 +622,6 @@ model PurchaseItem {
 model Lead {
   id          Int     @id @default(autoincrement())
   quotationNo String? @unique
-   
 
   modelId     Int?
   variantId   Int?
@@ -669,12 +675,12 @@ model Lead {
   followUpStatus    String? @default("New")
   showroomVariantId Int?
 
-  followUps           FollowUp[]
- companyId       Int?
-financialYearId Int?
+  followUps       FollowUp[]
+  companyId       Int?
+  financialYearId Int?
 
-company         Company?       @relation(fields: [companyId], references: [id])
-financialYear   FinancialYear? @relation(fields: [financialYearId], references: [id])
+  company             Company?         @relation(fields: [companyId], references: [id])
+  financialYear       FinancialYear?   @relation(fields: [financialYearId], references: [id])
   account             Account?         @relation("LeadAccount", fields: [accountId], references: [id])
   colour              Colour?          @relation(fields: [colourId], references: [id])
   customer            Account?         @relation("LeadCustomer", fields: [customerId], references: [id])
@@ -689,6 +695,7 @@ financialYear   FinancialYear? @relation(fields: [financialYearId], references: 
   cashPayments        CashPayment[]
   bankPayments        BankPayment[]
   cashReceipts        CashReceipt[]
+  bankReceipts        BankReceipt[]
 }
 
 model FollowUp {
@@ -948,7 +955,7 @@ model CashReceipt {
 
   amount    Float
   narration String?
-  type      String @default("CR")
+  type      String  @default("CR")
 
   company       Company       @relation(fields: [companyId], references: [id])
   financialYear FinancialYear @relation(fields: [financialYearId], references: [id])
@@ -962,4 +969,96 @@ model CashReceipt {
   updatedAt   DateTime @updatedAt
   createdType String?
   createdBy   String?
+}
+
+model BankReceipt {
+  id Int @id @default(autoincrement())
+
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+
+  financialYearId Int
+  financialYear   FinancialYear @relation(fields: [financialYearId], references: [id])
+
+  voucherNo String   @unique
+  date      DateTime
+
+  // BR = Manual Bank Receipt
+  // LBR = Lead Bank Receipt
+  // JBR = Job Card Bank Receipt
+  type String
+
+  bankAccountId Int
+  bankAccount   Account @relation("BankReceiptBankAccount", fields: [bankAccountId], references: [id])
+
+  oppAccountId Int
+  oppAccount   Account @relation("BankReceiptOppAccount", fields: [oppAccountId], references: [id])
+
+  leadId Int?
+  lead   Lead? @relation(fields: [leadId], references: [id])
+
+  amount Float
+
+  paymentType String
+
+  chequeNo        String?
+  chequeDate      DateTime?
+  chequeClearDate DateTime?
+
+  narration String?
+
+  createdType String?
+  createdBy   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Branch {
+  id Int @id @default(autoincrement())
+
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+
+  financialYearId Int
+  financialYear   FinancialYear @relation(fields: [financialYearId], references: [id])
+
+  branchCode String @unique
+  branchName String
+  branchType String
+
+  managerId Int
+  manager   Account @relation("BranchManager", fields: [managerId], references: [id])
+
+  mobileNo String
+  gmailId  String @unique
+  password String
+
+  gstNo     String @unique
+  panCardNo String
+
+  address1 String
+  address2 String?
+
+  country     String
+  countryCode String
+
+  state     String
+  stateCode String
+
+  district String
+  city     String
+  pinCode  String
+
+  createdType String?
+  createdBy   String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([financialYearId])
+  @@index([managerId])
 }
