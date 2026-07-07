@@ -1,21 +1,19 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
-import { generateCashReceiptVoucher } from "../utils/generateCashReceiptVoucher.js";
+import { generateBankReceiptVoucher } from "../utils/generateBankReceiptVoucher.js";
 import ExcelJS from "exceljs";
-// ==========================
-// Get All Cash Payments
-// ==========================
-export const getcashReceipt = async (
+
+export const getBankReceipt = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const cashReceipts = await prisma.cashReceipt.findMany({
+    const receipts = await prisma.bankReceipt.findMany({
       orderBy: {
         id: "desc",
       },
       include: {
-        cashAccount: {
+        bankAccount: {
           select: {
             id: true,
             accountName: true,
@@ -29,106 +27,77 @@ export const getcashReceipt = async (
             mobile: true,
           },
         },
-        // purchase: {
-        //   select: {
-        //     id: true,
-        //     billNo: true,
-        //   },
-        // },
-        // lead: {
-        //   select: {
-        //     id: true,
-        //     leadNo: true,
-        //   },
-        // },
+        lead: {
+          select: {
+            id: true,
+            quotationNo: true,
+          },
+        },
       },
     });
 
-    res.status(200).json(cashReceipts);
+    res.status(200).json(receipts);
   } catch (error) {
     console.log(error);
+
     res.status(500).json({
-   message: "Failed to fetch cash receipts"
+      message: "Failed to fetch bank receipts",
     });
   }
 };
-
-// ==========================
-// Get Single Cash Payment
-// ==========================
-export const getcashReceiptById = async (
+export const getBankReceiptById = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
     const id = Number(req.params.id);
 
-    const payment = await prisma.cashReceipt.findUnique({
+    const receipt = await prisma.bankReceipt.findUnique({
       where: { id },
       include: {
-        cashAccount: true,
+        bankAccount: true,
         oppAccount: true,
-        // purchase: true,
         lead: true,
       },
     });
 
-    if (!payment) {
+    if (!receipt) {
       res.status(404).json({
-      message: "Cash Receipt not found"
+        message: "Bank Receipt not found",
       });
       return;
     }
 
-    res.json(payment);
+    res.json(receipt);
   } catch (error) {
     console.log(error);
+
     res.status(500).json({
       message: "Something went wrong",
     });
   }
 };
+export const getBankReceiptVoucher = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const voucherNo = await generateBankReceiptVoucher();
 
-// ==========================
-// Generate Voucher Number
-// ==========================
-// export const generateCashReceiptVoucher = async (
-//   req: Request,
-//   res: Response
-// ): Promise<void> => {
-//   try {
-//     const lastVoucher = await prisma.cashPayment.findFirst({
-//       orderBy: {
-//         id: "desc",
-//       },
-//     });
+    res.json({
+      success: true,
+      voucherNo,
+    });
+  } catch (error) {
+    console.log(error);
 
-//     let nextNumber = 1;
-
-//     if (lastVoucher) {
-//       const parts = lastVoucher.voucherNo.split("/");
-//       nextNumber = Number(parts[2]) + 1;
-//     }
-
-//     const voucherNo = `CP/26-27/${String(nextNumber).padStart(3, "0")}`;
-
-//     res.json({
-//       voucherNo,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500).json({
-//       message: "Unable to generate voucher number",
-//     });
-//   }
-// };
-
-// ==========================
-// Create Cash Payment
-// ==========================
-
-
-export const createCashReceipt = async (
+    res.status(500).json({
+      success: false,
+      message: "Unable to generate voucher",
+    });
+  }
+};
+export const createBankReceipt = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -137,48 +106,59 @@ export const createCashReceipt = async (
       companyId,
       financialYearId,
       date,
-      cashAccountId,
+      bankAccountId,
       oppAccountId,
       leadId,
       amount,
       narration,
+      paymentType,
+      chequeNo,
+      chequeDate,
+      chequeClearDate,
       type,
     } = req.body;
 
- if (!financialYearId) {
-  res.status(400).json({
-    message: "Financial Year is required",
-  });
-  return;
-}
-
-    const voucherNo = await generateCashReceiptVoucher();
+    const voucherNo = await generateBankReceiptVoucher();
 
     const role = (req as any).user?.role;
     const name = (req as any).user?.name;
 
     const receipt = await prisma.$transaction(async (tx) => {
-      const data = await tx.cashReceipt.create({
+      const data = await tx.bankReceipt.create({
         data: {
           companyId: Number(companyId),
           financialYearId: Number(financialYearId),
+
           voucherNo,
           date: new Date(date),
-          type: "CR",
-          cashAccountId: Number(cashAccountId),
+
+         type: "BR",
+
+          bankAccountId: Number(bankAccountId),
           oppAccountId: Number(oppAccountId),
+
           leadId: leadId ? Number(leadId) : null,
+
           amount: Number(amount),
+
+          paymentType,
+
+          chequeNo,
+          chequeDate: chequeDate ? new Date(chequeDate) : null,
+          chequeClearDate: chequeClearDate
+            ? new Date(chequeClearDate)
+            : null,
+
           narration,
+
           createdType: role,
           createdBy: name,
         },
       });
 
-      // Cash Account Increase
       await tx.account.update({
         where: {
-          id: Number(cashAccountId),
+          id: Number(bankAccountId),
         },
         data: {
           closingBalance: {
@@ -187,7 +167,6 @@ export const createCashReceipt = async (
         },
       });
 
-      // Opposite Account Decrease
       await tx.account.update({
         where: {
           id: Number(oppAccountId),
@@ -207,15 +186,11 @@ export const createCashReceipt = async (
     console.log(error);
 
     res.status(500).json({
-      message: "Unable to create cash receipt",
+      message: "Unable to create Bank Receipt",
     });
   }
 };
-
-// ==========================
-// Update Cash Payment
-// ==========================
-export const updateCashReceipt = async (
+export const updateBankReceipt = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -224,98 +199,82 @@ export const updateCashReceipt = async (
 
     const {
       date,
-      type,
-      cashAccountId,
+      bankAccountId,
       oppAccountId,
-     
       leadId,
       amount,
       narration,
+      paymentType,
+      chequeNo,
+      chequeDate,
+      chequeClearDate,
     } = req.body;
 
-    const payment = await prisma.cashReceipt.update({
-      where: {
-        id,
+    const receipt = await prisma.bankReceipt.update({
+      where: { id },
+      data: {
+        date: new Date(date),
+        bankAccountId: Number(bankAccountId),
+        oppAccountId: Number(oppAccountId),
+        leadId: leadId ? Number(leadId) : null,
+        amount: Number(amount),
+
+        paymentType,
+
+        chequeNo,
+        chequeDate: chequeDate ? new Date(chequeDate) : null,
+        chequeClearDate: chequeClearDate
+          ? new Date(chequeClearDate)
+          : null,
+
+        narration,
       },
-    data: {
-  date: new Date(date),
-  type,
-  cashAccountId: Number(cashAccountId),
-  oppAccountId: Number(oppAccountId),
-  leadId: leadId ? Number(leadId) : null,
-  amount: Number(amount),
-  narration,
-},
     });
 
-    res.json(payment);
+    res.json(receipt);
   } catch (error) {
     console.log(error);
 
     res.status(500).json({
-      message: "Unable to update cash Receipt",
+      message: "Unable to update Bank Receipt",
     });
   }
 };
-
-// ==========================
-// Delete Cash Payment
-// ==========================
-export const deleteCashReceipt = async (
+export const deleteBankReceipt = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
     const id = Number(req.params.id);
 
-    await prisma.cashReceipt.delete({
-      where: {
-        id,
-      },
+    await prisma.bankReceipt.delete({
+      where: { id },
     });
 
     res.json({
-      message: "Cash Receipt deleted successfully",
+      message: "Bank Receipt deleted successfully",
     });
   } catch (error) {
     console.log(error);
 
     res.status(500).json({
-      message: "Unable to delete cash Receipt",
+      message: "Unable to delete Bank Receipt",
     });
   }
 };
-export const getCashReceiptVoucher = async (
+
+
+export const exportBankReceiptExcel = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const voucherNo = await generateCashReceiptVoucher();
-
-    res.status(200).json({
-      success: true,
-      voucherNo,
-    });
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate voucher no",
-    });
-  }
-};
-export const exportCashReceiptExcel = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const receipts = await prisma.cashReceipt.findMany({
+    const receipts = await prisma.bankReceipt.findMany({
       orderBy: {
         id: "desc",
       },
       include: {
-        cashAccount: {
+        bankAccount: {
           select: {
             accountName: true,
           },
@@ -329,16 +288,20 @@ export const exportCashReceiptExcel = async (
     });
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Cash Receipt Register");
+    const worksheet = workbook.addWorksheet("Bank Receipt Register");
 
     worksheet.columns = [
       { header: "Sr No", key: "sr", width: 10 },
       { header: "Date", key: "date", width: 15 },
       { header: "Voucher No", key: "voucherNo", width: 20 },
-      { header: "Type", key: "type", width: 12 },
-      { header: "Cash Account", key: "cashAccount", width: 30 },
+      { header: "Type", key: "type", width: 10 },
+      { header: "Bank Account", key: "bankAccount", width: 30 },
       { header: "Opp. Account", key: "oppAccount", width: 30 },
       { header: "Amount", key: "amount", width: 15 },
+      { header: "Payment Type", key: "paymentType", width: 18 },
+      { header: "Cheque No", key: "chequeNo", width: 18 },
+      { header: "Cheque Date", key: "chequeDate", width: 18 },
+      { header: "Cheque Clear Date", key: "chequeClearDate", width: 20 },
       { header: "Narration", key: "narration", width: 40 },
       { header: "Created Type", key: "createdType", width: 20 },
       { header: "Created By", key: "createdBy", width: 20 },
@@ -356,9 +319,17 @@ export const exportCashReceiptExcel = async (
           : "",
         voucherNo: item.voucherNo,
         type: item.type,
-        cashAccount: item.cashAccount?.accountName || "",
+        bankAccount: item.bankAccount?.accountName || "",
         oppAccount: item.oppAccount?.accountName || "",
         amount: Number(item.amount),
+        paymentType: item.paymentType || "",
+        chequeNo: item.chequeNo || "",
+        chequeDate: item.chequeDate
+          ? new Date(item.chequeDate).toLocaleDateString("en-GB")
+          : "",
+        chequeClearDate: item.chequeClearDate
+          ? new Date(item.chequeClearDate).toLocaleDateString("en-GB")
+          : "",
         narration: item.narration || "",
         createdType: item.createdType || "",
         createdBy: item.createdBy || "",
@@ -372,7 +343,7 @@ export const exportCashReceiptExcel = async (
 
     res.setHeader(
       "Content-Disposition",
-      'attachment; filename="CashReceiptRegister.xlsx"'
+      'attachment; filename="BankReceiptRegister.xlsx"'
     );
 
     await workbook.xlsx.write(res);
@@ -383,7 +354,7 @@ export const exportCashReceiptExcel = async (
 
     res.status(500).json({
       success: false,
-      message: "Unable to export Cash Receipt",
+      message: "Unable to export Bank Receipt",
     });
   }
 };

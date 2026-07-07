@@ -6,6 +6,7 @@ import {
   createBankPayment,
   updateBankPayment,
   deleteBankPayment,
+  exportBankPaymentExcel
 } from "../controllers/bankPayment.js";
 import { verifyToken } from "../middleware/middleware.js";
 
@@ -24,5 +25,9 @@ router.post("/", verifyToken, createBankPayment);
 router.put("/:id", verifyToken, updateBankPayment);
 
 router.delete("/:id", verifyToken, deleteBankPayment);
-
+router.get(
+  "/export/excel",
+  verifyToken,
+  exportBankPaymentExcel
+);
 export default router;

@@ -7,6 +7,7 @@ import {
   updateCashReceipt,
   deleteCashReceipt,
   getCashReceiptVoucher,
+  exportCashReceiptExcel
 } from "../controllers/cashReceipt.js";
 
 const router = express.Router();
@@ -17,5 +18,9 @@ router.get("/:id", verifyToken, getcashReceiptById);
 router.post("/", verifyToken, createCashReceipt);
 router.put("/:id", verifyToken, updateCashReceipt);
 router.delete("/:id", verifyToken, deleteCashReceipt);
-
+router.get(
+  "/export/excel",
+  verifyToken,
+  exportCashReceiptExcel
+);
 export default router;

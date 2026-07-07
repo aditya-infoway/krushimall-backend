@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import { generateContraVoucher } from "../utils/generateContraVoucher.js";
-
+import ExcelJS from "exceljs";
 /* ===========================================================
    Generate Contra Voucher
 =========================================================== */
@@ -254,6 +254,88 @@ export const getContraById = async (
 
     res.status(500).json({
       message: "Something went wrong",
+    });
+  }
+};
+export const exportContraExcel = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const contras = await prisma.contra.findMany({
+      orderBy: {
+        id: "desc",
+      },
+      include: {
+        cashBankAccount: {
+          select: {
+            accountName: true,
+          },
+        },
+        oppAccount: {
+          select: {
+            accountName: true,
+          },
+        },
+      },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Contra Register");
+
+    worksheet.columns = [
+      { header: "Sr No", key: "sr", width: 10 },
+      { header: "Date", key: "date", width: 15 },
+      { header: "Voucher No", key: "voucherNo", width: 20 },
+      { header: "Type", key: "type", width: 20 },
+      { header: "Cash/Bank Account", key: "cashBankAccount", width: 30 },
+      { header: "Opp. Account", key: "oppAccount", width: 30 },
+      { header: "Amount", key: "amount", width: 15 },
+      { header: "Narration", key: "narration", width: 40 },
+      { header: "Created Type", key: "createdType", width: 20 },
+      { header: "Created By", key: "createdBy", width: 20 },
+    ];
+
+    worksheet.getRow(1).font = {
+      bold: true,
+    };
+
+    contras.forEach((item, index) => {
+      worksheet.addRow({
+        sr: index + 1,
+        date: item.date
+          ? new Date(item.date).toLocaleDateString("en-GB")
+          : "",
+        voucherNo: item.voucherNo,
+        type: item.type,
+        cashBankAccount: item.cashBankAccount?.accountName || "",
+        oppAccount: item.oppAccount?.accountName || "",
+        amount: Number(item.amount),
+        narration: item.narration || "",
+        createdType: item.createdType || "",
+        createdBy: item.createdBy || "",
+      });
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="ContraRegister.xlsx"'
+    );
+
+    await workbook.xlsx.write(res);
+
+    res.end();
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      success: false,
+      message: "Unable to export Contra",
     });
   }
 };

@@ -6,6 +6,7 @@ import {
   updateCashPayment,
   deleteCashPayment,
   getCashPaymentVoucher,
+  exportCashPaymentExcel
 } from "../controllers/cashPayment.js";
 import { verifyToken } from "../middleware/middleware.js";
 const router = Router();
@@ -19,5 +20,5 @@ router.get("/", verifyToken, getCashPayments);
 router.get("/:id", verifyToken, getCashPaymentById);
 router.put("/:id", verifyToken, updateCashPayment);
 router.delete("/:id", verifyToken, deleteCashPayment);
-
+router.get("/export/excel", exportCashPaymentExcel);
 export default router;

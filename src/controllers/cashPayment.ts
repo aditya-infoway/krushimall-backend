@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import { generateCashPaymentVoucher } from "../utils/generateCashPaymentVoucher.js";
+import ExcelJS from "exceljs";
 // ==========================
 // Get All Cash Payments
 // ==========================
@@ -303,6 +304,87 @@ export const getCashPaymentVoucher = async (
     return res.status(500).json({
       success: false,
       message: "Failed to generate voucher no",
+    });
+  }
+};
+
+
+export const exportCashPaymentExcel = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const payments = await prisma.cashPayment.findMany({
+      orderBy: {
+        id: "desc",
+      },
+      include: {
+        cashAccount: {
+          select: {
+            accountName: true,
+          },
+        },
+        oppAccount: {
+          select: {
+            accountName: true,
+          },
+        },
+      },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Cash Payment Register");
+
+    worksheet.columns = [
+      { header: "Sr No", key: "sr", width: 10 },
+      { header: "Date", key: "date", width: 15 },
+      { header: "Voucher No", key: "voucherNo", width: 20 },
+      { header: "Type", key: "type", width: 15 },
+      { header: "Cash Account", key: "cashAccount", width: 30 },
+      { header: "Opp. Account", key: "oppAccount", width: 30 },
+      { header: "Amount", key: "amount", width: 15 },
+      { header: "Narration", key: "narration", width: 40 },
+      { header: "Created Type", key: "createdType", width: 20 },
+      { header: "Created By", key: "createdBy", width: 20 },
+    ];
+
+    worksheet.getRow(1).font = {
+      bold: true,
+    };
+
+    payments.forEach((item, index) => {
+      worksheet.addRow({
+        sr: index + 1,
+        date: new Date(item.date).toLocaleDateString("en-GB"),
+        voucherNo: item.voucherNo,
+        type: item.type,
+        cashAccount: item.cashAccount?.accountName,
+        oppAccount: item.oppAccount?.accountName,
+        amount: item.amount,
+        narration: item.narration,
+        createdType: item.createdType,
+        createdBy: item.createdBy,
+      });
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=CashPaymentRegister.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+
+    res.end();
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      message: "Failed to export excel",
     });
   }
 };
