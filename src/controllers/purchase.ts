@@ -837,56 +837,66 @@ export const getTractorInventory = async (
       },
     });
 
-    const data = purchases.flatMap((purchase) =>
-      purchase.items.map((item) => ({
-        id: item.id,
+   const data = purchases.flatMap((purchase) =>
+  purchase.items.map((item) => {
+    const inwardDate = item.grnRecordDate;
 
-        stock: "On",
-       status:
-  item.status === "Inward"
-    ? "Present"
-    : "In Transit",
+    const ageDay = inwardDate
+      ? Math.floor(
+          (new Date().getTime() - new Date(inwardDate).getTime()) /
+            (1000 * 60 * 60 * 24)
+        )
+      : 0;
 
-       location: purchase.purchaseLocation || "",
-currentLocation:  purchase.purchaseLocation || "",
+    return {
+      id: item.id,
 
-        billNo: purchase.billNo,
-        purchaseBillNo: purchase.purchaseBillNo,
+      stock: "On",
 
-        supplierName:
-          purchase.account?.accountName || "",
+      status: item.status === "Inward" ? "Present" : "In Transit",
 
-        itemName: item.itemName,
-        model: item.modelName,
-        variant: item.variantName,
-        colour: item.color,
-        fuelType: item.fuelType,
+      location: purchase.purchaseLocation || "",
+      currentLocation: purchase.purchaseLocation || "",
 
-        serialNo: item.vehicleSrNo,
+      billNo: purchase.billNo,
+      purchaseBillNo: purchase.purchaseBillNo,
 
-        mfgDate: item.mfgDate,
-        chassisNo: item.chassisNo,
-        engineNo: item.engineNo,
+      supplierName: purchase.account?.accountName || "",
 
-        keyNumber: item.keyNo,
+      itemName: item.itemName,
+      model: item.modelName,
+      variant: item.variantName,
+      colour: item.color,
+      fuelType: item.fuelType,
 
-        batteryMake: item.batteryMake,
-        batteryNo: item.batteryNo,
+      serialNo: item.vehicleSrNo,
 
-        first1Tyer: item.first1TyerNo,
-        first2Tyer: item.first2TyerNo,
+      mfgDate: item.mfgDate,
+      chassisNo: item.chassisNo,
+      engineNo: item.engineNo,
 
-        second1Tyer: item.second1TyerNo,
-        second2Tyer: item.second2TyerNo,
+      keyNumber: item.keyNo,
 
-        grnDate: item.grnDate,
-        grnRecordDate: item.grnRecordDate,
-        grnNo: item.grnNumber,
+      batteryMake: item.batteryMake,
+      batteryNo: item.batteryNo,
 
-        inWardDate: item.grnRecordDate,
-        inWardTime: item.updatedAt,
-      }))
-    );
+      first1Tyer: item.first1TyerNo,
+      first2Tyer: item.first2TyerNo,
+
+      second1Tyer: item.second1TyerNo,
+      second2Tyer: item.second2TyerNo,
+
+      grnDate: item.grnDate,
+      grnRecordDate: item.grnRecordDate,
+      grnNo: item.grnNumber,
+
+      inWardDate: item.grnRecordDate,
+      inWardTime: item.updatedAt,
+
+      ageDay, // <-- Add this
+    };
+  })
+);
 
     return res.json({
       success: true,

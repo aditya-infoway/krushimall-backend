@@ -3,10 +3,14 @@ import prisma from "../lib/prisma.js";
 import puppeteer from "puppeteer";
 import { generateQuotationNo } from "../utils/generateQuotationNo.js";
 import { generateCashReceiptVoucher } from "../utils/generateCashReceiptVoucher.js";
+import { generateBankReceiptVoucher } from "../utils/generateBankReceiptVoucher.js";
 export const createLead = async (req: Request, res: Response) => {
   try {
+    
     const data: any = {
+      
       ...req.body,
+      
         companyId: Number(req.body.companyId),
   financialYearId: Number(req.body.financialYearId),
       showroomVariantId: req.body.showroomVariantId
@@ -113,7 +117,9 @@ if (
   const amount = Number(req.body.listOfBooking);
 
   if (req.body.paymentMode === "CASH") {
+  
     await prisma.cashReceipt.create({
+      
       data: {
         voucherNo: await generateCashReceiptVoucher(),
         date: new Date(),
@@ -147,40 +153,52 @@ if (
     });
   }
 
-  // if (req.body.paymentMode === "BANK") {
-  //   await prisma.bankReceipt.create({
-  //     data: {
-  //       voucherNo: await generateBankReceiptVoucher(),
-  //       date: new Date(),
-  //       companyId: Number(req.body.companyId),
-  //       financialYearId: Number(req.body.financialYearId),
+  if (req.body.paymentMode === "BANK") {
+   await prisma.bankReceipt.create({
+  data: {
+    voucherNo: await generateBankReceiptVoucher(),
+    date: new Date(),
 
-  //       bankAccountId: Number(req.body.selectAccount),
-  //       oppAccountId: Number(req.body.customerId),
+    companyId: Number(req.body.companyId),
+    financialYearId: Number(req.body.financialYearId),
 
-  //       leadId: lead.id,
+    bankAccountId: Number(req.body.selectAccount),
+    oppAccountId: Number(req.body.customerId),
 
-  //       amount,
-  //       narration: req.body.narration,
+    leadId: lead.id,
 
-  //       type: "LBR", // ✅ Lead Bank Receipt
+    amount,
 
-  //       createdType: (req as any).user?.role,
-  //       createdBy: (req as any).user?.name,
-  //     },
-  //   });
+    paymentType: req.body.bankMode || "UPI",
 
-  //   await prisma.account.update({
-  //     where: {
-  //       id: Number(req.body.selectAccount),
-  //     },
-  //     data: {
-  //       closingBalance: {
-  //         increment: amount,
-  //       },
-  //     },
-  //   });
-  // }
+    chequeNo: req.body.chequeNo || null,
+    chequeDate: req.body.chequeDate
+      ? new Date(req.body.chequeDate)
+      : null,
+    chequeClearDate: req.body.chequeClearDate
+      ? new Date(req.body.chequeClearDate)
+      : null,
+
+    narration: req.body.narration,
+
+    type: "LBR",
+
+    createdType: (req as any).user?.role,
+    createdBy: (req as any).user?.name,
+  },
+});
+
+    await prisma.account.update({
+      where: {
+        id: Number(req.body.selectAccount),
+      },
+      data: {
+        closingBalance: {
+          increment: amount,
+        },
+      },
+    });
+  }
 }
     return res.status(201).json({
       success: true,

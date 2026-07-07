@@ -124,14 +124,14 @@ export const getLedgerDetails = async (req: Request, res: Response) => {
         credit: Number(item.grandTotal || 0),
       });
     });
-    transactions.sort((a, b) => {
-      const dateCompare =
-        new Date(a.date).getTime() - new Date(b.date).getTime();
+ transactions.sort((a, b) => {
+  const dateCompare =
+    new Date(a.date).getTime() - new Date(b.date).getTime();
 
-      if (dateCompare !== 0) return dateCompare;
+  if (dateCompare !== 0) return dateCompare;
 
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    });
+  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+});
 
     // ==========================
     // Contra Entries
@@ -201,6 +201,100 @@ export const getLedgerDetails = async (req: Request, res: Response) => {
         credit,
       });
     });
+    // ==========================
+// Cash Receipts
+// ==========================
+const cashReceipts = await prisma.cashReceipt.findMany({
+  where: {
+    OR: [
+      { cashAccountId: accountId },
+      { oppAccountId: accountId },
+    ],
+  },
+  include: {
+    cashAccount: true,
+    oppAccount: true,
+    lead: true,
+  },
+});
+
+cashReceipts.forEach((item) => {
+  const isCash = item.cashAccountId === accountId;
+  const isOpp = item.oppAccountId === accountId;
+
+  transactions.push({
+    createdAt: item.createdAt,
+    date: item.date,
+    voucherNo: item.voucherNo,
+    billNo: item.lead?.quotationNo || "-",
+    type: item.type, // CR / LCR
+    particulars: isCash
+      ? item.oppAccount?.accountName
+      : item.cashAccount?.accountName,
+    debit: isCash ? Number(item.amount) : 0,
+    credit: isOpp ? Number(item.amount) : 0,
+  });
+});
+// ==========================
+// Bank Receipts
+// ==========================
+const bankReceipts = await prisma.bankReceipt.findMany({
+  where: {
+    OR: [
+      { bankAccountId: accountId },
+      { oppAccountId: accountId },
+    ],
+  },
+  include: {
+    bankAccount: true,
+    oppAccount: true,
+    lead: true,
+  },
+});
+
+bankReceipts.forEach((item) => {
+  const isBank = item.bankAccountId === accountId;
+  const isOpp = item.oppAccountId === accountId;
+
+  transactions.push({
+    createdAt: item.createdAt,
+    date: item.date,
+    voucherNo: item.voucherNo,
+    billNo: item.lead?.quotationNo || "-",
+    type: item.type, // BR / LBR / JBR
+    particulars: isBank
+      ? item.oppAccount?.accountName
+      : item.bankAccount?.accountName,
+
+    // Receipt increases Bank balance
+    debit: isBank ? Number(item.amount) : 0,
+    credit: isOpp ? Number(item.amount) : 0,
+  });
+});
+// ==========================
+// Lead Entries
+// ==========================
+const leads = await prisma.lead.findMany({
+  where: {
+    customerId: accountId,
+    listOfBooking: {
+      gt: 0,
+    },
+  },
+});
+
+leads.forEach((item) => {
+  transactions.push({
+    createdAt: item.createdAt,
+    date: item.bookingDate || item.createdAt,
+    voucherNo: item.quotationNo,
+    billNo: "-",
+    type: "LEAD",
+    particulars: "Lead Advance",
+    debit: Number(item.listOfBooking),
+    credit: 0,
+  });
+});
     // ==========================================
     // Opening Balance Calculation
     // ==========================================
@@ -637,7 +731,98 @@ export const exportLedgerDetails = async (
         oppAccount: true,
       },
     });
+// ==========================
+// Cash Receipts
+// ==========================
+const cashReceipts = await prisma.cashReceipt.findMany({
+  where: {
+    OR: [
+      { cashAccountId: accountId },
+      { oppAccountId: accountId },
+    ],
+  },
+  include: {
+    cashAccount: true,
+    oppAccount: true,
+    lead: true,
+  },
+});
 
+cashReceipts.forEach((item) => {
+  const isCash = item.cashAccountId === accountId;
+  const isOpp = item.oppAccountId === accountId;
+
+  transactions.push({
+    createdAt: item.createdAt,
+    date: item.date,
+    voucherNo: item.voucherNo,
+    billNo: item.lead?.quotationNo || "-",
+    type: item.type,
+    particulars: isCash
+      ? item.oppAccount?.accountName
+      : item.cashAccount?.accountName,
+    debit: isCash ? Number(item.amount) : 0,
+    credit: isOpp ? Number(item.amount) : 0,
+  });
+});
+// ==========================
+// Bank Receipts
+// ==========================
+const bankReceipts = await prisma.bankReceipt.findMany({
+  where: {
+    OR: [
+      { bankAccountId: accountId },
+      { oppAccountId: accountId },
+    ],
+  },
+  include: {
+    bankAccount: true,
+    oppAccount: true,
+    lead: true,
+  },
+});
+
+bankReceipts.forEach((item) => {
+  const isBank = item.bankAccountId === accountId;
+  const isOpp = item.oppAccountId === accountId;
+
+  transactions.push({
+    createdAt: item.createdAt,
+    date: item.date,
+    voucherNo: item.voucherNo,
+    billNo: item.lead?.quotationNo || "-",
+    type: item.type, // BR / LBR / JBR
+    particulars: isBank
+      ? item.oppAccount?.accountName
+      : item.bankAccount?.accountName,
+    debit: isBank ? Number(item.amount) : 0,
+    credit: isOpp ? Number(item.amount) : 0,
+  });
+});
+// ==========================
+// Lead Entries
+// ==========================
+const leads = await prisma.lead.findMany({
+  where: {
+    customerId: accountId,
+    listOfBooking: {
+      gt: 0,
+    },
+  },
+});
+
+leads.forEach((item) => {
+  transactions.push({
+    createdAt: item.createdAt,
+    date: item.bookingDate || item.createdAt,
+    voucherNo: item.quotationNo,
+    billNo: "-",
+    type: "LEAD",
+    particulars: "Lead Advance",
+    debit: Number(item.listOfBooking),
+    credit: 0,
+  });
+});
     contras.forEach((item) => {
       const isCashBank = item.cashBankAccountId === accountId;
 
