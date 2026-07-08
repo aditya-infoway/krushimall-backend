@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import bcrypt from "bcrypt";
-
+import jwt from "jsonwebtoken";
 export const createBranch = async (
   req: Request,
   res: Response
@@ -386,4 +386,83 @@ export const toggleBranchStatus = async (
       message: "Unable to update status.",
     });
   }
+};
+export const loginBranch = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({
+        success: false,
+        message: "Email and password are required.",
+      });
+      return;
+    }
+ 
+    const branch = await prisma.branch.findFirst({ 
+      where: { 
+        gmailId: email, 
+      }, 
+    }); 
+ 
+    if (!branch) { 
+      res.status(401).json({ 
+        success: false, 
+        message: "Invalid email or password.", 
+      }); 
+      return; 
+    } 
+ 
+    if (!branch.isActive) { 
+      res.status(403).json({ 
+        success: false, 
+        message: "Branch is inactive.", 
+      }); 
+      return; 
+    } 
+ 
+    const isMatch = await bcrypt.compare(password, branch.password); 
+ 
+    if (!isMatch) { 
+      res.status(401).json({ 
+        success: false, 
+        message: "Invalid email or password.", 
+      }); 
+      return; 
+    } 
+ 
+    const token = jwt.sign( 
+      { 
+        id: branch.id, 
+        role: "branch", 
+      }, 
+      process.env.JWT_SECRET as string, 
+      { 
+        expiresIn: "7d", 
+      } 
+    ); 
+ 
+    res.status(200).json({ 
+      success: true, 
+      message: "Login successful.", 
+      token, 
+      user: { 
+        id: branch.id, 
+        branchCode: branch.branchCode, 
+        branchName: branch.branchName, 
+        email: branch.gmailId, 
+        role: "branch", 
+      }, 
+    }); 
+  } catch (error) { 
+    console.log(error); 
+ 
+    res.status(500).json({ 
+      success: false, 
+      message: "Unable to login.", 
+    }); 
+  } 
 };

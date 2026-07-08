@@ -489,6 +489,7 @@ export const updatePurchase = async (req: Request, res: Response) => {
             ratePer: Number(item.ratePer),
             gstPercent: Number(item.gstPercent),
             amount: Number(item.amount),
+            
           })),
         },
       },
