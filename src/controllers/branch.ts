@@ -137,12 +137,15 @@ export const getBranches = async (
         id: "desc",
       },
       include: {
-        manager: {
-          select: {
-            id: true,
-            accountName: true,
-          },
-        },
+       manager: {
+  select: {
+    id: true,
+    accountName: true,
+    openingBalance: true,
+    closingBalance: true,
+    drCr: true,
+  },
+},
         company: {
           select: {
             id: true,

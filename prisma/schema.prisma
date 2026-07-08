@@ -515,6 +515,7 @@ model Tractor {
   status               String   @default("ACTIVE")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+  purchaseItems PurchaseItem[]
 }
 
 model ProfilePrefix {
@@ -617,6 +618,9 @@ model PurchaseItem {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
   purchase      Purchase  @relation(fields: [purchaseId], references: [id])
+    tractorId Int?
+
+  tractor Tractor? @relation(fields: [tractorId], references: [id])
 }
 
 model Lead {

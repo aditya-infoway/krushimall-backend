@@ -7,8 +7,8 @@ import { generateBankPaymentVoucher } from "../utils/generateBankPaymentVoucher.
 export const createPurchase = async (req: Request, res: Response) => {
   try {
     const {
-       companyId,
-  financialYearId,
+      companyId,
+      financialYearId,
       accountId,
       purchaseDate,
       purchaseBillNo,
@@ -16,13 +16,13 @@ export const createPurchase = async (req: Request, res: Response) => {
       dueDate,
       terms,
       narration,
-        cashAccountId,
+      cashAccountId,
       bankAccountId,
-  paymentMode,
-  chequeNo,
-  chequeDate,
-  clearDate,
-  bankNarration,
+      paymentMode,
+      chequeNo,
+      chequeDate,
+      clearDate,
+      bankNarration,
       freightCharge,
       insurance,
       otherCharge,
@@ -37,12 +37,12 @@ export const createPurchase = async (req: Request, res: Response) => {
     } = req.body;
 
     const billNo = await generateBillNo("PURCHASE", "purchase");
- const role = (req as any).user?.role || "Admin";
-  const name = (req as any).user?.name || "Admin";
+    const role = (req as any).user?.role || "Admin";
+    const name = (req as any).user?.name || "Admin";
     const purchase = await prisma.purchase.create({
       data: {
-          companyId: Number(companyId),
-    financialYearId: Number(financialYearId),
+        companyId: Number(companyId),
+        financialYearId: Number(financialYearId),
         billNo,
         accountId: Number(accountId),
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
@@ -52,26 +52,18 @@ export const createPurchase = async (req: Request, res: Response) => {
         dueDate: dueDate ? new Date(dueDate) : null,
         terms,
         narration,
-         cashAccountId: cashAccountId
-    ? Number(cashAccountId)
-    : null,
-bankAccountId: bankAccountId
-  ? Number(bankAccountId)
-  : null,
+        cashAccountId: cashAccountId ? Number(cashAccountId) : null,
+        bankAccountId: bankAccountId ? Number(bankAccountId) : null,
 
-paymentMode,
+        paymentMode,
 
-chequeNo,
+        chequeNo,
 
-chequeDate: chequeDate
-  ? new Date(chequeDate)
-  : null,
+        chequeDate: chequeDate ? new Date(chequeDate) : null,
 
-clearDate: clearDate
-  ? new Date(clearDate)
-  : null,
+        clearDate: clearDate ? new Date(clearDate) : null,
 
-bankNarration,
+        bankNarration,
         freightCharge: Number(freightCharge || 0),
         insurance: Number(insurance || 0),
         otherCharge: Number(otherCharge || 0),
@@ -148,216 +140,209 @@ bankNarration,
           },
         });
       }
-    }
-   else if (terms?.toLowerCase() === "cash" && cashAccountId) {
-  const account = await prisma.account.findUnique({
-    where: { id: Number(cashAccountId) },
-  });
+    } else if (terms?.toLowerCase() === "cash" && cashAccountId) {
+      const account = await prisma.account.findUnique({
+        where: { id: Number(cashAccountId) },
+      });
 
-  if (account) {
-    const currentBalance = Number(account.closingBalance || 0);
-    const purchaseAmount = Number(grandTotal || 0);
+      if (account) {
+        const currentBalance = Number(account.closingBalance || 0);
+        const purchaseAmount = Number(grandTotal || 0);
 
-    let closingBalance = currentBalance;
-    let balanceType = account.drCr;
+        let closingBalance = currentBalance;
+        let balanceType = account.drCr;
 
-    // Cash Account (-)
-    if (balanceType === "Dr") {
-      if (currentBalance >= purchaseAmount) {
-        closingBalance = currentBalance - purchaseAmount;
-      } else {
-        closingBalance = purchaseAmount - currentBalance;
-        balanceType = "Cr";
-      }
-    } else {
-      closingBalance = currentBalance + purchaseAmount;
-    }
-
-    await prisma.account.update({
-      where: { id: Number(cashAccountId) },
-      data: {
-        closingBalance,
-        drCr: balanceType,
-      },
-    });
-  }
-
-  // Supplier (+)
-  if (accountId) {
-    const supplier = await prisma.account.findUnique({
-      where: { id: Number(accountId) },
-    });
-
-    if (supplier) {
-      const currentBalance = Number(supplier.closingBalance || 0);
-      const purchaseAmount = Number(grandTotal || 0);
-
-      let closingBalance = currentBalance;
-      let balanceType = supplier.drCr;
-
-      if (balanceType === "Cr") {
-        closingBalance += purchaseAmount;
-      } else {
-        if (currentBalance >= purchaseAmount) {
-          closingBalance -= purchaseAmount;
+        // Cash Account (-)
+        if (balanceType === "Dr") {
+          if (currentBalance >= purchaseAmount) {
+            closingBalance = currentBalance - purchaseAmount;
+          } else {
+            closingBalance = purchaseAmount - currentBalance;
+            balanceType = "Cr";
+          }
         } else {
-          closingBalance = purchaseAmount - currentBalance;
-          balanceType = "Cr";
+          closingBalance = currentBalance + purchaseAmount;
+        }
+
+        await prisma.account.update({
+          where: { id: Number(cashAccountId) },
+          data: {
+            closingBalance,
+            drCr: balanceType,
+          },
+        });
+      }
+
+      // Supplier (+)
+      if (accountId) {
+        const supplier = await prisma.account.findUnique({
+          where: { id: Number(accountId) },
+        });
+
+        if (supplier) {
+          const currentBalance = Number(supplier.closingBalance || 0);
+          const purchaseAmount = Number(grandTotal || 0);
+
+          let closingBalance = currentBalance;
+          let balanceType = supplier.drCr;
+
+          if (balanceType === "Cr") {
+            closingBalance += purchaseAmount;
+          } else {
+            if (currentBalance >= purchaseAmount) {
+              closingBalance -= purchaseAmount;
+            } else {
+              closingBalance = purchaseAmount - currentBalance;
+              balanceType = "Cr";
+            }
+          }
+
+          await prisma.account.update({
+            where: { id: Number(accountId) },
+            data: {
+              closingBalance,
+              drCr: balanceType,
+            },
+          });
         }
       }
+    }
 
-      await prisma.account.update({
-        where: { id: Number(accountId) },
+    // BANK PURCHASE
+    else if (terms?.toLowerCase() === "bank" && bankAccountId) {
+      const account = await prisma.account.findUnique({
+        where: { id: Number(bankAccountId) },
+      });
+
+      if (account) {
+        const currentBalance = Number(account.closingBalance || 0);
+        const purchaseAmount = Number(grandTotal || 0);
+
+        let closingBalance = currentBalance;
+        let balanceType = account.drCr;
+
+        // Bank Account (-)
+        if (balanceType === "Dr") {
+          if (currentBalance >= purchaseAmount) {
+            closingBalance = currentBalance - purchaseAmount;
+          } else {
+            closingBalance = purchaseAmount - currentBalance;
+            balanceType = "Cr";
+          }
+        } else {
+          closingBalance = currentBalance + purchaseAmount;
+        }
+
+        await prisma.account.update({
+          where: { id: Number(bankAccountId) },
+          data: {
+            closingBalance,
+            drCr: balanceType,
+          },
+        });
+      }
+
+      // Supplier (+)
+      if (accountId) {
+        const supplier = await prisma.account.findUnique({
+          where: { id: Number(accountId) },
+        });
+
+        if (supplier) {
+          const currentBalance = Number(supplier.closingBalance || 0);
+          const purchaseAmount = Number(grandTotal || 0);
+
+          let closingBalance = currentBalance;
+          let balanceType = supplier.drCr;
+
+          if (balanceType === "Cr") {
+            closingBalance += purchaseAmount;
+          } else {
+            if (currentBalance >= purchaseAmount) {
+              closingBalance -= purchaseAmount;
+            } else {
+              closingBalance = purchaseAmount - currentBalance;
+              balanceType = "Cr";
+            }
+          }
+
+          await prisma.account.update({
+            where: { id: Number(accountId) },
+            data: {
+              closingBalance,
+              drCr: balanceType,
+            },
+          });
+        }
+      }
+    }
+    if (terms?.toLowerCase() === "cash" && cashAccountId) {
+      const voucherNo = await generateCashPaymentVoucher();
+
+      await prisma.cashPayment.create({
         data: {
-          closingBalance,
-          drCr: balanceType,
+          companyId: Number(companyId),
+          financialYearId: Number(financialYearId),
+
+          voucherNo,
+
+          // Transaction Purchase Cash Payment
+          type: "TPCP",
+
+          date: purchase.purchaseDate ?? new Date(),
+
+          cashAccountId: Number(cashAccountId),
+
+          // Supplier Account
+          oppAccountId: Number(accountId),
+
+          purchaseId: purchase.id,
+
+          amount: Number(grandTotal),
+
+          narration: narration || "",
+
+          createdBy: name,
+          createdType: role,
         },
       });
     }
-  }
-}
+    if (terms?.toLowerCase() === "bank" && bankAccountId) {
+      const voucherNo = await generateBankPaymentVoucher();
 
-// BANK PURCHASE
-else if (terms?.toLowerCase() === "bank" && bankAccountId) {
-  const account = await prisma.account.findUnique({
-    where: { id: Number(bankAccountId) },
-  });
-
-  if (account) {
-    const currentBalance = Number(account.closingBalance || 0);
-    const purchaseAmount = Number(grandTotal || 0);
-
-    let closingBalance = currentBalance;
-    let balanceType = account.drCr;
-
-    // Bank Account (-)
-    if (balanceType === "Dr") {
-      if (currentBalance >= purchaseAmount) {
-        closingBalance = currentBalance - purchaseAmount;
-      } else {
-        closingBalance = purchaseAmount - currentBalance;
-        balanceType = "Cr";
-      }
-    } else {
-      closingBalance = currentBalance + purchaseAmount;
-    }
-
-    await prisma.account.update({
-      where: { id: Number(bankAccountId) },
-      data: {
-        closingBalance,
-        drCr: balanceType,
-      },
-    });
-  }
-
-  // Supplier (+)
-  if (accountId) {
-    const supplier = await prisma.account.findUnique({
-      where: { id: Number(accountId) },
-    });
-
-    if (supplier) {
-      const currentBalance = Number(supplier.closingBalance || 0);
-      const purchaseAmount = Number(grandTotal || 0);
-
-      let closingBalance = currentBalance;
-      let balanceType = supplier.drCr;
-
-      if (balanceType === "Cr") {
-        closingBalance += purchaseAmount;
-      } else {
-        if (currentBalance >= purchaseAmount) {
-          closingBalance -= purchaseAmount;
-        } else {
-          closingBalance = purchaseAmount - currentBalance;
-          balanceType = "Cr";
-        }
-      }
-
-      await prisma.account.update({
-        where: { id: Number(accountId) },
+      await prisma.bankPayment.create({
         data: {
-          closingBalance,
-          drCr: balanceType,
+          companyId: Number(companyId),
+          financialYearId: Number(financialYearId),
+
+          voucherNo,
+
+          type: "TPBP",
+
+          date: purchase.purchaseDate ?? new Date(),
+
+          bankAccountId: Number(bankAccountId),
+          oppAccountId: Number(accountId),
+
+          purchaseId: purchase.id,
+
+          amount: Number(grandTotal),
+
+          paymentMode: paymentMode || null,
+
+          chequeNo: chequeNo || null,
+
+          chequeDate: chequeDate ? new Date(chequeDate) : null,
+
+          clearDate: clearDate ? new Date(clearDate) : null,
+
+          narration: narration || "",
+
+          createdBy: name,
+          createdType: role,
         },
       });
     }
-  }
-}
-if (terms?.toLowerCase() === "cash" && cashAccountId) {
-  const voucherNo = await generateCashPaymentVoucher();
-
- 
-
-  await prisma.cashPayment.create({
-    data: {
-      companyId: Number(companyId),
-    financialYearId: Number(financialYearId),
-
-      voucherNo,
-
-      // Transaction Purchase Cash Payment
-      type: "TPCP",
-
-      date: purchase.purchaseDate ?? new Date(),
-
-      cashAccountId: Number(cashAccountId),
-
-      // Supplier Account
-      oppAccountId: Number(accountId),
-
-      purchaseId: purchase.id,
-
-      amount: Number(grandTotal),
-
-      narration: narration || "",
-
-      createdBy: name,
-      createdType: role,
-    },
-  });
-}
-if (terms?.toLowerCase() === "bank" && bankAccountId) {
-  const voucherNo = await generateBankPaymentVoucher();
-
- await prisma.bankPayment.create({
-  data: {
-    companyId: Number(companyId),
-    financialYearId: Number(financialYearId),
-
-    voucherNo,
-
-    type: "TPBP",
-
-    date: purchase.purchaseDate ?? new Date(),
-
-    bankAccountId: Number(bankAccountId),
-    oppAccountId: Number(accountId),
-
-    purchaseId: purchase.id,
-
-    amount: Number(grandTotal),
-
-    paymentMode: paymentMode || null,
-
-    chequeNo: chequeNo || null,
-
-    chequeDate: chequeDate
-      ? new Date(chequeDate)
-      : null,
-
-    clearDate: clearDate
-      ? new Date(clearDate)
-      : null,
-
-    narration: narration || "",
-
-    createdBy: name,
-    createdType: role,
-  },
-});
-}
     return res.status(201).json({
       success: true,
       data: purchase,
@@ -419,13 +404,13 @@ export const updatePurchase = async (req: Request, res: Response) => {
       dueDate,
       terms,
       narration,
-         cashAccountId,
-  bankAccountId,
-  paymentMode,
-  chequeNo,
-  chequeDate,
-  clearDate,
-  bankNarration,
+      cashAccountId,
+      bankAccountId,
+      paymentMode,
+      chequeNo,
+      chequeDate,
+      clearDate,
+      bankNarration,
       freightCharge,
       insurance,
       otherCharge,
@@ -456,26 +441,18 @@ export const updatePurchase = async (req: Request, res: Response) => {
         dueDate: dueDate ? new Date(dueDate) : null,
         terms,
         narration,
-          cashAccountId: cashAccountId
-    ? Number(cashAccountId)
-    : null,
-bankAccountId: bankAccountId
-  ? Number(bankAccountId)
-  : null,
+        cashAccountId: cashAccountId ? Number(cashAccountId) : null,
+        bankAccountId: bankAccountId ? Number(bankAccountId) : null,
 
-paymentMode,
+        paymentMode,
 
-chequeNo,
+        chequeNo,
 
-chequeDate: chequeDate
-  ? new Date(chequeDate)
-  : null,
+        chequeDate: chequeDate ? new Date(chequeDate) : null,
 
-clearDate: clearDate
-  ? new Date(clearDate)
-  : null,
+        clearDate: clearDate ? new Date(clearDate) : null,
 
-bankNarration,
+        bankNarration,
         freightCharge: Number(freightCharge || 0),
         insurance: Number(insurance || 0),
         otherCharge: Number(otherCharge || 0),
@@ -570,24 +547,23 @@ export const getPurchases = async (req: Request, res: Response) => {
         id: "desc",
       },
     });
-const data = purchases.map((purchase) => {
-  const totalItems = purchase.items.length;
+    const data = purchases.map((purchase) => {
+      const totalItems = purchase.items.length;
 
-  const inwardItems = purchase.items.filter(
-    (item) => item.status === "Inward"
-  ).length;
+      const inwardItems = purchase.items.filter(
+        (item) => item.status === "Inward",
+      ).length;
 
-  return {
-    ...purchase,
-    verified: purchase.status === "VERIFY",
-    allInward:
-      totalItems > 0 && totalItems === inwardItems,
-  };
-});
+      return {
+        ...purchase,
+        verified: purchase.status === "VERIFY",
+        allInward: totalItems > 0 && totalItems === inwardItems,
+      };
+    });
 
     return res.status(200).json({
       success: true,
-      data
+      data,
     });
   } catch (error) {
     console.error(error);
@@ -598,10 +574,7 @@ const data = purchases.map((purchase) => {
     });
   }
 };
-export const getPurchaseById = async (
-  req: Request,
-  res: Response
-) => {
+export const getPurchaseById = async (req: Request, res: Response) => {
   try {
     const purchase = await prisma.purchase.findUnique({
       where: {
@@ -677,10 +650,7 @@ export const getPurchaseBillNo = async (req: Request, res: Response) => {
     });
   }
 };
-export const submitPurchaseItemInward = async (
-  req: Request,
-  res: Response
-) => {
+export const submitPurchaseItemInward = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
@@ -703,7 +673,7 @@ export const submitPurchaseItemInward = async (
     const item = await prisma.purchaseItem.update({
       where: { id },
       data: {
-       vehicleSrNo,
+        vehicleSrNo,
         mfgDate: mfgDate ? new Date(mfgDate) : null,
         keyNo,
         batteryMake,
@@ -715,9 +685,7 @@ export const submitPurchaseItemInward = async (
         location,
         grnNumber,
         grnDate: grnDate ? new Date(grnDate) : null,
-        grnRecordDate: grnRecordDate
-          ? new Date(grnRecordDate)
-          : null,
+        grnRecordDate: grnRecordDate ? new Date(grnRecordDate) : null,
         status: "Inward",
       },
     });
@@ -735,10 +703,7 @@ export const submitPurchaseItemInward = async (
     });
   }
 };
-export const getVehicleSerialNo = async (
-  req: Request,
-  res: Response
-) => {
+export const getVehicleSerialNo = async (req: Request, res: Response) => {
   try {
     const vehicleSrNo = await generateVehicleSerialNo();
 
@@ -755,18 +720,11 @@ export const getVehicleSerialNo = async (
     });
   }
 };
-export const saveTransport = async (
-  req: Request,
-  res: Response
-) => {
+export const saveTransport = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
-    const {
-      transporterName,
-      mobileNumber,
-      vehicleNumber,
-    } = req.body;
+    const { transporterName, mobileNumber, vehicleNumber } = req.body;
 
     const purchase = await prisma.purchase.update({
       where: { id },
@@ -791,10 +749,7 @@ export const saveTransport = async (
     });
   }
 };
-export const getTransport = async (
-  req: Request,
-  res: Response
-) => {
+export const getTransport = async (req: Request, res: Response) => {
   try {
     const purchase = await prisma.purchase.findUnique({
       where: {
@@ -819,84 +774,101 @@ export const getTransport = async (
     });
   }
 };
-export const getTractorInventory = async (
-  req: Request,
-  res: Response
-) => {
+export const getTractorInventory = async (req: Request, res: Response) => {
   try {
     const purchases = await prisma.purchase.findMany({
       where: {
         status: "VERIFY",
       },
-     include: {
-  account: true,
-  items: true,
-},
+      include: {
+        account: true,
+        items: {
+          include: {
+            tractor: true,
+          },
+        },
+      },
       orderBy: {
         id: "desc",
       },
     });
+const tractors = await prisma.tractor.findMany({
+  select: {
+    codeNo: true,
+    purchasePriceNoGST: true,
+    purchasePriceTaxable: true,
+  },
+});
 
-   const data = purchases.flatMap((purchase) =>
-  purchase.items.map((item) => {
-    const inwardDate = item.grnRecordDate;
-
-    const ageDay = inwardDate
-      ? Math.floor(
-          (new Date().getTime() - new Date(inwardDate).getTime()) /
-            (1000 * 60 * 60 * 24)
-        )
-      : 0;
-
-    return {
-      id: item.id,
-
-      stock: "On",
-
-      status: item.status === "Inward" ? "Present" : "In Transit",
-
-      location: purchase.purchaseLocation || "",
-      currentLocation: purchase.purchaseLocation || "",
-
-      billNo: purchase.billNo,
-      purchaseBillNo: purchase.purchaseBillNo,
-
-      supplierName: purchase.account?.accountName || "",
-
-      itemName: item.itemName,
-      model: item.modelName,
-      variant: item.variantName,
-      colour: item.color,
-      fuelType: item.fuelType,
-
-      serialNo: item.vehicleSrNo,
-
-      mfgDate: item.mfgDate,
-      chassisNo: item.chassisNo,
-      engineNo: item.engineNo,
-
-      keyNumber: item.keyNo,
-
-      batteryMake: item.batteryMake,
-      batteryNo: item.batteryNo,
-
-      first1Tyer: item.first1TyerNo,
-      first2Tyer: item.first2TyerNo,
-
-      second1Tyer: item.second1TyerNo,
-      second2Tyer: item.second2TyerNo,
-
-      grnDate: item.grnDate,
-      grnRecordDate: item.grnRecordDate,
-      grnNo: item.grnNumber,
-
-      inWardDate: item.grnRecordDate,
-      inWardTime: item.updatedAt,
-
-      ageDay, // <-- Add this
-    };
-  })
+const tractorMap = new Map(
+  tractors.map((t) => [t.codeNo, t])
 );
+
+    const data = purchases.flatMap((purchase) =>
+      purchase.items.map((item) => {
+          const tractor = tractorMap.get(String(item.itemCode));
+
+    
+        const inwardDate = item.grnRecordDate;
+
+        const ageDay = inwardDate
+          ? Math.floor(
+              (new Date().getTime() - new Date(inwardDate).getTime()) /
+                (1000 * 60 * 60 * 24),
+            )
+          : 0;
+
+        return {
+          id: item.id,
+
+          stock: "On",
+
+          status: item.status === "Inward" ? "Present" : "In Transit",
+
+          location: purchase.purchaseLocation || "",
+          currentLocation: purchase.purchaseLocation || "",
+
+          billNo: purchase.billNo,
+          purchaseBillNo: purchase.purchaseBillNo,
+
+          supplierName: purchase.account?.accountName || "",
+
+          itemName: item.itemName,
+          itemCode: item.itemCode,
+          model: item.modelName,
+          variant: item.variantName,
+          colour: item.color,
+          fuelType: item.fuelType,
+
+          serialNo: item.vehicleSrNo,
+
+          mfgDate: item.mfgDate,
+          chassisNo: item.chassisNo,
+          engineNo: item.engineNo,
+
+          keyNumber: item.keyNo,
+
+          batteryMake: item.batteryMake,
+          batteryNo: item.batteryNo,
+
+          first1Tyer: item.first1TyerNo,
+          first2Tyer: item.first2TyerNo,
+
+          second1Tyer: item.second1TyerNo,
+          second2Tyer: item.second2TyerNo,
+
+          grnDate: item.grnDate,
+          grnRecordDate: item.grnRecordDate,
+          grnNo: item.grnNumber,
+
+          inWardDate: item.grnRecordDate,
+          inWardTime: item.updatedAt,
+         purchasePriceNoGST: tractor?.purchasePriceNoGST ?? 0,
+purchasePriceTaxable: tractor?.purchasePriceTaxable ?? 0,
+          ageDay, // <-- Add this
+        };
+      }),
+    );
 
     return res.json({
       success: true,
