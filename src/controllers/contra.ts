@@ -31,10 +31,7 @@ export const getNextContraVoucher = async (
    Create Contra
 =========================================================== */
 
-export const createContra = async (
-  req: Request,
-  res: Response
-) => {
+export const createContra = async (req: Request, res: Response) => {
   try {
     const {
       date,
@@ -69,18 +66,25 @@ export const createContra = async (
       });
     }
 
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+    const name = user?.name;
+
+    if (role === "BRANCH" && !user?.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch ID missing from token — cannot create contra",
+      });
+    }
+
     const voucherNo = await generateContraVoucher();
 
     const cashBank = await prisma.account.findUnique({
-      where: {
-        id: Number(cashBankAccountId),
-      },
+      where: { id: Number(cashBankAccountId) },
     });
 
     const opposite = await prisma.account.findUnique({
-      where: {
-        id: Number(oppAccountId),
-      },
+      where: { id: Number(oppAccountId) },
     });
 
     if (!cashBank || !opposite) {
@@ -91,8 +95,7 @@ export const createContra = async (
     }
 
     const amountValue = Number(amount);
-const role = (req as any).user?.role;
-const name = (req as any).user?.name;
+
     const contra = await prisma.$transaction(async (tx) => {
       const createdContra = await tx.contra.create({
         data: {
@@ -106,7 +109,8 @@ const name = (req as any).user?.name;
           amount: amountValue,
           narration,
           createdBy: name,
-      createdType: role,
+          createdType: role,
+          branchId: role === "BRANCH" ? Number(user.branchId) : null,
         },
       });
 
@@ -115,40 +119,21 @@ const name = (req as any).user?.name;
 
       switch (type) {
         case "Cash Deposit":
-          // Cash -> Bank
-          cashClosing -= amountValue;
-          oppClosing += amountValue;
-          break;
-
         case "Cash Withdrawal":
-          // Bank -> Cash
-          cashClosing -= amountValue;
-          oppClosing += amountValue;
-          break;
-
         case "Bank Transfer":
-          // From Bank -> To Bank
           cashClosing -= amountValue;
           oppClosing += amountValue;
           break;
       }
 
       await tx.account.update({
-        where: {
-          id: Number(cashBankAccountId),
-        },
-        data: {
-          closingBalance: cashClosing,
-        },
+        where: { id: Number(cashBankAccountId) },
+        data: { closingBalance: cashClosing },
       });
 
       await tx.account.update({
-        where: {
-          id: Number(oppAccountId),
-        },
-        data: {
-          closingBalance: oppClosing,
-        },
+        where: { id: Number(oppAccountId) },
+        data: { closingBalance: oppClosing },
       });
 
       return createdContra;
@@ -168,15 +153,19 @@ const name = (req as any).user?.name;
     });
   }
 };
-// ==========================
-// Get All Contra
-// ==========================
-export const getContras = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+
+export const getContras = async (req: Request, res: Response): Promise<void> => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = {};
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
     const contras = await prisma.contra.findMany({
+      where: whereClause,
       orderBy: {
         id: "desc",
       },
@@ -219,20 +208,20 @@ export const getContras = async (
     });
   }
 };
-// ==========================
-// Get Contra By Id
-// ==========================
-export const getContraById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+
+export const getContraById = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = Number(req.params.id);
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
 
-    const contra = await prisma.contra.findUnique({
-      where: {
-        id,
-      },
+    const whereClause: any = { id };
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    const contra = await prisma.contra.findFirst({
+      where: whereClause,
       include: {
         company: true,
         financialYear: true,
@@ -257,6 +246,7 @@ export const getContraById = async (
     });
   }
 };
+
 export const exportContraExcel = async (
   req: Request,
   res: Response

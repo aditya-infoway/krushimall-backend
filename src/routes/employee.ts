@@ -8,14 +8,15 @@ import {
   deleteEmployee,
   toggleEmployeeStatus,
 } from "../controllers/employee.js";
+import { verifyToken } from "../middleware/middleware.js";
 
 const router = express.Router();
 
-router.post("/", createEmployee);
-router.get("/", getEmployees);
-router.get("/:id", getEmployeeById);
-router.put("/:id", updateEmployee);
-router.delete("/:id", deleteEmployee);
+router.post("/", verifyToken, createEmployee);
+router.get("/", verifyToken, getEmployees);
+router.get("/:id", verifyToken, getEmployeeById);
+router.put("/:id", verifyToken, updateEmployee);
+router.delete("/:id", verifyToken, deleteEmployee);
 
 router.patch(
   "/toggle-status/:id",

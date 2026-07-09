@@ -5,7 +5,9 @@ import { verifyToken } from "../middleware/middleware.js";
 import {
   createVehicleStockTransfer,
   getVehicleStockTransferNo,
-  getVehicleStockTransfers
+  getVehicleStockTransfers,
+  getVehicleStockTransferById,
+  updateVehicleStockTransfer
 } from "../controllers/vehicleStockTransfer.js";
 
 const router = Router();
@@ -23,5 +25,10 @@ router.post(
   verifyToken,
   createVehicleStockTransfer
 );
-
+router.get(
+  "/:id",
+  verifyToken,
+  getVehicleStockTransferById
+);
+router.put("/:id", verifyToken, updateVehicleStockTransfer);
 export default router;
