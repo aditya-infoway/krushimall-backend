@@ -434,29 +434,25 @@ export const loginBranch = async (
       return; 
     } 
  
-    const token = jwt.sign( 
-      { 
-        id: branch.id, 
-        role: "branch", 
-      }, 
-      process.env.JWT_SECRET as string, 
-      { 
-        expiresIn: "7d", 
-      } 
-    ); 
+    const token = jwt.sign(
+  { id: branch.id, branchId: branch.id, name: branch.branchName, role: "BRANCH" },
+  process.env.JWT_SECRET as string,
+  { expiresIn: "7d" }
+);
  
-    res.status(200).json({ 
-      success: true, 
-      message: "Login successful.", 
-      token, 
-      user: { 
-        id: branch.id, 
-        branchCode: branch.branchCode, 
-        branchName: branch.branchName, 
-        email: branch.gmailId, 
-        role: "branch", 
-      }, 
-    }); 
+  res.status(200).json({
+  success: true,
+  message: "Login successful.",
+  token,
+  user: {
+    id: branch.id,
+    branchId: branch.id,
+    branchCode: branch.branchCode,
+    branchName: branch.branchName,
+    email: branch.gmailId,
+    role: "BRANCH",
+  },
+}); 
   } catch (error) { 
     console.log(error); 
  

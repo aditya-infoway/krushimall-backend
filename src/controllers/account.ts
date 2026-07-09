@@ -1,25 +1,29 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
-export const createAccount = async (
-  req: Request,
-  res: Response
-) => {
+export const createAccount = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    if (role === "BRANCH" && !user?.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch ID missing from token — cannot create account",
+      });
+    }
+
     const payload = {
       ...req.body,
 
       openingBalance: Number(req.body.openingBalance || 0),
-
-      // Initially Closing Balance = Opening Balance
       closingBalance: Number(req.body.openingBalance || 0),
 
-      birthday: req.body.birthday
-        ? new Date(req.body.birthday)
-        : null,
+      birthday: req.body.birthday ? new Date(req.body.birthday) : null,
+      anniversary: req.body.anniversary ? new Date(req.body.anniversary) : null,
 
-      anniversary: req.body.anniversary
-        ? new Date(req.body.anniversary)
-        : null,
+      createdType: role,
+      createdBy: user?.name,
+      branchId: role === "BRANCH" ? Number(user.branchId) : null,
     };
 
     const account = await prisma.account.create({
@@ -41,12 +45,20 @@ export const createAccount = async (
   }
 };
 
-export const getAccounts = async (
-  req: Request,
-  res: Response
-) => {
+export const getAccounts = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = {};
+
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+    // Admin: no filter — sees everything
+
     const accounts = await prisma.account.findMany({
+      where: whereClause,
       orderBy: {
         id: "desc",
       },
@@ -66,16 +78,27 @@ export const getAccounts = async (
   }
 };
 
-export const getAccountById = async (
-  req: Request,
-  res: Response
-) => {
+export const getAccountById = async (req: Request, res: Response) => {
   try {
-    const account = await prisma.account.findUnique({
-      where: {
-        id: Number(req.params.id),
-      },
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = { id: Number(req.params.id) };
+
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    const account = await prisma.account.findFirst({
+      where: whereClause,
     });
+
+    if (!account) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found",
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -83,6 +106,11 @@ export const getAccountById = async (
     });
   } catch (error) {
     console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch account",
+    });
   }
 };
 

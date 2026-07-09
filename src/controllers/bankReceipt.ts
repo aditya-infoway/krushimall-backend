@@ -3,12 +3,18 @@ import prisma from "../lib/prisma.js";
 import { generateBankReceiptVoucher } from "../utils/generateBankReceiptVoucher.js";
 import ExcelJS from "exceljs";
 
-export const getBankReceipt = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getBankReceipt = async (req: Request, res: Response): Promise<void> => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = {};
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
     const receipts = await prisma.bankReceipt.findMany({
+      where: whereClause,
       orderBy: {
         id: "desc",
       },
@@ -45,15 +51,20 @@ export const getBankReceipt = async (
     });
   }
 };
-export const getBankReceiptById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+
+export const getBankReceiptById = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = Number(req.params.id);
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
 
-    const receipt = await prisma.bankReceipt.findUnique({
-      where: { id },
+    const whereClause: any = { id };
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    const receipt = await prisma.bankReceipt.findFirst({
+      where: whereClause,
       include: {
         bankAccount: true,
         oppAccount: true,
@@ -77,6 +88,90 @@ export const getBankReceiptById = async (
     });
   }
 };
+
+export const createBankReceipt = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const {
+      companyId,
+      financialYearId,
+      date,
+      bankAccountId,
+      oppAccountId,
+      leadId,
+      amount,
+      narration,
+      paymentType,
+      chequeNo,
+      chequeDate,
+      chequeClearDate,
+    } = req.body;
+
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    if (role === "BRANCH" && !user?.branchId) {
+      res.status(400).json({
+        success: false,
+        message: "Branch ID missing from token — cannot create bank receipt",
+      });
+      return;
+    }
+
+    const voucherNo = await generateBankReceiptVoucher();
+
+    const receipt = await prisma.$transaction(async (tx) => {
+      const data = await tx.bankReceipt.create({
+        data: {
+          companyId: Number(companyId),
+          financialYearId: Number(financialYearId),
+
+          voucherNo,
+          date: new Date(date),
+          type: "BR",
+
+          bankAccountId: Number(bankAccountId),
+          oppAccountId: Number(oppAccountId),
+
+          leadId: leadId ? Number(leadId) : null,
+
+          amount: Number(amount),
+
+          paymentType,
+
+          chequeNo,
+          chequeDate: chequeDate ? new Date(chequeDate) : null,
+          chequeClearDate: chequeClearDate ? new Date(chequeClearDate) : null,
+
+          narration,
+
+          createdType: role,
+          createdBy: user?.name,
+          branchId: role === "BRANCH" ? Number(user.branchId) : null,
+        },
+      });
+
+      await tx.account.update({
+        where: { id: Number(bankAccountId) },
+        data: { closingBalance: { increment: Number(amount) } },
+      });
+
+      await tx.account.update({
+        where: { id: Number(oppAccountId) },
+        data: { closingBalance: { decrement: Number(amount) } },
+      });
+
+      return data;
+    });
+
+    res.status(201).json(receipt);
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      message: "Unable to create Bank Receipt",
+    });
+  }
+};
 export const getBankReceiptVoucher = async (
   req: Request,
   res: Response
@@ -97,99 +192,7 @@ export const getBankReceiptVoucher = async (
     });
   }
 };
-export const createBankReceipt = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const {
-      companyId,
-      financialYearId,
-      date,
-      bankAccountId,
-      oppAccountId,
-      leadId,
-      amount,
-      narration,
-      paymentType,
-      chequeNo,
-      chequeDate,
-      chequeClearDate,
-      type,
-    } = req.body;
 
-    const voucherNo = await generateBankReceiptVoucher();
-
-    const role = (req as any).user?.role;
-    const name = (req as any).user?.name;
-
-    const receipt = await prisma.$transaction(async (tx) => {
-      const data = await tx.bankReceipt.create({
-        data: {
-          companyId: Number(companyId),
-          financialYearId: Number(financialYearId),
-
-          voucherNo,
-          date: new Date(date),
-
-         type: "BR",
-
-          bankAccountId: Number(bankAccountId),
-          oppAccountId: Number(oppAccountId),
-
-          leadId: leadId ? Number(leadId) : null,
-
-          amount: Number(amount),
-
-          paymentType,
-
-          chequeNo,
-          chequeDate: chequeDate ? new Date(chequeDate) : null,
-          chequeClearDate: chequeClearDate
-            ? new Date(chequeClearDate)
-            : null,
-
-          narration,
-
-          createdType: role,
-          createdBy: name,
-        },
-      });
-
-      await tx.account.update({
-        where: {
-          id: Number(bankAccountId),
-        },
-        data: {
-          closingBalance: {
-            increment: Number(amount),
-          },
-        },
-      });
-
-      await tx.account.update({
-        where: {
-          id: Number(oppAccountId),
-        },
-        data: {
-          closingBalance: {
-            decrement: Number(amount),
-          },
-        },
-      });
-
-      return data;
-    });
-
-    res.status(201).json(receipt);
-  } catch (error) {
-    console.log(error);
-
-    res.status(500).json({
-      message: "Unable to create Bank Receipt",
-    });
-  }
-};
 export const updateBankReceipt = async (
   req: Request,
   res: Response

@@ -5,12 +5,19 @@ import ExcelJS from "exceljs";
 // ==========================
 // Get All Cash Payments
 // ==========================
-export const getCashPayments = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getCashPayments = async (req: Request, res: Response): Promise<void> => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = {};
+
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
     const cashPayments = await prisma.cashPayment.findMany({
+      where: whereClause,
       orderBy: {
         id: "desc",
       },
@@ -35,12 +42,6 @@ export const getCashPayments = async (
             billNo: true,
           },
         },
-        // lead: {
-        //   select: {
-        //     id: true,
-        //     leadNo: true,
-        //   },
-        // },
       },
     });
 
@@ -53,23 +54,23 @@ export const getCashPayments = async (
   }
 };
 
-// ==========================
-// Get Single Cash Payment
-// ==========================
-export const getCashPaymentById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getCashPaymentById = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = Number(req.params.id);
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
 
-    const payment = await prisma.cashPayment.findUnique({
-      where: { id },
+    const whereClause: any = { id };
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    const payment = await prisma.cashPayment.findFirst({
+      where: whereClause,
       include: {
         cashAccount: true,
         oppAccount: true,
         purchase: true,
-        // lead: true,
       },
     });
 
@@ -89,53 +90,11 @@ export const getCashPaymentById = async (
   }
 };
 
-// ==========================
-// Generate Voucher Number
-// ==========================
-export const generateVoucherNo = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const lastVoucher = await prisma.cashPayment.findFirst({
-      orderBy: {
-        id: "desc",
-      },
-    });
-
-    let nextNumber = 1;
-
-    if (lastVoucher) {
-      const parts = lastVoucher.voucherNo.split("/");
-      nextNumber = Number(parts[2]) + 1;
-    }
-
-    const voucherNo = `CP/26-27/${String(nextNumber).padStart(3, "0")}`;
-
-    res.json({
-      voucherNo,
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({
-      message: "Unable to generate voucher number",
-    });
-  }
-};
-
-// ==========================
-// Create Cash Payment
-// ==========================
-
-
-export const createCashPayment = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const createCashPayment = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       companyId,
-  financialYearId,
+      financialYearId,
       date,
       cashAccountId,
       oppAccountId,
@@ -152,19 +111,27 @@ export const createCashPayment = async (
       return;
     }
 
-  const voucherNo = await generateCashPaymentVoucher();
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
 
-    const role = (req as any).user?.role;
-    const name = (req as any).user?.name;
+    if (role === "BRANCH" && !user?.branchId) {
+      res.status(400).json({
+        success: false,
+        message: "Branch ID missing from token — cannot create cash payment",
+      });
+      return;
+    }
+
+    const voucherNo = await generateCashPaymentVoucher();
 
     const payment = await prisma.$transaction(async (tx) => {
       const data = await tx.cashPayment.create({
         data: {
-              companyId: Number(companyId),
-    financialYearId: Number(financialYearId),
+          companyId: Number(companyId),
+          financialYearId: Number(financialYearId),
           voucherNo,
           date: new Date(date),
-          type: "CP", // <-- Always save CP
+          type: "CP",
           cashAccountId: Number(cashAccountId),
           oppAccountId: Number(oppAccountId),
           purchaseId: purchaseId ? Number(purchaseId) : null,
@@ -172,32 +139,19 @@ export const createCashPayment = async (
           amount: Number(amount),
           narration,
           createdType: role,
-          createdBy: name,
+          createdBy: user?.name,
+          branchId: role === "BRANCH" ? Number(user.branchId) : null,
         },
       });
 
-      // Cash account balance decrease
       await tx.account.update({
-        where: {
-          id: Number(cashAccountId),
-        },
-        data: {
-          closingBalance: {
-            decrement: Number(amount),
-          },
-        },
+        where: { id: Number(cashAccountId) },
+        data: { closingBalance: { decrement: Number(amount) } },
       });
 
-      // Opposite account balance increase
       await tx.account.update({
-        where: {
-          id: Number(oppAccountId),
-        },
-        data: {
-          closingBalance: {
-            increment: Number(amount),
-          },
-        },
+        where: { id: Number(oppAccountId) },
+        data: { closingBalance: { increment: Number(amount) } },
       });
 
       return data;
