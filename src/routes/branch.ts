@@ -7,7 +7,8 @@ import {
   getBranchById,
   updateBranch,
   deleteBranch,
-  toggleBranchStatus
+  toggleBranchStatus,
+  loginBranch
 } from "../controllers/branch.js";
 
 const router = express.Router();
@@ -22,4 +23,6 @@ router.put("/:id", verifyToken, updateBranch);
 
 router.delete("/:id", verifyToken, deleteBranch);
 router.patch("/:id/status", verifyToken, toggleBranchStatus);
+
+router.post("/login", loginBranch);
 export default router;

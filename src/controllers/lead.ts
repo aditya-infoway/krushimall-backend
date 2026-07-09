@@ -886,7 +886,7 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
 
   <tr>
     <td class="payment-label">Account Holder</td>
-    <td>${lead.account || ""}</td>
+    <td>${lead.account?.accountName || ""}</td>
   </tr>
 
   <tr>
@@ -896,7 +896,7 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
 
   <tr>
     <td class="payment-label">Account Number</td>
-    <td>${lead.account || ""}</td>
+    <td>${lead.account?.bankAccountNo || ""}</td>
   </tr>
 
   <tr>
