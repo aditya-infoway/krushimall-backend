@@ -6,13 +6,17 @@ export const createFinance = async (
   res: Response
 ) => {
   try {
-    const finance = await prisma.finance.create({
-      data: {
-        finance: req.body.finance,
-        status: req.body.status || "ACTIVE",
+const finance = await prisma.finance.create({
+  data: {
+    account: {
+      connect: {
+        id: Number(req.body.accountId),
       },
-    });
-
+    },
+    employeeName: req.body.employeeName,
+    status: req.body.status || "ACTIVE",
+  },
+});
     res.status(201).json({
       success: true,
       data: finance,
@@ -34,10 +38,19 @@ export const getFinances = async (
 ) => {
   try {
     const finances = await prisma.finance.findMany({
-      orderBy: {
-        id: "desc",
+  include: {
+    account: {
+      select: {
+        id: true,
+        accountName: true,
+        mobile: true,
       },
-    });
+    },
+  },
+  orderBy: {
+    id: "desc",
+  },
+});
 
     res.status(200).json({
       success: true,
@@ -59,10 +72,13 @@ export const getFinanceById = async (
 ) => {
   try {
     const finance = await prisma.finance.findUnique({
-      where: {
-        id: Number(req.params.id),
-      },
-    });
+  where: {
+    id: Number(req.params.id),
+  },
+  include: {
+    account: true,
+  },
+});
 
     res.status(200).json({
       success: true,
@@ -78,15 +94,20 @@ export const updateFinance = async (
   res: Response
 ) => {
   try {
-    const finance = await prisma.finance.update({
-      where: {
-        id: Number(req.params.id),
+   const finance = await prisma.finance.update({
+  where: {
+    id: Number(req.params.id),
+  },
+  data: {
+    account: {
+      connect: {
+        id: Number(req.body.accountId),
       },
-      data: {
-        finance: req.body.finance,
-        status: req.body.status,
-      },
-    });
+    },
+    employeeName: req.body.employeeName,
+    status: req.body.status,
+  },
+});
 
     res.status(200).json({
       success: true,

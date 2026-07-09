@@ -467,13 +467,17 @@ model Banker {
 }
 
 model Finance {
-  id        Int      @id @default(autoincrement())
-  finance   String
-  status    String   @default("ACTIVE")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+  id           Int      @id @default(autoincrement())
 
+  accountId    Int
+  account      Account  @relation(fields: [accountId], references: [id])
+
+  employeeName String
+
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
 model EnquiryStatus {
   id            Int      @id @default(autoincrement())
   enquiryStatus String
@@ -1122,7 +1126,7 @@ model Branch {
 model VehicleStockTransfer {
   id Int @id @default(autoincrement())
 
-  transferNo   String   @unique
+  transferNo   String   
   transferDate DateTime
 
   companyId Int
