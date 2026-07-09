@@ -6,10 +6,24 @@ import { generateCashReceiptVoucher } from "../utils/generateCashReceiptVoucher.
 import { generateBankReceiptVoucher } from "../utils/generateBankReceiptVoucher.js";
 export const createLead = async (req: Request, res: Response) => {
   try {
-    
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    if (role === "BRANCH" && !user?.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch ID missing from token — cannot create lead",
+      });
+    }
+
     const data: any = {
-      
       ...req.body,
+      // ...existing transforms...
+      createdType: role,
+      createdBy: user?.name,
+      branchId: role === "BRANCH" ? Number(user.branchId) : null,
+    
+
       
         companyId: Number(req.body.companyId),
   financialYearId: Number(req.body.financialYearId),
@@ -217,7 +231,18 @@ if (
 
 export const getLeads = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+
+    const whereClause: any = {};
+
+    if (user?.role === "BRANCH") {
+      // Branch panel: only leads created by THIS branch
+      whereClause.branchId = Number(user.branchId);
+    }
+    // Admin panel: no filter — sees everything (admin-created + all branches)
+
     const leads = await prisma.lead.findMany({
+      where: whereClause,
       include: {
         customer: true,
         model: true,
@@ -230,11 +255,10 @@ export const getLeads = async (req: Request, res: Response) => {
         enquiryStatus: true,
         account: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
 
+  
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -283,9 +307,15 @@ export const getLeads = async (req: Request, res: Response) => {
 };
 export const getLeadById = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
+  const user = (req as any).user;
 
-  const lead = await prisma.lead.findUnique({
-    where: { id },
+  const whereClause: any = { id };
+  if (user?.role === "BRANCH") {
+    whereClause.branchId = Number(user.branchId);
+  }
+
+  const lead = await prisma.lead.findFirst({
+    where: whereClause,
     include: {
       customer: true,
       model: true,
@@ -295,10 +325,11 @@ export const getLeadById = async (req: Request, res: Response) => {
     },
   });
 
-  return res.json({
-    success: true,
-    data: lead,
-  });
+  if (!lead) {
+    return res.status(404).json({ success: false, message: "Lead not found" });
+  }
+
+  return res.json({ success: true, data: lead });
 };
 export const generateOrderBillPdf = async (req: Request, res: Response) => {
   try {

@@ -7,17 +7,18 @@ import {
   updateAccount,
   deleteAccount,
 } from "../controllers/account.js";
+import { verifyToken } from "../middleware/middleware.js";
 
 const router = express.Router();
 
-router.post("/", createAccount);
+router.post("/", verifyToken, createAccount);
 
-router.get("/", getAccounts);
+router.get("/", verifyToken, getAccounts);
 
-router.get("/:id", getAccountById);
+router.get("/:id", verifyToken, getAccountById);
 
-router.put("/:id", updateAccount);
+router.put("/:id", verifyToken, updateAccount);
 
-router.delete("/:id", deleteAccount);
+router.delete("/:id", verifyToken, deleteAccount);
 
 export default router;

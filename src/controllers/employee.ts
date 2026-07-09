@@ -1,15 +1,22 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import prisma from "../lib/prisma.js";
-export const createEmployee = async (
-  req: Request,
-  res: Response
-) => {
+export const createEmployee = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    if (role === "BRANCH" && !user?.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch ID missing from token — cannot create employee",
+      });
+    }
+
     const {
       department,
       branch,
-      role,
+      role: employeeRole, // renamed to avoid clashing with the auth `role` above
       employeeName,
       mobileNumber,
       alternateNumber,
@@ -18,44 +25,44 @@ export const createEmployee = async (
       status,
     } = req.body;
 
-    // Check existing email
-   const existingEmployee = await prisma.employee.findFirst({
-  where: {
-    OR: [
-      { email: req.body.email },
-      { mobileNumber: req.body.mobileNumber }
-    ]
-  }
-});
+    const existingEmployee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          { email: req.body.email },
+          { mobileNumber: req.body.mobileNumber },
+        ],
+      },
+    });
 
-if (existingEmployee) {
-  return res.status(400).json({
-    success: false,
-    message:
-      existingEmployee.email === req.body.email
-        ? "Email already exists"
-        : "Mobile number already exists",
-  });
-}
-
-    // Encrypt password
-    const hashedPassword =
-      await bcrypt.hash(password, 10);
-
-    const employee =
-      await prisma.employee.create({
-        data: {
-          department,
-          branch,
-          role,
-          employeeName,
-          mobileNumber,
-          alternateNumber,
-          email,
-          password: hashedPassword,
-          status,
-        },
+    if (existingEmployee) {
+      return res.status(400).json({
+        success: false,
+        message:
+          existingEmployee.email === req.body.email
+            ? "Email already exists"
+            : "Mobile number already exists",
       });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const employee = await prisma.employee.create({
+      data: {
+        department,
+        branch,
+        role: employeeRole,
+        employeeName,
+        mobileNumber,
+        alternateNumber,
+        email,
+        password: hashedPassword,
+        status,
+
+        createdType: role,
+        createdBy: user?.name,
+        branchId: role === "BRANCH" ? Number(user.branchId) : null,
+      },
+    });
 
     res.status(201).json({
       success: true,
@@ -71,29 +78,39 @@ if (existingEmployee) {
     });
   }
 };
-export const getEmployees = async (
-  req: Request,
-  res: Response
-) => {
+
+export const getEmployees = async (req: Request, res: Response) => {
   try {
-    const employees =
-      await prisma.employee.findMany({
-        select: {
-          id: true,
-          department: true,
-          branch: true,
-          role: true,
-          employeeName: true,
-          mobileNumber: true,
-          alternateNumber: true,
-          email: true,
-          status: true,
-          createdAt: true,
-        },
-        orderBy: {
-          id: "desc",
-        },
-      });
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = {};
+
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    const employees = await prisma.employee.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        department: true,
+        branch: true,
+        role: true,
+        employeeName: true,
+        mobileNumber: true,
+        alternateNumber: true,
+        email: true,
+        status: true,
+        createdAt: true,
+        createdType: true,
+        createdBy: true,
+        branchId: true,
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
 
     res.status(200).json({
       success: true,
@@ -108,10 +125,58 @@ export const getEmployees = async (
     });
   }
 };
-export const updateEmployee = async (
-  req: Request,
-  res: Response
-) => {
+
+export const getEmployeeById = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = { id: Number(req.params.id) };
+
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    const employee = await prisma.employee.findFirst({
+      where: whereClause,
+      select: {
+        id: true,
+        department: true,
+        branch: true,
+        role: true,
+        employeeName: true,
+        mobileNumber: true,
+        alternateNumber: true,
+        email: true,
+        status: true,
+        createdAt: true,
+        createdType: true,
+        createdBy: true,
+        branchId: true,
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: employee,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch employee",
+    });
+  }
+};
+export const updateEmployee = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
@@ -152,10 +217,7 @@ export const updateEmployee = async (
 
     // Update password only if provided
     if (req.body.password) {
-      updateData.password = await bcrypt.hash(
-        req.body.password,
-        10
-      );
+      updateData.password = await bcrypt.hash(req.body.password, 10);
     }
 
     const employee = await prisma.employee.update({
@@ -177,10 +239,7 @@ export const updateEmployee = async (
     });
   }
 };
-export const deleteEmployee = async (
-  req: Request,
-  res: Response
-) => {
+export const deleteEmployee = async (req: Request, res: Response) => {
   try {
     await prisma.employee.delete({
       where: {
@@ -201,68 +260,12 @@ export const deleteEmployee = async (
     });
   }
 };
-export const toggleEmployeeStatus =
-  async (req: Request, res: Response) => {
-    try {
-      const id = Number(req.params.id);
-
-      const employee =
-        await prisma.employee.findUnique({
-          where: { id },
-        });
-
-      if (!employee) {
-        return res.status(404).json({
-          success: false,
-          message: "Employee not found",
-        });
-      }
-
-      const updated =
-        await prisma.employee.update({
-          where: { id },
-          data: {
-            status:
-              employee.status === "ACTIVE"
-                ? "INACTIVE"
-                : "ACTIVE",
-          },
-        });
-
-      res.status(200).json({
-        success: true,
-        data: updated,
-      });
-    } catch (error) {
-      console.log(error);
-
-      res.status(500).json({
-        success: false,
-        message: "Failed to update status",
-      });
-    }
-  };
-  export const getEmployeeById = async (
-  req: Request,
-  res: Response
-) => {
+export const toggleEmployeeStatus = async (req: Request, res: Response) => {
   try {
+    const id = Number(req.params.id);
+
     const employee = await prisma.employee.findUnique({
-      where: {
-        id: Number(req.params.id),
-      },
-      select: {
-        id: true,
-        department: true,
-        branch: true,
-        role: true,
-        employeeName: true,
-        mobileNumber: true,
-        alternateNumber: true,
-        email: true,
-        status: true,
-        createdAt: true,
-      },
+      where: { id },
     });
 
     if (!employee) {
@@ -272,16 +275,23 @@ export const toggleEmployeeStatus =
       });
     }
 
+    const updated = await prisma.employee.update({
+      where: { id },
+      data: {
+        status: employee.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+      },
+    });
+
     res.status(200).json({
       success: true,
-      data: employee,
+      data: updated,
     });
   } catch (error) {
     console.log(error);
 
     res.status(500).json({
       success: false,
-      message: "Failed to fetch employee",
+      message: "Failed to update status",
     });
   }
 };

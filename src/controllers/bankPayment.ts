@@ -2,12 +2,18 @@ import prisma from "../lib/prisma.js";
 import { Request, Response } from "express";
 import { generateBankPaymentVoucher } from "../utils/generateBankPaymentVoucher.js";
 import ExcelJS from "exceljs";
-export const getBankPayments = async (
-  req: Request,
-  res: Response
-) => {
+export const getBankPayments = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = {};
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
     const data = await prisma.bankPayment.findMany({
+      where: whereClause,
       orderBy: {
         id: "desc",
       },
@@ -44,15 +50,19 @@ export const getBankPayments = async (
     });
   }
 };
-export const getBankPaymentById = async (
-  req: Request,
-  res: Response
-) => {
+
+export const getBankPaymentById = async (req: Request, res: Response) => {
   try {
-    const payment = await prisma.bankPayment.findUnique({
-      where: {
-        id: Number(req.params.id),
-      },
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = { id: Number(req.params.id) };
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    const payment = await prisma.bankPayment.findFirst({
+      where: whereClause,
       include: {
         bankAccount: true,
         oppAccount: true,
@@ -72,6 +82,87 @@ export const getBankPaymentById = async (
 
     res.status(500).json({
       message: "Error",
+    });
+  }
+};
+
+export const createBankPayment = async (req: Request, res: Response) => {
+  try {
+    const {
+      companyId,
+      financialYearId,
+      date,
+      bankAccountId,
+      oppAccountId,
+      purchaseId,
+      amount,
+      narration,
+      paymentMode,
+      chequeNo,
+      chequeDate,
+      clearDate,
+    } = req.body;
+
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase() || "ADMIN";
+    const name = user?.name || "Admin";
+
+    if (role === "BRANCH" && !user?.branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch ID missing from token — cannot create bank payment",
+      });
+    }
+
+    const voucherNo = await generateBankPaymentVoucher();
+
+    const payment = await prisma.$transaction(async (tx) => {
+      const data = await tx.bankPayment.create({
+        data: {
+          companyId: Number(companyId),
+          financialYearId: Number(financialYearId),
+
+          voucherNo,
+          type: "BP",
+          date: new Date(date),
+
+          bankAccountId: Number(bankAccountId),
+          oppAccountId: Number(oppAccountId),
+
+          purchaseId: purchaseId ? Number(purchaseId) : null,
+
+          amount: Number(amount),
+          narration,
+          paymentMode,
+          chequeNo,
+          chequeDate: chequeDate ? new Date(chequeDate) : null,
+          clearDate: clearDate ? new Date(clearDate) : null,
+
+          createdBy: name,
+          createdType: role,
+          branchId: role === "BRANCH" ? Number(user.branchId) : null,
+        },
+      });
+
+      await tx.account.update({
+        where: { id: Number(bankAccountId) },
+        data: { closingBalance: { decrement: Number(amount) } },
+      });
+
+      await tx.account.update({
+        where: { id: Number(oppAccountId) },
+        data: { closingBalance: { increment: Number(amount) } },
+      });
+
+      return data;
+    });
+
+    res.status(201).json(payment);
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      message: "Unable to create Bank Payment",
     });
   }
 };
@@ -95,107 +186,8 @@ export const getBankPaymentVoucher = async (
     });
   }
 };
-export const createBankPayment = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const {
-      companyId,
-      financialYearId,
-      date,
-      bankAccountId,
-      oppAccountId,
-      purchaseId,
-      amount,
-      narration,
-      paymentMode,
-      chequeNo,
-      chequeDate,
-      clearDate,
-    } = req.body;
 
-    const voucherNo = await generateBankPaymentVoucher();
 
-    const role = (req as any).user?.role || "Admin";
-    const name = (req as any).user?.name || "Admin";
-
-    const payment = await prisma.$transaction(async (tx) => {
-      const data = await tx.bankPayment.create({
-        data: {
-          companyId: Number(companyId),
-          financialYearId: Number(financialYearId),
-
-          voucherNo,
-
-          type: "BP",
-
-          date: new Date(date),
-
-          bankAccountId: Number(bankAccountId),
-
-          oppAccountId: Number(oppAccountId),
-
-          purchaseId: purchaseId
-            ? Number(purchaseId)
-            : null,
-
-          amount: Number(amount),
-
-          narration,
-
-          paymentMode,
-
-          chequeNo,
-
-          chequeDate: chequeDate
-            ? new Date(chequeDate)
-            : null,
-
-          clearDate: clearDate
-            ? new Date(clearDate)
-            : null,
-
-          createdBy: name,
-
-          createdType: role,
-        },
-      });
-
-      await tx.account.update({
-        where: {
-          id: Number(bankAccountId),
-        },
-        data: {
-          closingBalance: {
-            decrement: Number(amount),
-          },
-        },
-      });
-
-      await tx.account.update({
-        where: {
-          id: Number(oppAccountId),
-        },
-        data: {
-          closingBalance: {
-            increment: Number(amount),
-          },
-        },
-      });
-
-      return data;
-    });
-
-    res.status(201).json(payment);
-  } catch (err) {
-    console.log(err);
-
-    res.status(500).json({
-      message: "Unable to create Bank Payment",
-    });
-  }
-};
 export const updateBankPayment = async (
   req: Request,
   res: Response

@@ -5,12 +5,18 @@ import ExcelJS from "exceljs";
 // ==========================
 // Get All Cash Payments
 // ==========================
-export const getcashReceipt = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getcashReceipt = async (req: Request, res: Response): Promise<void> => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    const whereClause: any = {};
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
     const cashReceipts = await prisma.cashReceipt.findMany({
+      where: whereClause,
       orderBy: {
         id: "desc",
       },
@@ -29,18 +35,6 @@ export const getcashReceipt = async (
             mobile: true,
           },
         },
-        // purchase: {
-        //   select: {
-        //     id: true,
-        //     billNo: true,
-        //   },
-        // },
-        // lead: {
-        //   select: {
-        //     id: true,
-        //     leadNo: true,
-        //   },
-        // },
       },
     });
 
@@ -48,34 +42,34 @@ export const getcashReceipt = async (
   } catch (error) {
     console.log(error);
     res.status(500).json({
-   message: "Failed to fetch cash receipts"
+      message: "Failed to fetch cash receipts",
     });
   }
 };
 
-// ==========================
-// Get Single Cash Payment
-// ==========================
-export const getcashReceiptById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getcashReceiptById = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = Number(req.params.id);
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
 
-    const payment = await prisma.cashReceipt.findUnique({
-      where: { id },
+    const whereClause: any = { id };
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    const payment = await prisma.cashReceipt.findFirst({
+      where: whereClause,
       include: {
         cashAccount: true,
         oppAccount: true,
-        // purchase: true,
         lead: true,
       },
     });
 
     if (!payment) {
       res.status(404).json({
-      message: "Cash Receipt not found"
+        message: "Cash Receipt not found",
       });
       return;
     }
@@ -89,49 +83,7 @@ export const getcashReceiptById = async (
   }
 };
 
-// ==========================
-// Generate Voucher Number
-// ==========================
-// export const generateCashReceiptVoucher = async (
-//   req: Request,
-//   res: Response
-// ): Promise<void> => {
-//   try {
-//     const lastVoucher = await prisma.cashPayment.findFirst({
-//       orderBy: {
-//         id: "desc",
-//       },
-//     });
-
-//     let nextNumber = 1;
-
-//     if (lastVoucher) {
-//       const parts = lastVoucher.voucherNo.split("/");
-//       nextNumber = Number(parts[2]) + 1;
-//     }
-
-//     const voucherNo = `CP/26-27/${String(nextNumber).padStart(3, "0")}`;
-
-//     res.json({
-//       voucherNo,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     res.status(500).json({
-//       message: "Unable to generate voucher number",
-//     });
-//   }
-// };
-
-// ==========================
-// Create Cash Payment
-// ==========================
-
-
-export const createCashReceipt = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const createCashReceipt = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       companyId,
@@ -142,20 +94,27 @@ export const createCashReceipt = async (
       leadId,
       amount,
       narration,
-      type,
     } = req.body;
 
- if (!financialYearId) {
-  res.status(400).json({
-    message: "Financial Year is required",
-  });
-  return;
-}
+    if (!financialYearId) {
+      res.status(400).json({
+        message: "Financial Year is required",
+      });
+      return;
+    }
+
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
+    if (role === "BRANCH" && !user?.branchId) {
+      res.status(400).json({
+        success: false,
+        message: "Branch ID missing from token — cannot create cash receipt",
+      });
+      return;
+    }
 
     const voucherNo = await generateCashReceiptVoucher();
-
-    const role = (req as any).user?.role;
-    const name = (req as any).user?.name;
 
     const receipt = await prisma.$transaction(async (tx) => {
       const data = await tx.cashReceipt.create({
@@ -171,32 +130,19 @@ export const createCashReceipt = async (
           amount: Number(amount),
           narration,
           createdType: role,
-          createdBy: name,
+          createdBy: user?.name,
+          branchId: role === "BRANCH" ? Number(user.branchId) : null,
         },
       });
 
-      // Cash Account Increase
       await tx.account.update({
-        where: {
-          id: Number(cashAccountId),
-        },
-        data: {
-          closingBalance: {
-            increment: Number(amount),
-          },
-        },
+        where: { id: Number(cashAccountId) },
+        data: { closingBalance: { increment: Number(amount) } },
       });
 
-      // Opposite Account Decrease
       await tx.account.update({
-        where: {
-          id: Number(oppAccountId),
-        },
-        data: {
-          closingBalance: {
-            decrement: Number(amount),
-          },
-        },
+        where: { id: Number(oppAccountId) },
+        data: { closingBalance: { decrement: Number(amount) } },
       });
 
       return data;
