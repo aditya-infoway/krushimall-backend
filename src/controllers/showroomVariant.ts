@@ -106,10 +106,14 @@ export const getShowroomVariants = async (
   try {
     const variants =
       await prisma.showroomVariant.findMany({
-        include: {
-          model: true,
-          accessories: true,
-        },
+       include: {
+  model: true,
+  accessories: {
+    include: {
+      accessory: true,
+    },
+  },
+},
 
         orderBy: {
           id: "desc",
@@ -143,10 +147,14 @@ export const getShowroomVariantById =
             id: Number(req.params.id),
           },
 
-          include: {
-            accessories: true,
-            model: true,
-          },
+       include: {
+  model: true,
+  accessories: {
+    include: {
+      accessory: true,
+    },
+  },
+},
         });
 
       if (!variant) {
