@@ -22,11 +22,65 @@ export const createLead = async (req: Request, res: Response) => {
       createdType: role,
       createdBy: user?.name,
       branchId: role === "BRANCH" ? Number(user.branchId) : null,
-    
 
-      
-        companyId: Number(req.body.companyId),
-  financialYearId: Number(req.body.financialYearId),
+      companyId: Number(req.body.companyId),
+      financialYearId: Number(req.body.financialYearId),
+      // ========================
+// FINANCE DETAILS
+// ========================
+
+financeDoneBy:
+  req.body.purchaseType === "Finance"
+    ? req.body.financeDoneBy || null
+    : null,
+
+financeAmount:
+  req.body.purchaseType === "Finance" &&
+  req.body.financeAmount !== "" &&
+  req.body.financeAmount !== null &&
+  req.body.financeAmount !== undefined
+    ? Number(req.body.financeAmount)
+    : null,
+
+emi:
+  req.body.purchaseType === "Finance" &&
+  req.body.emi !== "" &&
+  req.body.emi !== null &&
+  req.body.emi !== undefined
+    ? Number(req.body.emi)
+    : null,
+
+tenureMonths:
+  req.body.purchaseType === "Finance" &&
+  req.body.tenureMonths !== "" &&
+  req.body.tenureMonths !== null &&
+  req.body.tenureMonths !== undefined
+    ? Number(req.body.tenureMonths)
+    : null,
+
+processingCharge:
+  req.body.purchaseType === "Finance" &&
+  req.body.processingCharge !== "" &&
+  req.body.processingCharge !== null &&
+  req.body.processingCharge !== undefined
+    ? Number(req.body.processingCharge)
+    : null,
+
+loanROI:
+  req.body.purchaseType === "Finance" &&
+  req.body.loanROI !== "" &&
+  req.body.loanROI !== null &&
+  req.body.loanROI !== undefined
+    ? Number(req.body.loanROI)
+    : null,
+
+marginMoney:
+  req.body.purchaseType === "Finance" &&
+  req.body.marginMoney !== "" &&
+  req.body.marginMoney !== null &&
+  req.body.marginMoney !== undefined
+    ? Number(req.body.marginMoney)
+    : null,
       showroomVariantId: req.body.showroomVariantId
         ? Number(req.body.showroomVariantId)
         : null,
@@ -123,97 +177,95 @@ export const createLead = async (req: Request, res: Response) => {
     const lead = await prisma.lead.create({
       data,
     });
-if (
-  req.body.advancePayment &&
-  Number(req.body.listOfBooking) > 0 &&
-  req.body.selectAccount
-) {
-  const amount = Number(req.body.listOfBooking);
+    if (
+      req.body.advancePayment &&
+      Number(req.body.listOfBooking) > 0 &&
+      req.body.selectAccount
+    ) {
+      const amount = Number(req.body.listOfBooking);
 
-  if (req.body.paymentMode === "CASH") {
-  
-    await prisma.cashReceipt.create({
-      
-      data: {
-        voucherNo: await generateCashReceiptVoucher(),
-        date: new Date(),
-        companyId: Number(req.body.companyId),
-        financialYearId: Number(req.body.financialYearId),
+      if (req.body.paymentMode === "CASH") {
+        await prisma.cashReceipt.create({
+          data: {
+            voucherNo: await generateCashReceiptVoucher(),
+            date: new Date(),
+            companyId: Number(req.body.companyId),
+            financialYearId: Number(req.body.financialYearId),
 
-        cashAccountId: Number(req.body.selectAccount),
-        oppAccountId: Number(req.body.customerId),
+            cashAccountId: Number(req.body.selectAccount),
+            oppAccountId: Number(req.body.customerId),
 
-        leadId: lead.id,
+            leadId: lead.id,
 
-        amount,
-        narration: req.body.narration,
+            amount,
+            narration: req.body.narration,
 
-        type: "LCR", // ✅ Lead Cash Receipt
+            type: "LCR", // ✅ Lead Cash Receipt
 
-        createdType: (req as any).user?.role,
-        createdBy: (req as any).user?.name,
-      },
-    });
+            createdType: (req as any).user?.role,
+            createdBy: (req as any).user?.name,
+          },
+        });
 
-    await prisma.account.update({
-      where: {
-        id: Number(req.body.selectAccount),
-      },
-      data: {
-        closingBalance: {
-          increment: amount,
-        },
-      },
-    });
-  }
+        await prisma.account.update({
+          where: {
+            id: Number(req.body.selectAccount),
+          },
+          data: {
+            closingBalance: {
+              increment: amount,
+            },
+          },
+        });
+      }
 
-  if (req.body.paymentMode === "BANK") {
-   await prisma.bankReceipt.create({
-  data: {
-    voucherNo: await generateBankReceiptVoucher(),
-    date: new Date(),
+      if (req.body.paymentMode === "BANK") {
+        await prisma.bankReceipt.create({
+          data: {
+            voucherNo: await generateBankReceiptVoucher(),
+            date: new Date(),
 
-    companyId: Number(req.body.companyId),
-    financialYearId: Number(req.body.financialYearId),
+            companyId: Number(req.body.companyId),
+            financialYearId: Number(req.body.financialYearId),
 
-    bankAccountId: Number(req.body.selectAccount),
-    oppAccountId: Number(req.body.customerId),
+            bankAccountId: Number(req.body.selectAccount),
+            oppAccountId: Number(req.body.customerId),
 
-    leadId: lead.id,
+            leadId: lead.id,
 
-    amount,
+            amount,
 
-    paymentType: req.body.bankMode || "UPI",
+            paymentType: req.body.bankMode || "UPI",
 
-    chequeNo: req.body.chequeNo || null,
-    chequeDate: req.body.chequeDate
-      ? new Date(req.body.chequeDate)
-      : null,
-    chequeClearDate: req.body.chequeClearDate
-      ? new Date(req.body.chequeClearDate)
-      : null,
+            chequeNo: req.body.chequeNo || null,
+            chequeDate: req.body.chequeDate
+              ? new Date(req.body.chequeDate)
+              : null,
+            chequeClearDate: req.body.chequeClearDate
+              ? new Date(req.body.chequeClearDate)
+              : null,
 
-    narration: req.body.narration,
+            narration: req.body.narration,
 
-    type: "LBR",
+            type: "LBR",
 
-    createdType: (req as any).user?.role,
-    createdBy: (req as any).user?.name,
-  },
-});
+            createdType: (req as any).user?.role,
+            createdBy: (req as any).user?.name,
+          },
+        });
 
-    await prisma.account.update({
-      where: {
-        id: Number(req.body.selectAccount),
-      },
-      data: {
-        closingBalance: {
-          increment: amount,
-        },
-      },
-    });
-  }
-}
+        await prisma.account.update({
+          where: {
+            id: Number(req.body.selectAccount),
+          },
+          data: {
+            closingBalance: {
+              increment: amount,
+            },
+          },
+        });
+      }
+    }
     return res.status(201).json({
       success: true,
       data: lead,
@@ -246,7 +298,6 @@ export const getLeads = async (req: Request, res: Response) => {
       include: {
         customer: true,
         model: true,
-        showroomVariant: true,
         colour: true,
         executive: true,
         profession: true,
@@ -254,11 +305,22 @@ export const getLeads = async (req: Request, res: Response) => {
         enquirySourceMaster: true,
         enquiryStatus: true,
         account: true,
+
+        showroomVariant: {
+          include: {
+            accessories: {
+              include: {
+                accessory: true,
+              },
+            },
+          },
+        },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
-  
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -319,7 +381,15 @@ export const getLeadById = async (req: Request, res: Response) => {
     include: {
       customer: true,
       model: true,
-      showroomVariant: true,
+      showroomVariant: {
+        include: {
+          accessories: {
+            include: {
+              accessory: true,
+            },
+          },
+        },
+      },
       colour: true,
       executive: true,
     },
@@ -341,7 +411,15 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
       include: {
         customer: true,
         model: true,
-        showroomVariant: true,
+        showroomVariant: {
+          include: {
+            accessories: {
+              include: {
+                accessory: true,
+              },
+            },
+          },
+        },
         colour: true,
         executive: true,
         profession: true,
@@ -368,15 +446,113 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
         }) || "0.00"
       );
     };
+    const latestQuotationHistory = await prisma.quotationHistory.findFirst({
+      where: {
+        leadId,
+      },
 
+      orderBy: {
+        revisionNo: "desc",
+      },
+    });
     // Calculate totals from lead data or use default values
-    const exShowroomPrice = lead.showroomVariant?.exShowroomPrice ?? 0;
+    // EX-SHOWROOM
 
-    const insurance = lead.showroomVariant?.insurance ?? 0;
+    const exShowroomTaxable =
+      Number(lead.showroomVariant?.exShowroomPrice) || 0;
 
-    const rtoCharge = lead.showroomVariant?.rtoCharge ?? 0;
+    const exShowroomTaxPercent =
+      Number(lead.showroomVariant?.exShowroomTaxPercent) || 0;
 
-    const total = exShowroomPrice + insurance + rtoCharge;
+    const exShowroomTaxAmount =
+      (exShowroomTaxable * exShowroomTaxPercent) / 100;
+
+    const exShowroomTotal = exShowroomTaxable + exShowroomTaxAmount;
+
+    // INSURANCE
+
+    const insuranceTaxable = Number(lead.showroomVariant?.insurance) || 0;
+
+    const insuranceTaxPercent =
+      Number(lead.showroomVariant?.insuranceTaxPercent) || 0;
+
+    const insuranceTaxAmount = (insuranceTaxable * insuranceTaxPercent) / 100;
+
+    const insuranceTotal = insuranceTaxable + insuranceTaxAmount;
+
+    // RTO
+
+    const rtoTaxable = Number(lead.showroomVariant?.rtoCharge) || 0;
+
+    const rtoTaxPercent = Number(lead.showroomVariant?.rtoTaxPercent) || 0;
+
+    const rtoTaxAmount = (rtoTaxable * rtoTaxPercent) / 100;
+
+    const rtoTotal = rtoTaxable + rtoTaxAmount;
+
+    // ACCESSORIES
+
+    // ACCESSORIES
+
+    // ====================================
+    // ONLY TOGGLE-ON ACCESSORIES
+    // ====================================
+
+    const selectedAccessories = latestQuotationHistory
+      ? Array.isArray(latestQuotationHistory.selectedAccessories)
+        ? latestQuotationHistory.selectedAccessories
+        : []
+      : (lead.showroomVariant?.accessories || []).map((item) => ({
+          id: item.id,
+
+          accessoryId: item.accessoryId,
+
+          name: item.accessory?.itemName || "Accessory",
+
+          qty: Number(item.qty) || 1,
+
+          price: Number(item.price) || 0,
+
+          taxPercent: Number(item.taxPercent) || 0,
+
+          totalPrice: Number(item.totalPrice) || 0,
+        }));
+
+    // Calculate only selected accessories
+    const accessoriesTotal = selectedAccessories.reduce(
+      (sum: number, item: any) => {
+        return sum + (Number(item.totalPrice) || 0);
+      },
+      0,
+    );
+
+    // Generate rows only for selected accessories
+    const accessoryRows = selectedAccessories
+      .map((item: any) => {
+        const accessoryName = item.name || "Accessory";
+
+        const qty = Number(item.qty) || 1;
+
+        const accessoryTotal = Number(item.totalPrice) || 0;
+
+        return `
+        <tr>
+          <td>
+            ${accessoryName}
+            ${qty > 1 ? ` × ${qty}` : ""}
+          </td>
+
+          <td align="right">
+            ${formatCurrency(accessoryTotal)}
+          </td>
+        </tr>
+      `;
+      })
+      .join("");
+    // FINAL TOTAL
+
+    const total =
+      exShowroomTotal + insuranceTotal + rtoTotal + accessoriesTotal;
 
     // Convert number to words (Indian format)
     const numberToWords = (num: number) => {
@@ -493,6 +669,7 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
 .company-right {
   width: 20%;
   text-align: center;
+   margin-top: 10px;
 }
 
 .company-logo {
@@ -670,29 +847,56 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
             color: #000000;
           }
           
-          /* Terms & Conditions */
-          .terms {
-            margin: 10px 0;
-            padding: 10px 12px;
-            border: 1px solid #cccccc;
-            background: #f9f9f9;
-            font-size: 9pt;
-            font-family: 'Arial', sans-serif;
-          }
-          .terms strong {
-            color: #000000;
-            font-size: 10pt;
-          }
-          .terms ul {
-            margin-left: 18px;
-            margin-top: 3px;
-            list-style-type: disc;
-          }
-          .terms li {
-            margin: 1px 0;
-            color: #333333;
-          }
-          
+        .quotation-terms {
+  padding: 8px 12px !important;
+  vertical-align: top;
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.quotation-terms ol {
+  margin: 0;
+  padding-left: 20px;
+  list-style-position: outside;
+}
+
+.quotation-terms ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style-position: outside;
+}
+
+.quotation-terms li {
+  margin: 2px 0;
+  padding-left: 2px;
+  font-weight: normal;
+}
+
+.quotation-terms li p {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+.quotation-terms p {
+  margin: 2px 0;
+  font-weight: normal;
+}
+
+.quotation-terms strong {
+  font-weight: bold;
+}
+
+.quotation-terms em {
+  font-style: italic;
+}
+
+.quotation-terms u {
+  text-decoration: underline;
+}
           /* Signatures */
           .signature-section {
             margin-top: 25px;
@@ -799,7 +1003,7 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
     </div>
 
     <div class="company-details">
-      Email: ${company || ""}
+      Email: ${company?.email || ""}
     </div>
 
     <div class="company-details">
@@ -808,11 +1012,16 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
   </div>
 
   <div class="company-right">
-    ${
-      company?.logo
-        ? `<img src="http://localhost:5000/uploads/${company.logo}" class="company-logo" />`
-        : ""
-    }
+  ${
+  company?.logo
+    ? `
+      <img
+         src="http://127.0.0.1:5000/uploads/${company.logo}"
+        class="company-logo"
+      />
+    `
+    : ""
+}
   </div>
 
 </div>
@@ -831,7 +1040,13 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
 
   <tr>
     <td><b>Quotation No</b></td>
-    <td>${lead.quotationNo || ""}</td>
+   <td>
+  ${
+    Number(lead.quotationRevision) > 0
+      ? `${lead.quotationNo}/R${lead.quotationRevision}`
+      : lead.quotationNo || ""
+  }
+</td>
     <td><b>Name</b></td>
     <td>${lead.customer?.accountName || "Danish pastel"}</td>
   </tr>
@@ -886,19 +1101,19 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
   </tr>
 <tr>
   <td>EX-showroom price</td>
-  <td align="right">${formatCurrency(exShowroomPrice)}</td>
+  <td align="right">${formatCurrency(exShowroomTotal)}</td>
 </tr>
 
 <tr>
   <td>Insurance</td>
-  <td align="right">${formatCurrency(insurance)}</td>
+  <td align="right">${formatCurrency(insuranceTotal)}</td>
 </tr>
 
 <tr>
   <td>RTO Charge</td>
-  <td align="right">${formatCurrency(rtoCharge)}</td>
+  <td align="right">${formatCurrency(rtoTotal)}</td>
 </tr>
-
+  ${accessoryRows}
   <tr>
     <td><b>Total</b></td>
     <td align="right">
@@ -917,22 +1132,22 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
 
   <tr>
     <td class="payment-label">Account Holder</td>
-    <td>${lead.account?.accountName || ""}</td>
+    <td>${company?.bankHolderName || ""}</td>
   </tr>
 
   <tr>
     <td class="payment-label">Bank</td>
-    <td>${lead.account?.bankName || ""}</td>
+     <td>${company?.bankName || ""}</td>
   </tr>
 
   <tr>
     <td class="payment-label">Account Number</td>
-    <td>${lead.account?.bankAccountNo || ""}</td>
+    <td>${company?.accountNumber || ""}</td>
   </tr>
 
   <tr>
     <td class="payment-label">IFSC</td>
-    <td>${lead.account?.ifscCode || ""}</td>
+  <td>${company?.ifscCode || ""}</td>
   </tr>
 </table>
         <!-- Payable Amount in Words -->
@@ -960,13 +1175,15 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
   </tr>
 
   <tr>
-    <td colspan="2" style="height:40px; vertical-align:top;">
-      1. This is a system generated quotation/invoice.<br>
-      2. Subject to Jalgaon jurisdiction.<br>
-      3. All disputes subject to Jalgaon court only.<br>
-      4. Goods once sold will not be taken back.<br>
-      5. Interest @ 18% p.a. will be charged on delayed payments.
-    </td>
+   <td
+    colspan="2"
+    class="quotation-terms"
+  >
+    ${
+      company?.quotationTerms ||
+      "<p>No quotation terms and conditions added.</p>"
+    }
+  </td>
   </tr>
 </table>
 
@@ -1056,3 +1273,207 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
 //   <td>RTO Registration Charges</td>
 //   <td align="right">${formatCurrency(rtoRegistrationCharges)}</td>
 // </tr>
+export const updateQuotation = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const leadId = Number(req.params.id);
+
+    const {
+      modelId,
+      showroomVariantId,
+      colourId,
+      selectedAccessories = [],
+    } = req.body;
+
+    if (!leadId || !modelId || !showroomVariantId || !colourId) {
+      res.status(400).json({
+        success: false,
+        message: "Model, showroom variant and colour are required",
+      });
+      return;
+    }
+
+    // Get existing lead
+    const existingLead = await prisma.lead.findUnique({
+      where: {
+        id: leadId,
+      },
+    });
+
+    if (!existingLead) {
+      res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+      return;
+    }
+
+    // Get selected showroom variant
+    const selectedShowroomVariant = await prisma.showroomVariant.findUnique({
+      where: {
+        id: Number(showroomVariantId),
+      },
+    });
+
+    if (!selectedShowroomVariant) {
+      res.status(404).json({
+        success: false,
+        message: "Showroom variant not found",
+      });
+      return;
+    }
+
+    // R1 → R2 → R3
+    const nextRevision = (existingLead.quotationRevision || 0) + 1;
+
+    // =========================
+    // EX-SHOWROOM WITH TAX
+    // =========================
+
+    const exShowroomTaxable =
+      Number(selectedShowroomVariant.exShowroomPrice) || 0;
+
+    const exShowroomTaxPercent =
+      Number(selectedShowroomVariant.exShowroomTaxPercent) || 0;
+
+    const exShowroomAmount =
+      exShowroomTaxable + (exShowroomTaxable * exShowroomTaxPercent) / 100;
+
+    // =========================
+    // INSURANCE WITH TAX
+    // =========================
+
+    const insuranceTaxable = Number(selectedShowroomVariant.insurance) || 0;
+
+    const insuranceTaxPercent =
+      Number(selectedShowroomVariant.insuranceTaxPercent) || 0;
+
+    const insuranceAmount =
+      insuranceTaxable + (insuranceTaxable * insuranceTaxPercent) / 100;
+
+    // =========================
+    // RTO WITH TAX
+    // =========================
+
+    const rtoTaxable = Number(selectedShowroomVariant.rtoCharge) || 0;
+
+    const rtoTaxPercent = Number(selectedShowroomVariant.rtoTaxPercent) || 0;
+
+    const rtoAmount = rtoTaxable + (rtoTaxable * rtoTaxPercent) / 100;
+
+    // =========================
+    // ONLY TOGGLE-ON ACCESSORIES
+    // =========================
+
+    const accessoriesAmount = selectedAccessories.reduce(
+      (sum: number, item: any) => {
+        return sum + (Number(item.totalPrice) || 0);
+      },
+      0,
+    );
+
+    // =========================
+    // GRAND TOTAL
+    // =========================
+
+    const grandTotal =
+      exShowroomAmount + insuranceAmount + rtoAmount + accessoriesAmount;
+
+    // Update Lead + save history together
+    const result = await prisma.$transaction(async (tx) => {
+      // Update current quotation values
+      const updatedLead = await tx.lead.update({
+        where: {
+          id: leadId,
+        },
+
+        data: {
+          modelId: Number(modelId),
+
+          showroomVariantId: Number(showroomVariantId),
+
+          colourId: Number(colourId),
+
+          quotationRevision: nextRevision,
+        },
+
+        include: {
+          customer: true,
+          model: true,
+          colour: true,
+
+          showroomVariant: {
+            include: {
+              accessories: {
+                include: {
+                  accessory: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Save R1/R2/R3 history
+      const history = await tx.quotationHistory.create({
+        data: {
+          leadId,
+
+          quotationNo: existingLead.quotationNo || "",
+
+          revisionNo: nextRevision,
+
+          modelId: Number(modelId),
+
+          showroomVariantId: Number(showroomVariantId),
+
+          colourId: Number(colourId),
+
+          exShowroomAmount,
+
+          insuranceAmount,
+
+          rtoAmount,
+
+          accessoriesAmount,
+
+          grandTotal,
+
+          // Only ON accessories
+          selectedAccessories,
+
+          updatedBy: (req as any).user?.name || null,
+        },
+      });
+
+      return {
+        updatedLead,
+        history,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+
+      message: `Quotation updated successfully to R${nextRevision}`,
+
+      quotationDisplayNo: `${existingLead.quotationNo}/R${nextRevision}`,
+
+      data: result.updatedLead,
+
+      history: result.history,
+    });
+  } catch (error) {
+    console.error("UPDATE QUOTATION ERROR:", error);
+
+    res.status(500).json({
+      success: false,
+
+      message: "Failed to update quotation",
+
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+};

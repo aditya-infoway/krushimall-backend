@@ -19,6 +19,10 @@ export const createCompany = async (
         data: {
            companyName : req.body.companyName,
              logo: req.file?.filename || null,
+               email: req.body.email,
+    accountNumber: req.body.accountNumber,
+        quotationTerms:
+      req.body.quotationTerms || null,
           country: req.body.country,
           state: req.body.state,
           stateCode: req.body.stateCode,
@@ -116,7 +120,10 @@ export const updateCompany = async (
         companyName: req.body.companyName,
 
         ...(logo && { logo }),
-
+  email: req.body.email,
+  accountNumber: req.body.accountNumber,
+      quotationTerms:
+      req.body.quotationTerms || null,
         country: req.body.country,
         state: req.body.state,
         stateCode: req.body.stateCode,
