@@ -26,61 +26,61 @@ export const createLead = async (req: Request, res: Response) => {
       companyId: Number(req.body.companyId),
       financialYearId: Number(req.body.financialYearId),
       // ========================
-// FINANCE DETAILS
-// ========================
+      // FINANCE DETAILS
+      // ========================
 
-financeDoneBy:
-  req.body.purchaseType === "Finance"
-    ? req.body.financeDoneBy || null
-    : null,
+      financeDoneBy:
+        req.body.purchaseType === "Finance"
+          ? req.body.financeDoneBy || null
+          : null,
 
-financeAmount:
-  req.body.purchaseType === "Finance" &&
-  req.body.financeAmount !== "" &&
-  req.body.financeAmount !== null &&
-  req.body.financeAmount !== undefined
-    ? Number(req.body.financeAmount)
-    : null,
+      financeAmount:
+        req.body.purchaseType === "Finance" &&
+        req.body.financeAmount !== "" &&
+        req.body.financeAmount !== null &&
+        req.body.financeAmount !== undefined
+          ? Number(req.body.financeAmount)
+          : null,
 
-emi:
-  req.body.purchaseType === "Finance" &&
-  req.body.emi !== "" &&
-  req.body.emi !== null &&
-  req.body.emi !== undefined
-    ? Number(req.body.emi)
-    : null,
+      emi:
+        req.body.purchaseType === "Finance" &&
+        req.body.emi !== "" &&
+        req.body.emi !== null &&
+        req.body.emi !== undefined
+          ? Number(req.body.emi)
+          : null,
 
-tenureMonths:
-  req.body.purchaseType === "Finance" &&
-  req.body.tenureMonths !== "" &&
-  req.body.tenureMonths !== null &&
-  req.body.tenureMonths !== undefined
-    ? Number(req.body.tenureMonths)
-    : null,
+      tenureMonths:
+        req.body.purchaseType === "Finance" &&
+        req.body.tenureMonths !== "" &&
+        req.body.tenureMonths !== null &&
+        req.body.tenureMonths !== undefined
+          ? Number(req.body.tenureMonths)
+          : null,
 
-processingCharge:
-  req.body.purchaseType === "Finance" &&
-  req.body.processingCharge !== "" &&
-  req.body.processingCharge !== null &&
-  req.body.processingCharge !== undefined
-    ? Number(req.body.processingCharge)
-    : null,
+      processingCharge:
+        req.body.purchaseType === "Finance" &&
+        req.body.processingCharge !== "" &&
+        req.body.processingCharge !== null &&
+        req.body.processingCharge !== undefined
+          ? Number(req.body.processingCharge)
+          : null,
 
-loanROI:
-  req.body.purchaseType === "Finance" &&
-  req.body.loanROI !== "" &&
-  req.body.loanROI !== null &&
-  req.body.loanROI !== undefined
-    ? Number(req.body.loanROI)
-    : null,
+      loanROI:
+        req.body.purchaseType === "Finance" &&
+        req.body.loanROI !== "" &&
+        req.body.loanROI !== null &&
+        req.body.loanROI !== undefined
+          ? Number(req.body.loanROI)
+          : null,
 
-marginMoney:
-  req.body.purchaseType === "Finance" &&
-  req.body.marginMoney !== "" &&
-  req.body.marginMoney !== null &&
-  req.body.marginMoney !== undefined
-    ? Number(req.body.marginMoney)
-    : null,
+      marginMoney:
+        req.body.purchaseType === "Finance" &&
+        req.body.marginMoney !== "" &&
+        req.body.marginMoney !== null &&
+        req.body.marginMoney !== undefined
+          ? Number(req.body.marginMoney)
+          : null,
       showroomVariantId: req.body.showroomVariantId
         ? Number(req.body.showroomVariantId)
         : null,
@@ -1013,15 +1013,15 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
 
   <div class="company-right">
   ${
-  company?.logo
-    ? `
+    company?.logo
+      ? `
       <img
          src="http://127.0.0.1:5000/uploads/${company.logo}"
         class="company-logo"
       />
     `
-    : ""
-}
+      : ""
+  }
   </div>
 
 </div>
