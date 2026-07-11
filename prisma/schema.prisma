@@ -750,6 +750,10 @@ model FollowUp {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   followupCount        Int       @default(0)
+
+  createdType String?   
+  createdBy   String? 
+
   lead                 Lead      @relation(fields: [leadId], references: [id])
 }
 
@@ -1079,6 +1083,8 @@ model Branch {
   branchCode String @unique
   branchName String
   branchType String
+
+  logo String? 
 
   managerId Int
   manager   Account @relation("BranchManager", fields: [managerId], references: [id])
