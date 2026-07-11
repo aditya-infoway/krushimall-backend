@@ -32,9 +32,9 @@ model Company {
   stateCode             String
   district              String
   city                  String
-   email         String?
-  accountNumber String?
-    quotationTerms String? @db.Text
+  email                 String?
+  accountNumber         String?
+  quotationTerms        String?                @db.Text
   pincode               String
   addressLine1          String
   addressLine2          String?
@@ -59,6 +59,7 @@ model Company {
   leads                 Lead[]
   branches              Branch[]
   vehicleStockTransfers VehicleStockTransfer[]
+  orders                Order[]
 }
 
 model FinancialYear {
@@ -79,6 +80,7 @@ model FinancialYear {
   leads                 Lead[]
   branches              Branch[]
   vehicleStockTransfers VehicleStockTransfer[]
+  orders                Order[]
 
   @@unique([companyId, financialYear])
 }
@@ -410,22 +412,25 @@ model Account {
 
   cashAccessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseCash")
 
-  bankAccessoriesPurchases AccessoriesPurchase[]  @relation("AccessoriesPurchaseBank")
-  bankReceiptBankAccounts  BankReceipt[]          @relation("BankReceiptBankAccount")
-  bankReceiptOppAccounts   BankReceipt[]          @relation("BankReceiptOppAccount")
+  bankAccessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseBank")
+  bankReceiptBankAccounts  BankReceipt[]         @relation("BankReceiptBankAccount")
+  bankReceiptOppAccounts   BankReceipt[]         @relation("BankReceiptOppAccount")
   Purchase                 Purchase[]
-  purchaseCash             Purchase[]             @relation("PurchaseCash")
-  purchaseBankAccounts     Purchase[]             @relation("PurchaseBank")
-  cashPayments             CashPayment[]          @relation("CashPaymentCashAccount")
-  oppPayments              CashPayment[]          @relation("CashPaymentOppAccount")
-  bankPayments             BankPayment[]          @relation("BankPaymentBankAccount")
-  oppBankPayments          BankPayment[]          @relation("BankPaymentOppAccount")
-  contraCashBankAccounts   Contra[]               @relation("ContraCashBankAccount")
-  contraOppAccounts        Contra[]               @relation("ContraOppAccount")
-  cashReceiptsCash         CashReceipt[]          @relation("CashReceiptCash")
-  cashReceiptsOpp          CashReceipt[]          @relation("CashReceiptOpp")
-  branches                 Branch[]               @relation("BranchManager")
-  vehicleStockTransfers    VehicleStockTransfer[]
+  purchaseCash             Purchase[]            @relation("PurchaseCash")
+  purchaseBankAccounts     Purchase[]            @relation("PurchaseBank")
+  cashPayments             CashPayment[]         @relation("CashPaymentCashAccount")
+  oppPayments              CashPayment[]         @relation("CashPaymentOppAccount")
+  bankPayments             BankPayment[]         @relation("BankPaymentBankAccount")
+  oppBankPayments          BankPayment[]         @relation("BankPaymentOppAccount")
+  contraCashBankAccounts   Contra[]              @relation("ContraCashBankAccount")
+  contraOppAccounts        Contra[]              @relation("ContraOppAccount")
+  cashReceiptsCash         CashReceipt[]         @relation("CashReceiptCash")
+  cashReceiptsOpp          CashReceipt[]         @relation("CashReceiptOpp")
+  branches                 Branch[]              @relation("BranchManager")
+  orderCashAccounts        Order[]               @relation("OrderCashAccount")
+
+  orderBankAccounts     Order[]                @relation("OrderBankAccount")
+  vehicleStockTransfers VehicleStockTransfer[]
 
   createdType     String?
   createdBy       String?
@@ -477,10 +482,10 @@ model Finance {
   account   Account @relation(fields: [accountId], references: [id])
 
   employeeName String
-
-  status    String   @default("ACTIVE")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  orders       Order[]
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model EnquiryStatus {
@@ -663,19 +668,19 @@ model Lead {
   customerExpectedPrice   Float?
   marketPrice             Float?
 
-  chassisNo    String?
-  companyShare Float?
-  dealerShares Float?
-  rcNo         String?
-  insurance    Float?
-  vehicleNo    String?
- financeDoneBy   String?
-  financeAmount   Float?
-  emi             Float?
-  tenureMonths    Int?
-  processingCharge Float?
-  loanROI          Float?
-  marginMoney      Float?
+  chassisNo            String?
+  companyShare         Float?
+  dealerShares         Float?
+  rcNo                 String?
+  insurance            Float?
+  vehicleNo            String?
+  financeDoneBy        String?
+  financeAmount        Float?
+  emi                  Float?
+  tenureMonths         Int?
+  processingCharge     Float?
+  loanROI              Float?
+  marginMoney          Float?
   expectedPurchaseDate DateTime?
   expectedDeliveryDate DateTime?
   expectedDeliveryTime String?
@@ -705,12 +710,12 @@ model Lead {
   updatedAt            DateTime  @updatedAt
 
   executiveName     String?
-  followUpStatus    String? @default("New")
+  followUpStatus    String?    @default("New")
   showroomVariantId Int?
-
-  followUps       FollowUp[]
-  companyId       Int?
-  financialYearId Int?
+  order             Order?
+  followUps         FollowUp[]
+  companyId         Int?
+  financialYearId   Int?
 
   createdType String?
   createdBy   String?
@@ -750,6 +755,10 @@ model FollowUp {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   followupCount        Int       @default(0)
+
+  createdType String?   
+  createdBy   String? 
+
   lead                 Lead      @relation(fields: [leadId], references: [id])
 }
 
@@ -1080,6 +1089,8 @@ model Branch {
   branchName String
   branchType String
 
+  logo String? 
+
   managerId Int
   manager   Account @relation("BranchManager", fields: [managerId], references: [id])
 
@@ -1257,4 +1268,134 @@ model QuotationHistory {
 
   @@unique([leadId, revisionNo])
   @@index([leadId])
+}
+
+model Order {
+  id Int @id @default(autoincrement())
+
+  // Company Relation
+  companyId Int
+  company   Company @relation(fields: [companyId], references: [id])
+
+  // Financial Year Relation
+  financialYearId Int
+  financialYear   FinancialYear @relation(fields: [financialYearId], references: [id])
+
+  // Lead Relation
+  leadId Int  @unique
+  lead   Lead @relation(fields: [leadId], references: [id])
+
+  // Vehicle Charges
+  exShowroomPrice       Float @default(0)
+  insurance             Float @default(0)
+  roadSideAssistance    Float @default(0)
+  exWarranty2_3         Float @default(0)
+  hypothecationCharges  Float @default(0)
+  exWarranty2_8         Float @default(0)
+  rtoRegistrationCharge Float @default(0)
+  rtoOtherCharge        Float @default(0)
+
+  // Allotment Details
+  model               String?
+  variant             String?
+  colour              String?
+  chassisNo           String?
+  policyNo            String?
+  nomineeName         String?
+  nomineeDob          DateTime?
+  relationWithNominee String?
+
+  // Hypothecation
+  hypothecationType String?
+
+  // Finance Relation
+  financeDoneBy Int?
+  finance       Finance? @relation(fields: [financeDoneBy], references: [id])
+
+  bankOfFinance    String?
+  financeAmount    Float   @default(0)
+  emi              Float   @default(0)
+  tenureMonths     Int     @default(0)
+  processingCharge Float   @default(0)
+  loanRoi          Float   @default(0)
+  marginMoney      Float   @default(0)
+  paymentStatus    String  @default("pending")
+  assignBy         String?
+
+  // Cash Payment
+  cashAmount Float @default(0)
+
+  // Cash Account Relation
+  cashAccountId Int?
+  cashAccount   Account? @relation("OrderCashAccount", fields: [cashAccountId], references: [id])
+
+  // Bank Payment
+  bankAmount Float @default(0)
+
+  // Bank Account Relation
+  bankAccountId Int?
+  bankAccount   Account? @relation("OrderBankAccount", fields: [bankAccountId], references: [id])
+
+  paymentMode String?
+  chequeNo    String?
+  chequeDate  DateTime?
+  clearDate   DateTime?
+  narration   String?
+
+  // Exchange Details
+  existingCustomerModel   String?
+  existingCustomerVariant String?
+  existingVehicleYear     String?
+  customerExpectedPrice   Float   @default(0)
+  marketPrice             Float   @default(0)
+  exchangeChassisNo       String?
+  companyShare            Float   @default(0)
+  dealerShares            Float   @default(0)
+  rcNo                    String?
+  exchangeInsurance       String?
+  vehicleNo               String?
+
+  // Payment Details
+  discount         Float @default(0)
+  schemeDiscount   Float @default(0)
+  exchangeDiscount Float @default(0)
+  invoiceAmount    Float @default(0)
+  total            Float @default(0)
+  receivedAmount   Float @default(0)
+  pendingAmount    Float @default(0)
+
+  // Broker Details
+  brokerName   String?
+  brokerAmount Float   @default(0)
+
+  // Delivery Challan
+  invoiceBill        Boolean @default(false)
+  accessoriesInvoice Boolean @default(false)
+  serviceBook        Boolean @default(false)
+  insuranceCopy      Boolean @default(false)
+  helmetInvoice      Boolean @default(false)
+  warrantyBook       Boolean @default(false)
+  keychainPouch      Boolean @default(false)
+  allGuard           Boolean @default(false)
+  matting            Boolean @default(false)
+  footrest           Boolean @default(false)
+  helmet             Boolean @default(false)
+  visor              Boolean @default(false)
+  seatCover          Boolean @default(false)
+  bodyCover          Boolean @default(false)
+  mirrorSet          Boolean @default(false)
+  other              Boolean @default(false)
+
+  createdBy   String?
+  createdType String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([financialYearId])
+  @@index([chassisNo])
+  @@index([cashAccountId])
+  @@index([bankAccountId])
+  @@index([financeDoneBy])
 }
