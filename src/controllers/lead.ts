@@ -367,39 +367,105 @@ export const getLeads = async (req: Request, res: Response) => {
     });
   }
 };
-export const getLeadById = async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  const user = (req as any).user;
+export const getLeadById = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const id = Number(req.params.id);
+    const user = (req as any).user;
 
-  const whereClause: any = { id };
-  if (user?.role === "BRANCH") {
-    whereClause.branchId = Number(user.branchId);
-  }
+    const whereClause: any = {
+      id,
+    };
 
-  const lead = await prisma.lead.findFirst({
-    where: whereClause,
-    include: {
-      customer: true,
-      model: true,
-      showroomVariant: {
-        include: {
-          accessories: {
-            include: {
-              accessory: true,
+    if (user?.role === "BRANCH") {
+      whereClause.branchId = Number(
+        user.branchId,
+      );
+    }
+
+    // =========================
+    // GET LEAD
+    // =========================
+
+    const lead = await prisma.lead.findFirst({
+      where: whereClause,
+
+      include: {
+        customer: true,
+
+        model: true,
+
+        showroomVariant: {
+          include: {
+            accessories: {
+              include: {
+                accessory: true,
+              },
             },
           },
         },
+
+        colour: true,
+
+        executive: true,
       },
-      colour: true,
-      executive: true,
-    },
-  });
+    });
 
-  if (!lead) {
-    return res.status(404).json({ success: false, message: "Lead not found" });
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
+
+    // =========================
+    // GET LATEST QUOTATION
+    // =========================
+
+    const latestQuotation =
+      await prisma.quotationHistory.findFirst({
+        where: {
+          leadId: id,
+        },
+
+        orderBy: {
+          revisionNo: "desc",
+        },
+      });
+
+    // =========================
+    // RESPONSE
+    // =========================
+
+    return res.status(200).json({
+      success: true,
+
+      data: {
+        ...lead,
+
+        quotationGrandTotal:
+          latestQuotation?.grandTotal ?? 0,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "GET LEAD BY ID ERROR:",
+      error,
+    );
+
+    return res.status(500).json({
+      success: false,
+
+      message: "Failed to fetch lead",
+
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error",
+    });
   }
-
-  return res.json({ success: true, data: lead });
 };
 export const generateOrderBillPdf = async (req: Request, res: Response) => {
   try {

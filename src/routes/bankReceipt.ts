@@ -12,6 +12,8 @@ import { verifyToken } from "../middleware/middleware.js";
 
 const router = Router();
 
+
+
 // Generate Voucher No.
 router.get("/voucher", verifyToken, getBankReceiptVoucher);
 

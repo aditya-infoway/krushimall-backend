@@ -12,31 +12,57 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
-
   filename: (req, file, cb) => {
     cb(null, Date.now() + "-" + file.originalname.replace(/\s+/g, "-"));
   },
 });
+
+const allowedMimeTypes = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+  "image/avif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+const allowedExtensions = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".gif",
+  ".heic",
+  ".heif",
+  ".avif",
+  ".pdf",
+  ".doc",
+  ".docx",
+];
 
 const fileFilter = (
   req: any,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback,
 ) => {
-  const allowedTypes = [
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
+  const ext = path.extname(file.originalname).toLowerCase();
+  const mimeOk = allowedMimeTypes.includes(file.mimetype);
+  const extOk = allowedExtensions.includes(ext);
 
-    "application/pdf",
+  console.log("UPLOAD CHECK:", {
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    ext,
+    mimeOk,
+    extOk,
+  });
 
-    "application/msword",
-
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  ];
-
-  if (allowedTypes.includes(file.mimetype)) {
+  if (mimeOk || extOk) {
     cb(null, true);
   } else {
     cb(new Error("Only Images, PDF and DOC/DOCX files are allowed"));
