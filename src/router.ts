@@ -32,6 +32,7 @@ import cashReceiptRoutes from "./routes/cashReceipt.js";
 import bankReceiptRoutes from "./routes/bankReceipt.js";
 import branchRoutes from "./routes/branch.js";
 import vehicleStockTransferRoutes from "./routes/vehicleStockTransfer.js";
+import orderRoutes from "./routes/order.js";
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -66,8 +67,6 @@ router.use("/contra", contraRoutes);
 router.use("/cash-receipt", cashReceiptRoutes);
 router.use("/bank-receipt", bankReceiptRoutes);
 router.use("/branch", branchRoutes);
-router.use(
-  "/vehicle-stock-transfer",
-  vehicleStockTransferRoutes
-);
+router.use("/vehicle-stock-transfer", vehicleStockTransferRoutes);
+router.use("/orders", orderRoutes);
 export default router;
