@@ -121,7 +121,9 @@ export const createLead = async (req: Request, res: Response) => {
 
       vehicleNo: req.body.vehicleNo || null,
 
-      accountId: req.body.selectAccount ? Number(req.body.selectAccount) : null,
+     accountId: req.body.customerId
+  ? Number(req.body.customerId)
+  : null,
 
       professionId: req.body.profession ? Number(req.body.profession) : null,
 

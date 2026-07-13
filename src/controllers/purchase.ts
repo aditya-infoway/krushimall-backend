@@ -489,7 +489,6 @@ export const updatePurchase = async (req: Request, res: Response) => {
             ratePer: Number(item.ratePer),
             gstPercent: Number(item.gstPercent),
             amount: Number(item.amount),
-            
           })),
         },
       },
@@ -793,23 +792,20 @@ export const getTractorInventory = async (req: Request, res: Response) => {
         id: "desc",
       },
     });
-const tractors = await prisma.tractor.findMany({
-  select: {
-    codeNo: true,
-    purchasePriceNoGST: true,
-    purchasePriceTaxable: true,
-  },
-});
+    const tractors = await prisma.tractor.findMany({
+      select: {
+        codeNo: true,
+        purchasePriceNoGST: true,
+        purchasePriceTaxable: true,
+      },
+    });
 
-const tractorMap = new Map(
-  tractors.map((t) => [t.codeNo, t])
-);
+    const tractorMap = new Map(tractors.map((t) => [t.codeNo, t]));
 
     const data = purchases.flatMap((purchase) =>
       purchase.items.map((item) => {
-          const tractor = tractorMap.get(String(item.itemCode));
+        const tractor = tractorMap.get(String(item.itemCode));
 
-    
         const inwardDate = item.grnRecordDate;
 
         const ageDay = inwardDate
@@ -824,7 +820,12 @@ const tractorMap = new Map(
 
           stock: "On",
 
-          status: item.status === "Inward" ? "Present" : "In Transit",
+          status:
+            item.status === "Booked"
+              ? "Booked"
+              : item.status === "Inward"
+                ? "Present"
+                : "In Transit",
 
           location: purchase.purchaseLocation || "",
           currentLocation: purchase.purchaseLocation || "",
@@ -864,8 +865,8 @@ const tractorMap = new Map(
 
           inWardDate: item.grnRecordDate,
           inWardTime: item.updatedAt,
-         purchasePriceNoGST: tractor?.purchasePriceNoGST ?? 0,
-purchasePriceTaxable: tractor?.purchasePriceTaxable ?? 0,
+          purchasePriceNoGST: tractor?.purchasePriceNoGST ?? 0,
+          purchasePriceTaxable: tractor?.purchasePriceTaxable ?? 0,
           ageDay, // <-- Add this
         };
       }),

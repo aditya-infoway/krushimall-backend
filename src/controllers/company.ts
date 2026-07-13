@@ -1,12 +1,9 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 
-export const createCompany = async (
-  req: Request,
-  res: Response
-) => {
+export const createCompany = async (req: Request, res: Response) => {
   try {
-     const existingCompany = await prisma.company.findFirst();
+    const existingCompany = await prisma.company.findFirst();
 
     if (existingCompany) {
       return res.status(400).json({
@@ -17,12 +14,11 @@ export const createCompany = async (
     const result = await prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
         data: {
-           companyName : req.body.companyName,
-             logo: req.file?.filename || null,
-               email: req.body.email,
-    accountNumber: req.body.accountNumber,
-        quotationTerms:
-      req.body.quotationTerms || null,
+          companyName: req.body.companyName,
+          logo: req.file?.filename || null,
+          email: req.body.email,
+          accountNumber: req.body.accountNumber,
+          quotationTerms: req.body.quotationTerms || null,
           country: req.body.country,
           state: req.body.state,
           stateCode: req.body.stateCode,
@@ -52,7 +48,7 @@ export const createCompany = async (
       await tx.financialYear.create({
         data: {
           companyId: company.id,
-           companyName : company. companyName ,
+          companyName: company.companyName,
 
           financialYear: req.body.financialYear,
           fyStartDate: new Date(req.body.fyStartDate),
@@ -77,10 +73,7 @@ export const createCompany = async (
   }
 };
 
-export const getCompanies = async (
-  req: Request,
-  res: Response
-) => {
+export const getCompanies = async (req: Request, res: Response) => {
   try {
     const result = await prisma.company.findMany({
       include: {
@@ -105,10 +98,7 @@ export const getCompanies = async (
     });
   }
 };
-export const updateCompany = async (
-  req: Request,
-  res: Response
-) => {
+export const updateCompany = async (req: Request, res: Response) => {
   try {
     const logo = req.file?.filename;
 
@@ -120,10 +110,9 @@ export const updateCompany = async (
         companyName: req.body.companyName,
 
         ...(logo && { logo }),
-  email: req.body.email,
-  accountNumber: req.body.accountNumber,
-      quotationTerms:
-      req.body.quotationTerms || null,
+        email: req.body.email,
+        accountNumber: req.body.accountNumber,
+        quotationTerms: req.body.quotationTerms || null,
         country: req.body.country,
         state: req.body.state,
         stateCode: req.body.stateCode,
