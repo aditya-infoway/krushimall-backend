@@ -35,20 +35,23 @@ function computeBucket(
   const today = startOfDay(new Date());
   const monthStart = startOfMonth(today);
 
+  // Acted on today takes priority over everything else —
+  // a Delay or Pending lead that just got contacted today becomes Attend.
+  if (
+    latestFollowUp &&
+    startOfDay(new Date(latestFollowUp.createdAt)).getTime() === today.getTime()
+  ) {
+    return "Attend";
+  }
+
   const refDateRaw = latestFollowUp?.nextScheduledDate || lead.followUpDate;
   if (!refDateRaw) return "Pending"; // never contacted, no date set yet
 
   const refDay = startOfDay(new Date(refDateRaw));
 
-  // Due today
+  // Due today, not yet logged today
   if (refDay.getTime() === today.getTime()) {
-    if (
-      latestFollowUp &&
-      startOfDay(new Date(latestFollowUp.createdAt)).getTime() === today.getTime()
-    ) {
-      return "Attend"; // due today AND already logged today
-    }
-    return "Pending"; // due today, not yet logged
+    return "Pending";
   }
 
   // Overdue
@@ -69,7 +72,6 @@ function computeBucket(
 
   return null; // future, but doesn't qualify for Upcoming
 }
-
 export const createFollowUp = async (req: Request, res: Response) => {
   try {
     const { leadId, expectedPurchaseDate, nextScheduledDate, callTime, callResponse, discussion } = req.body;
