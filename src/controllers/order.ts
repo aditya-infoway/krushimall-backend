@@ -159,15 +159,24 @@ export const createOrder = async (req: Request, res: Response) => {
       },
       select: {
         id: true,
+         accountId: true,
       },
     });
 
-    if (!lead) {
-      return res.status(404).json({
-        success: false,
-        message: "Lead not found",
-      });
-    }
+// Check whether Lead exists
+if (!lead) {
+  return res.status(404).json({
+    success: false,
+    message: "Lead not found",
+  });
+}
+
+// Check whether Customer Account is selected
+const customerAccountId =
+  lead?.accountId
+    ? Number(lead.accountId)
+    : null;
+
 
     // ======================================
     // ONE ORDER PER LEAD
@@ -243,7 +252,10 @@ export const createOrder = async (req: Request, res: Response) => {
     // CREATE ORDER
     // ======================================
 
-    const order = await prisma.order.create({
+  const order = await prisma.$transaction(
+  async (tx) => {
+    const createdOrder =
+      await tx.order.create({
       data: {
         companyId: Number(companyId),
 
@@ -460,7 +472,194 @@ export const createOrder = async (req: Request, res: Response) => {
         bankAccount: true,
       },
     });
+    if (allotment.chassisNo) {
+  await tx.purchaseItem.update({
+    where: {
+      chassisNo: allotment.chassisNo,
+    },
+    data: {
+      status: "Booked",
+    },
+  });
+}
+    // =====================================
+    // CREATE CASH RECEIPT — DCPR
+    // =====================================
 
+   if (
+  hypothecation.paymentStatus === "received" &&
+  cashAmount > 0 &&
+  customerAccountId !== null
+) {
+   
+  await tx.cashReceipt.create({
+    data: {
+      voucherNo:
+        await generateCashReceiptVoucher(),
+
+      date: new Date(),
+
+      companyId:
+        Number(companyId),
+
+      financialYearId:
+        Number(financialYearId),
+
+      cashAccountId:
+        Number(
+          hypothecation.cashAccountId,
+        ),
+
+      oppAccountId:
+        customerAccountId,
+
+      leadId:
+        Number(leadId),
+
+      amount:
+        cashAmount,
+
+      narration:
+        hypothecation.narration ||
+        "Order margin cash received",
+
+      type:
+        "DPCR",
+
+      createdType:
+        role,
+
+      createdBy:
+        name,
+    },
+  });
+
+  // Increase Cash Account balance
+  await tx.account.update({
+    where: {
+      id: Number(
+        hypothecation.cashAccountId,
+      ),
+    },
+
+    data: {
+      closingBalance: {
+        increment:
+          cashAmount,
+      },
+    },
+  });
+}
+    // =====================================
+    // CREATE BANK RECEIPT — DPBR
+    // =====================================
+
+  if (
+  hypothecation.paymentStatus === "received" &&
+  bankAmount > 0 &&
+  customerAccountId !== null
+) {
+      await tx.bankReceipt.create({
+        data: {
+          voucherNo:
+            await generateBankReceiptVoucher(),
+
+          date:
+            new Date(),
+
+          companyId:
+            Number(companyId),
+
+          financialYearId:
+            Number(financialYearId),
+
+          bankAccountId:
+            Number(
+              hypothecation
+                .bankAccountId,
+            ),
+
+          // Customer account from Lead
+        oppAccountId:
+  customerAccountId,
+
+          leadId:
+            Number(leadId),
+
+          amount:
+            bankAmount,
+
+          paymentType:
+            hypothecation
+              .paymentMode ||
+            "UPI",
+
+          chequeNo:
+            hypothecation
+              .paymentMode ===
+            "CHEQUE"
+              ? hypothecation
+                    .chequeNo ||
+                null
+              : null,
+
+          chequeDate:
+            hypothecation
+              .paymentMode ===
+            "CHEQUE"
+              ? toOptionalDate(
+                  hypothecation
+                    .chequeDate,
+                )
+              : null,
+
+          chequeClearDate:
+            hypothecation
+              .paymentMode ===
+            "CHEQUE"
+              ? toOptionalDate(
+                  hypothecation
+                    .clearDate,
+                )
+              : null,
+
+          narration:
+            hypothecation
+              .narration ||
+            "Order margin bank received",
+
+          type:
+            "DPBR",
+
+          createdType:
+            role,
+
+          createdBy:
+            name,
+        },
+      });
+
+      // Increase Bank Account balance
+      await tx.account.update({
+        where: {
+          id: Number(
+            hypothecation
+              .bankAccountId,
+          ),
+        },
+
+        data: {
+          closingBalance: {
+            increment:
+              bankAmount,
+          },
+        },
+      });
+    }
+
+    return createdOrder;
+  },
+);
     return res.status(201).json({
       success: true,
 
@@ -615,6 +814,7 @@ export const getOrderById = async (req: Request, res: Response) => {
         bankAccount: true,
       },
     });
+
 
     if (!order) {
       return res.status(404).json({
