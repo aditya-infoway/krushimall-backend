@@ -37,8 +37,9 @@ export const createPurchase = async (req: Request, res: Response) => {
     } = req.body;
 
     const billNo = await generateBillNo("PURCHASE", "purchase");
-    const role = (req as any).user?.role || "Admin";
-    const name = (req as any).user?.name || "Admin";
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase() || "ADMIN";
+    const name = user?.name || "Admin";
     const purchase = await prisma.purchase.create({
       data: {
         companyId: Number(companyId),

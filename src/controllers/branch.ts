@@ -455,7 +455,7 @@ export const loginBranch = async (
       res.status(401).json({
         success: false,
         message: "Invalid email or password.",
-      });
+      }); 
       return;
     }
 
