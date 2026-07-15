@@ -1524,3 +1524,312 @@ export const updateQuotation = async (
     });
   }
 };
+// leadController.ts
+
+export const getQuotationHistoryList = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+
+    const whereClause: any = {
+      // Show only leads where quotation was revised
+      quotationRevision: {
+        gt: 0,
+      },
+    };
+
+    // Branch user can see only own branch leads
+    if (user?.role?.toUpperCase() === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    const leads = await prisma.lead.findMany({
+      where: whereClause,
+
+      select: {
+        id: true,
+        quotationNo: true,
+        quotationRevision: true,
+        updatedAt: true,
+
+        customer: {
+          select: {
+            accountName: true,
+            mobile: true,
+          },
+        },
+
+        _count: {
+          select: {
+            quotationHistories: true,
+          },
+        },
+      },
+
+      orderBy: {
+        updatedAt: "desc",
+      },
+    });
+
+    const data = leads.map((lead) => ({
+      id: lead.id,
+
+      customerName: lead.customer?.accountName || "-",
+
+      mobile: lead.customer?.mobile || "-",
+
+      quotationNo: lead.quotationNo || "-",
+
+      // Actual saved quotation-history records
+      revisionCount: lead._count.quotationHistories,
+
+      updatedAt: lead.updatedAt,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error("GET QUOTATION HISTORY LIST ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch quotation history",
+    });
+  }
+};
+// controllers/lead.ts
+
+export const getQuotationHistoryByLeadId = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const leadId = Number(req.params.id);
+
+    if (!leadId || Number.isNaN(leadId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid lead ID",
+      });
+    }
+
+    const lead = await prisma.lead.findUnique({
+      where: {
+        id: leadId,
+      },
+
+      select: {
+        id: true,
+        quotationNo: true,
+        quotationRevision: true,
+        
+        createdAt: true,
+        updatedAt: true,
+        createdBy: true,
+
+        // Original quotation model
+        model: {
+          select: {
+            modelName: true,
+          },
+        },
+
+        // Original quotation variant
+        showroomVariant: {
+          select: {
+            variantName: true,
+          },
+        },
+
+        // Original quotation colour
+        colour: {
+          select: {
+            colourName: true,
+          },
+        },
+
+        customer: {
+          select: {
+            accountName: true,
+            mobile: true,
+            city: true,
+          },
+        },
+
+        // Updated quotation records
+        quotationHistories: {
+          orderBy: {
+            revisionNo: "asc",
+          },
+
+          select: {
+            id: true,
+            revisionNo: true,
+            quotationNo: true,
+
+            // Already saved quotation total
+            grandTotal: true,
+
+            updatedBy: true,
+            createdAt: true,
+
+            model: {
+              select: {
+                modelName: true,
+              },
+            },
+
+            showroomVariant: {
+              select: {
+                variantName: true,
+              },
+            },
+
+            colour: {
+              select: {
+                colourName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
+
+    const history = [
+      // =========================
+      // ORIGINAL QUOTATION
+      // =========================
+
+      {
+        id: `original-${lead.id}`,
+
+        leadId: lead.id,
+
+        revisionNo: 0,
+
+        revisionName:
+          "Original Quotation",
+
+        quotationNo:
+          lead.quotationNo || "-",
+
+        modelName:
+          lead.model?.modelName || "-",
+
+        variantName:
+          lead.showroomVariant
+            ?.variantName || "-",
+
+        colourName:
+          lead.colour?.colourName || "-",
+
+        /*
+         Original total is not currently
+         saved in your Lead table.
+
+         Therefore don't recalculate it.
+        */
+        totalAmount: null,
+
+        createdBy:
+          lead.createdBy || "-",
+
+        createdAt:
+          lead.createdAt,
+
+        isOriginal: true,
+      },
+
+      // =========================
+      // UPDATED QUOTATIONS
+      // =========================
+
+      ...lead.quotationHistories.map(
+        (item) => ({
+          id:
+            item.id,
+
+          leadId:
+            lead.id,
+
+          revisionNo:
+            item.revisionNo,
+
+          revisionName:
+            `Revision ${item.revisionNo}`,
+
+          quotationNo:
+            lead.quotationNo
+              ? `${lead.quotationNo}-R${item.revisionNo}`
+              : "-",
+
+          modelName:
+            item.model?.modelName || "-",
+
+          variantName:
+            item.showroomVariant
+              ?.variantName || "-",
+
+          colourName:
+            item.colour?.colourName || "-",
+
+          // Direct saved value — no calculation
+          totalAmount:
+            Number(item.grandTotal) || 0,
+
+          createdBy:
+            item.updatedBy || "-",
+
+          createdAt:
+            item.createdAt,
+
+          isOriginal:
+            false,
+        }),
+      ),
+    ];
+
+    return res.status(200).json({
+      success: true,
+
+      customer: {
+        customerName:
+          lead.customer?.accountName || "-",
+
+        mobile:
+          lead.customer?.mobile || "-",
+
+        city:
+          lead.customer?.city || "-",
+      },
+
+      data:
+        history,
+    });
+  } catch (error) {
+    console.error(
+      "GET QUOTATION HISTORY DETAILS ERROR:",
+      error,
+    );
+
+    return res.status(500).json({
+      success: false,
+
+      message:
+        "Failed to fetch quotation history details",
+
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unknown error",
+    });
+  }
+};

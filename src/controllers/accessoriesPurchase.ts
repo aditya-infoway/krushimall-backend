@@ -45,9 +45,116 @@ export const createAccessoriesPurchase = async (
       verifyStatus,
       items,
     } = req.body;
+    // ======================================================
+    // CHECK CASH / BANK BALANCE BEFORE ACCESSORIES PURCHASE
+    // ======================================================
 
+    const purchaseAmount = Number(grandTotal || 0);
+
+    if (purchaseAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Purchase amount must be greater than zero",
+      });
+    }
+
+    // CASH BALANCE CHECK
+    if (terms?.toLowerCase() === "cash") {
+      if (!cashAccountId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select a cash account",
+        });
+      }
+
+      const cashAccount = await prisma.account.findUnique({
+        where: {
+          id: Number(cashAccountId),
+        },
+        select: {
+          id: true,
+          accountName: true,
+          closingBalance: true,
+          drCr: true,
+        },
+      });
+
+      if (!cashAccount) {
+        return res.status(404).json({
+          success: false,
+          message: "Selected cash account was not found",
+        });
+      }
+
+      const availableBalance =
+        cashAccount.drCr === "Dr" ? Number(cashAccount.closingBalance || 0) : 0;
+
+      if (availableBalance < purchaseAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient balance in ${cashAccount.accountName}. Available balance: ₹${availableBalance.toLocaleString(
+            "en-IN",
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            },
+          )}, Purchase amount: ₹${purchaseAmount.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`,
+        });
+      }
+    }
+
+    // BANK BALANCE CHECK
+    if (terms?.toLowerCase() === "bank") {
+      if (!bankAccountId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select a bank account",
+        });
+      }
+
+      const bankAccount = await prisma.account.findUnique({
+        where: {
+          id: Number(bankAccountId),
+        },
+        select: {
+          id: true,
+          accountName: true,
+          closingBalance: true,
+          drCr: true,
+        },
+      });
+
+      if (!bankAccount) {
+        return res.status(404).json({
+          success: false,
+          message: "Selected bank account was not found",
+        });
+      }
+
+      const availableBalance =
+        bankAccount.drCr === "Dr" ? Number(bankAccount.closingBalance || 0) : 0;
+
+      if (availableBalance < purchaseAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient balance in ${bankAccount.accountName}. Available balance: ₹${availableBalance.toLocaleString(
+            "en-IN",
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            },
+          )}, Purchase amount: ₹${purchaseAmount.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`,
+        });
+      }
+    }
     const billNo = await generateAccessoriesPurchaseBillNo();
-   const user = (req as any).user;
+    const user = (req as any).user;
     const role = user?.role?.toUpperCase();
     const purchase = await prisma.accessoriesPurchase.create({
       data: {
@@ -57,8 +164,8 @@ export const createAccessoriesPurchase = async (
         billNo,
 
         accountId: Number(accountId),
- createdType: role,
-          createdBy: user?.name,
+        createdType: role,
+        createdBy: user?.name,
         purchaseBillNo,
 
         purchaseDate: new Date(purchaseDate),
@@ -148,9 +255,6 @@ export const createAccessoriesPurchase = async (
       },
     });
     // User details
-  
-
-    const purchaseAmount = Number(grandTotal || 0);
 
     // ─────────────────────────────────────
     // CREDIT ACCESSORIES PURCHASE
@@ -198,8 +302,10 @@ export const createAccessoriesPurchase = async (
     // ─────────────────────────────────────
     // CASH ACCESSORIES PURCHASE
     // ─────────────────────────────────────
+    // ─────────────────────────────────────
+    // CASH ACCESSORIES PURCHASE
+    // ─────────────────────────────────────
     else if (terms?.toLowerCase() === "cash" && cashAccountId) {
-      // Cash Account (-)
       const cashAccount = await prisma.account.findUnique({
         where: {
           id: Number(cashAccountId),
@@ -209,76 +315,25 @@ export const createAccessoriesPurchase = async (
       if (cashAccount) {
         const currentBalance = Number(cashAccount.closingBalance || 0);
 
-        let closingBalance = currentBalance;
-
-        let balanceType = cashAccount.drCr;
-
-        if (balanceType === "Dr") {
-          if (currentBalance >= purchaseAmount) {
-            closingBalance = currentBalance - purchaseAmount;
-          } else {
-            closingBalance = purchaseAmount - currentBalance;
-
-            balanceType = "Cr";
-          }
-        } else {
-          closingBalance = currentBalance + purchaseAmount;
-        }
-
         await prisma.account.update({
           where: {
             id: Number(cashAccountId),
           },
           data: {
-            closingBalance,
-            drCr: balanceType,
-          },
-        });
-      }
+            closingBalance: currentBalance - purchaseAmount,
 
-      // Supplier Account (+)
-      const supplier = await prisma.account.findUnique({
-        where: {
-          id: Number(accountId),
-        },
-      });
-
-      if (supplier) {
-        const currentBalance = Number(supplier.closingBalance || 0);
-
-        let closingBalance = currentBalance;
-
-        let balanceType = supplier.drCr;
-
-        if (balanceType === "Cr") {
-          closingBalance += purchaseAmount;
-        } else {
-          if (currentBalance >= purchaseAmount) {
-            closingBalance -= purchaseAmount;
-          } else {
-            closingBalance = purchaseAmount - currentBalance;
-
-            balanceType = "Cr";
-          }
-        }
-
-        await prisma.account.update({
-          where: {
-            id: Number(accountId),
-          },
-          data: {
-            closingBalance,
-            drCr: balanceType,
+            drCr: "Dr",
           },
         });
       }
     }
-
+    // ─────────────────────────────────────
+    // BANK ACCESSORIES PURCHASE
+    // ─────────────────────────────────────
     // ─────────────────────────────────────
     // BANK ACCESSORIES PURCHASE
     // ─────────────────────────────────────
     else if (terms?.toLowerCase() === "bank" && bankAccountId) {
-      // Bank Account (-)
       const bankAccount = await prisma.account.findUnique({
         where: {
           id: Number(bankAccountId),
@@ -288,71 +343,18 @@ export const createAccessoriesPurchase = async (
       if (bankAccount) {
         const currentBalance = Number(bankAccount.closingBalance || 0);
 
-        let closingBalance = currentBalance;
-
-        let balanceType = bankAccount.drCr;
-
-        if (balanceType === "Dr") {
-          if (currentBalance >= purchaseAmount) {
-            closingBalance = currentBalance - purchaseAmount;
-          } else {
-            closingBalance = purchaseAmount - currentBalance;
-
-            balanceType = "Cr";
-          }
-        } else {
-          closingBalance = currentBalance + purchaseAmount;
-        }
-
         await prisma.account.update({
           where: {
             id: Number(bankAccountId),
           },
           data: {
-            closingBalance,
-            drCr: balanceType,
-          },
-        });
-      }
+            closingBalance: currentBalance - purchaseAmount,
 
-      // Supplier Account (+)
-      const supplier = await prisma.account.findUnique({
-        where: {
-          id: Number(accountId),
-        },
-      });
-
-      if (supplier) {
-        const currentBalance = Number(supplier.closingBalance || 0);
-
-        let closingBalance = currentBalance;
-
-        let balanceType = supplier.drCr;
-
-        if (balanceType === "Cr") {
-          closingBalance += purchaseAmount;
-        } else {
-          if (currentBalance >= purchaseAmount) {
-            closingBalance -= purchaseAmount;
-          } else {
-            closingBalance = purchaseAmount - currentBalance;
-
-            balanceType = "Cr";
-          }
-        }
-
-        await prisma.account.update({
-          where: {
-            id: Number(accountId),
-          },
-          data: {
-            closingBalance,
-            drCr: balanceType,
+            drCr: "Dr",
           },
         });
       }
     }
-
     // ─────────────────────────────────────
     // CREATE CASH PAYMENT
     // ─────────────────────────────────────
@@ -380,7 +382,7 @@ export const createAccessoriesPurchase = async (
 
           narration: narration || "",
 
-        createdType: role,
+          createdType: role,
           createdBy: user?.name,
         },
       });
@@ -421,7 +423,7 @@ export const createAccessoriesPurchase = async (
 
           narration: bankNarration || narration || "",
 
-         createdType: role,
+          createdType: role,
           createdBy: user?.name,
         },
       });
@@ -756,6 +758,108 @@ export const updateAccessoriesPurchaseItemStatus = async (
     return res.status(500).json({
       success: false,
       message: "Failed to update item status",
+    });
+  }
+};
+export const getAccessoriesInventory = async (req: Request, res: Response) => {
+  try {
+    // Only verified accessories purchases
+    const purchases = await prisma.accessoriesPurchase.findMany({
+      where: {
+        verifyStatus: "verify",
+      },
+
+      include: {
+        items: {
+          where: {
+            status: "Inward",
+          },
+
+          include: {
+            accessory: true,
+          },
+        },
+      },
+
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    // Combine the same accessory from multiple purchases
+    const inventoryMap = new Map<
+      string,
+      {
+        id: number;
+        accessoryId: number | null;
+        itemName: string;
+        itemCode: string;
+        hsn: string;
+        group: string;
+        tax: number;
+        purPrice: number;
+        salesPrice: number;
+        mrp: number;
+        closingStock: number;
+      }
+    >();
+
+    for (const purchase of purchases) {
+      for (const item of purchase.items) {
+        // Prefer accessoryId because item code may change
+        const key = item.accessoryId
+          ? `accessory-${item.accessoryId}`
+          : `code-${item.itemCode}`;
+
+        const existingItem = inventoryMap.get(key);
+
+        const purchasedQty = Number(item.qty || 0);
+
+        if (existingItem) {
+          existingItem.closingStock += purchasedQty;
+
+          existingItem.purPrice = Number(item.purchaseRate || 0);
+        } else {
+          const openingStock = Number(item.accessory?.opStock || 0);
+          inventoryMap.set(key, {
+            id: item.accessoryId ?? item.id,
+
+            accessoryId: item.accessoryId ?? null,
+
+            itemName: item.itemName || "-",
+
+            itemCode: item.itemCode || "-",
+
+            hsn: item.hsnCode || "-",
+
+            group: item.groupName || item.accessory?.group || "-",
+
+            tax: Number(item.gstPercent || item.taxSlab || 0),
+
+            purPrice: Number(item.purchaseRate || 0),
+
+            salesPrice: Number(item.accessory?.salesPrice || 0),
+
+            mrp: Number(item.accessory?.mrp || 0),
+
+            closingStock: openingStock + purchasedQty,
+          });
+        }
+      }
+    }
+
+    const inventory = Array.from(inventoryMap.values());
+
+    return res.status(200).json({
+      success: true,
+      data: inventory,
+    });
+  } catch (error) {
+    console.error("GET ACCESSORIES INVENTORY ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch accessories inventory",
     });
   }
 };
