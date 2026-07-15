@@ -212,9 +212,6 @@ export const getBranchById = async (
   }
 };
 
-
-
-
 export const updateBranch = async (
   req: Request,
   res: Response,

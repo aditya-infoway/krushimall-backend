@@ -35,7 +35,114 @@ export const createPurchase = async (req: Request, res: Response) => {
       grandTotal,
       items,
     } = req.body;
+    // ======================================================
+    // CHECK CASH / BANK ACCOUNT BALANCE BEFORE PURCHASE SAVE
+    // ======================================================
 
+    const purchaseAmount = Number(grandTotal || 0);
+
+    if (purchaseAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Purchase amount must be greater than zero",
+      });
+    }
+
+    // CASH PURCHASE BALANCE CHECK
+    if (terms?.toLowerCase() === "cash") {
+      if (!cashAccountId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select a cash account",
+        });
+      }
+
+      const cashAccount = await prisma.account.findUnique({
+        where: {
+          id: Number(cashAccountId),
+        },
+        select: {
+          id: true,
+          accountName: true,
+          closingBalance: true,
+          drCr: true,
+        },
+      });
+
+      if (!cashAccount) {
+        return res.status(404).json({
+          success: false,
+          message: "Selected cash account was not found",
+        });
+      }
+
+      const availableBalance =
+        cashAccount.drCr === "Dr" ? Number(cashAccount.closingBalance || 0) : 0;
+
+      if (availableBalance < purchaseAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient balance in ${cashAccount.accountName}. Available balance: ₹${availableBalance.toLocaleString(
+            "en-IN",
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            },
+          )}, Purchase amount: ₹${purchaseAmount.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`,
+        });
+      }
+    }
+
+    // BANK PURCHASE BALANCE CHECK
+    if (terms?.toLowerCase() === "bank") {
+      if (!bankAccountId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select a bank account",
+        });
+      }
+
+      const bankAccount = await prisma.account.findUnique({
+        where: {
+          id: Number(bankAccountId),
+        },
+        select: {
+          id: true,
+          accountName: true,
+          closingBalance: true,
+          drCr: true,
+        },
+      });
+
+      if (!bankAccount) {
+        return res.status(404).json({
+          success: false,
+          message: "Selected bank account was not found",
+        });
+      }
+
+      const availableBalance =
+        bankAccount.drCr === "Dr" ? Number(bankAccount.closingBalance || 0) : 0;
+
+      if (availableBalance < purchaseAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient balance in ${bankAccount.accountName}. Available balance: ₹${availableBalance.toLocaleString(
+            "en-IN",
+            {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            },
+          )}, Purchase amount: ₹${purchaseAmount.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`,
+        });
+      }
+    }
     const billNo = await generateBillNo("PURCHASE", "purchase");
     const user = (req as any).user;
     const role = user?.role?.toUpperCase() || "ADMIN";
@@ -150,63 +257,50 @@ export const createPurchase = async (req: Request, res: Response) => {
         const currentBalance = Number(account.closingBalance || 0);
         const purchaseAmount = Number(grandTotal || 0);
 
-        let closingBalance = currentBalance;
-        let balanceType = account.drCr;
-
-        // Cash Account (-)
-        if (balanceType === "Dr") {
-          if (currentBalance >= purchaseAmount) {
-            closingBalance = currentBalance - purchaseAmount;
-          } else {
-            closingBalance = purchaseAmount - currentBalance;
-            balanceType = "Cr";
-          }
-        } else {
-          closingBalance = currentBalance + purchaseAmount;
-        }
-
         await prisma.account.update({
-          where: { id: Number(cashAccountId) },
+          where: {
+            id: Number(cashAccountId),
+          },
           data: {
-            closingBalance,
-            drCr: balanceType,
+            closingBalance: currentBalance - purchaseAmount,
+            drCr: "Dr",
           },
         });
       }
 
-      // Supplier (+)
-      if (accountId) {
-        const supplier = await prisma.account.findUnique({
-          where: { id: Number(accountId) },
-        });
+      // // Supplier (+)
+      // if (accountId) {
+      //   const supplier = await prisma.account.findUnique({
+      //     where: { id: Number(accountId) },
+      //   });
 
-        if (supplier) {
-          const currentBalance = Number(supplier.closingBalance || 0);
-          const purchaseAmount = Number(grandTotal || 0);
+      //   if (supplier) {
+      //     const currentBalance = Number(supplier.closingBalance || 0);
+      //     const purchaseAmount = Number(grandTotal || 0);
 
-          let closingBalance = currentBalance;
-          let balanceType = supplier.drCr;
+      //     let closingBalance = currentBalance;
+      //     let balanceType = supplier.drCr;
 
-          if (balanceType === "Cr") {
-            closingBalance += purchaseAmount;
-          } else {
-            if (currentBalance >= purchaseAmount) {
-              closingBalance -= purchaseAmount;
-            } else {
-              closingBalance = purchaseAmount - currentBalance;
-              balanceType = "Cr";
-            }
-          }
+      //     if (balanceType === "Cr") {
+      //       closingBalance += purchaseAmount;
+      //     } else {
+      //       if (currentBalance >= purchaseAmount) {
+      //         closingBalance -= purchaseAmount;
+      //       } else {
+      //         closingBalance = purchaseAmount - currentBalance;
+      //         balanceType = "Cr";
+      //       }
+      //     }
 
-          await prisma.account.update({
-            where: { id: Number(accountId) },
-            data: {
-              closingBalance,
-              drCr: balanceType,
-            },
-          });
-        }
-      }
+      //     await prisma.account.update({
+      //       where: { id: Number(accountId) },
+      //       data: {
+      //         closingBalance,
+      //         drCr: balanceType,
+      //       },
+      //     });
+      //   }
+      // }
     }
 
     // BANK PURCHASE
@@ -219,63 +313,50 @@ export const createPurchase = async (req: Request, res: Response) => {
         const currentBalance = Number(account.closingBalance || 0);
         const purchaseAmount = Number(grandTotal || 0);
 
-        let closingBalance = currentBalance;
-        let balanceType = account.drCr;
-
-        // Bank Account (-)
-        if (balanceType === "Dr") {
-          if (currentBalance >= purchaseAmount) {
-            closingBalance = currentBalance - purchaseAmount;
-          } else {
-            closingBalance = purchaseAmount - currentBalance;
-            balanceType = "Cr";
-          }
-        } else {
-          closingBalance = currentBalance + purchaseAmount;
-        }
-
         await prisma.account.update({
-          where: { id: Number(bankAccountId) },
+          where: {
+            id: Number(bankAccountId),
+          },
           data: {
-            closingBalance,
-            drCr: balanceType,
+            closingBalance: currentBalance - purchaseAmount,
+            drCr: "Dr",
           },
         });
       }
 
-      // Supplier (+)
-      if (accountId) {
-        const supplier = await prisma.account.findUnique({
-          where: { id: Number(accountId) },
-        });
+      // // Supplier (+)
+      // if (accountId) {
+      //   const supplier = await prisma.account.findUnique({
+      //     where: { id: Number(accountId) },
+      //   });
 
-        if (supplier) {
-          const currentBalance = Number(supplier.closingBalance || 0);
-          const purchaseAmount = Number(grandTotal || 0);
+      //   if (supplier) {
+      //     const currentBalance = Number(supplier.closingBalance || 0);
+      //     const purchaseAmount = Number(grandTotal || 0);
 
-          let closingBalance = currentBalance;
-          let balanceType = supplier.drCr;
+      //     let closingBalance = currentBalance;
+      //     let balanceType = supplier.drCr;
 
-          if (balanceType === "Cr") {
-            closingBalance += purchaseAmount;
-          } else {
-            if (currentBalance >= purchaseAmount) {
-              closingBalance -= purchaseAmount;
-            } else {
-              closingBalance = purchaseAmount - currentBalance;
-              balanceType = "Cr";
-            }
-          }
+      //     if (balanceType === "Cr") {
+      //       closingBalance += purchaseAmount;
+      //     } else {
+      //       if (currentBalance >= purchaseAmount) {
+      //         closingBalance -= purchaseAmount;
+      //       } else {
+      //         closingBalance = purchaseAmount - currentBalance;
+      //         balanceType = "Cr";
+      //       }
+      //     }
 
-          await prisma.account.update({
-            where: { id: Number(accountId) },
-            data: {
-              closingBalance,
-              drCr: balanceType,
-            },
-          });
-        }
-      }
+      //     await prisma.account.update({
+      //       where: { id: Number(accountId) },
+      //       data: {
+      //         closingBalance,
+      //         drCr: balanceType,
+      //       },
+      //     });
+      //   }
+      // }
     }
     if (terms?.toLowerCase() === "cash" && cashAccountId) {
       const voucherNo = await generateCashPaymentVoucher();

@@ -6,7 +6,8 @@ import {
   updateBankReceipt,
   deleteBankReceipt,
   getBankReceiptVoucher,
-  exportBankReceiptExcel
+  exportBankReceiptExcel,
+  printBankReceipt,
 } from "../controllers/bankReceipt.js";
 import { verifyToken } from "../middleware/middleware.js";
 
@@ -36,4 +37,7 @@ router.get(
   verifyToken,
   exportBankReceiptExcel
 );
+
+router.get("/:id/print", verifyToken, printBankReceipt);
+
 export default router;

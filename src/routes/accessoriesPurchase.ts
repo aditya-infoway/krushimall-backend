@@ -9,6 +9,7 @@ import {
   getAccessoriesPurchaseBillNo,
   updateAccessoriesPurchase,
   updateAccessoriesPurchaseItemStatus,
+  getAccessoriesInventory
 } from "../controllers/accessoriesPurchase.js";
 
 import { verifyToken } from "../middleware/middleware.js";
@@ -28,7 +29,11 @@ router.post(
   verifyToken,
   createAccessoriesPurchase,
 );
-
+router.get(
+  "/accessories-inventory",
+  verifyToken,
+  getAccessoriesInventory,
+);
 // Get all
 router.get(
   "/",
