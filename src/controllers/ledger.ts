@@ -124,6 +124,28 @@ export const getLedgerDetails = async (req: Request, res: Response) => {
         credit: Number(item.grandTotal || 0),
       });
     });
+   const accessoriesPurchases =
+  await prisma.accessoriesPurchase.findMany({
+    where: {
+      accountId,
+    },
+    include: {
+      account: true,
+    },
+  });
+
+accessoriesPurchases.forEach((item) => {
+  transactions.push({
+    createdAt: item.createdAt,
+    date: item.purchaseDate,
+    voucherNo: "-",
+    billNo: item.billNo,
+    type: "ACCESSORIES PURCHASE",
+    particulars: item.account?.accountName,
+    debit: 0,
+    credit: Number(item.grandTotal || 0),
+  });
+});
 //  transactions.sort((a, b) => {
 //   const dateCompare =
 //     new Date(a.date).getTime() - new Date(b.date).getTime();
