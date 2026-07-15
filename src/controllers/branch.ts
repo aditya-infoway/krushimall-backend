@@ -221,6 +221,7 @@ export const updateBranch = async (
 ): Promise<void> => {
   try {
     const id = Number(req.params.id);
+    console.log("Password received:", req.body.password);
 
     if (!id || Number.isNaN(id)) {
       res.status(400).json({
@@ -424,6 +425,11 @@ export const toggleBranchStatus = async (
     });
   }
 };
+
+
+
+
+
 export const loginBranch = async (
   req: Request,
   res: Response,
@@ -449,7 +455,7 @@ export const loginBranch = async (
       res.status(401).json({
         success: false,
         message: "Invalid email or password.",
-      });
+      }); 
       return;
     }
 

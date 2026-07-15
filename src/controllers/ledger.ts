@@ -124,14 +124,14 @@ export const getLedgerDetails = async (req: Request, res: Response) => {
         credit: Number(item.grandTotal || 0),
       });
     });
- transactions.sort((a, b) => {
-  const dateCompare =
-    new Date(a.date).getTime() - new Date(b.date).getTime();
+//  transactions.sort((a, b) => {
+//   const dateCompare =
+//     new Date(a.date).getTime() - new Date(b.date).getTime();
 
-  if (dateCompare !== 0) return dateCompare;
+//   if (dateCompare !== 0) return dateCompare;
 
-  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-});
+//   return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+// });
 
     // ==========================
     // Contra Entries
@@ -294,6 +294,44 @@ leads.forEach((item) => {
     debit: Number(item.listOfBooking),
     credit: 0,
   });
+});
+// ==========================================
+// SORT ALL LEDGER ENTRIES
+// Date first, then created time
+// ==========================================
+
+transactions.sort((a, b) => {
+  const dateA =
+    new Date(a.date).getTime();
+
+  const dateB =
+    new Date(b.date).getTime();
+
+  // Sort by transaction date
+  if (dateA !== dateB) {
+    return dateA - dateB;
+  }
+
+  // Same transaction date:
+  // sort by record creation time
+  const createdAtA =
+    a.createdAt
+      ? new Date(
+          a.createdAt,
+        ).getTime()
+      : 0;
+
+  const createdAtB =
+    b.createdAt
+      ? new Date(
+          b.createdAt,
+        ).getTime()
+      : 0;
+
+  return (
+    createdAtA -
+    createdAtB
+  );
 });
     // ==========================================
     // Opening Balance Calculation
@@ -703,14 +741,14 @@ export const exportLedgerDetails = async (
         credit: Number(item.grandTotal || 0),
       });
     });
-    transactions.sort((a, b) => {
-      const dateCompare =
-        new Date(a.date).getTime() - new Date(b.date).getTime();
+    // transactions.sort((a, b) => {
+    //   const dateCompare =
+    //     new Date(a.date).getTime() - new Date(b.date).getTime();
 
-      if (dateCompare !== 0) return dateCompare;
+    //   if (dateCompare !== 0) return dateCompare;
 
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    });
+    //   return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    // });
 
     // ==========================
     // Contra Entries
@@ -871,6 +909,44 @@ leads.forEach((item) => {
         credit,
       });
     });
+    // ==========================================
+// SORT ALL LEDGER ENTRIES
+// Date first, then created time
+// ==========================================
+
+transactions.sort((a, b) => {
+  const dateA =
+    new Date(a.date).getTime();
+
+  const dateB =
+    new Date(b.date).getTime();
+
+  // Sort by transaction date
+  if (dateA !== dateB) {
+    return dateA - dateB;
+  }
+
+  // Same transaction date:
+  // sort by record creation time
+  const createdAtA =
+    a.createdAt
+      ? new Date(
+          a.createdAt,
+        ).getTime()
+      : 0;
+
+  const createdAtB =
+    b.createdAt
+      ? new Date(
+          b.createdAt,
+        ).getTime()
+      : 0;
+
+  return (
+    createdAtA -
+    createdAtB
+  );
+});
     // ==========================================
     // Opening Balance Calculation
     // ==========================================

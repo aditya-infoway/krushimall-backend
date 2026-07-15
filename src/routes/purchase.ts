@@ -1,4 +1,5 @@
 import express from "express";
+
 import {
   createPurchase,
   getPurchases,
@@ -11,31 +12,41 @@ import {
   getVehicleSerialNo,
   saveTransport,
   getTransport,
-  getTractorInventory
+  getTractorInventory,
 } from "../controllers/purchase.js";
 
+import { verifyToken } from "../middleware/middleware.js";
+
 const router = express.Router();
-router.get("/generate-bill-no", getPurchaseBillNo);
-router.get("/vehicle-serial-no", getVehicleSerialNo);
 
-router.post("/", createPurchase);
+// Generate Purchase Bill No
+router.get("/generate-bill-no", verifyToken, getPurchaseBillNo);
 
-router.get("/", getPurchases);
+// Generate Vehicle Serial No
+router.get("/vehicle-serial-no", verifyToken, getVehicleSerialNo);
 
-// Fixed routes FIRST
-router.get("/tractor-inventory", getTractorInventory);
+// Create Purchase
+router.post("/", verifyToken, createPurchase);
 
-router.put("/purchase-items/:id/inward", submitPurchaseItemInward);
+// Get All Purchases
+router.get("/", verifyToken, getPurchases);
 
-router.put("/:id/verify", verifyPurchase);
+// Fixed routes must remain before /:id
+router.get("/tractor-inventory", verifyToken, getTractorInventory);
 
-router.put("/:id/transport", saveTransport);
-router.get("/:id/transport", getTransport);
+router.put("/purchase-items/:id/inward", verifyToken, submitPurchaseItemInward);
 
-// Generic :id route LAST
-router.get("/:id", getPurchaseById);
+router.put("/:id/verify", verifyToken, verifyPurchase);
 
-router.put("/:id", updatePurchase);
+router.put("/:id/transport", verifyToken, saveTransport);
 
-router.delete("/:id", deletePurchase);
+router.get("/:id/transport", verifyToken, getTransport);
+
+// Generic ID routes remain last
+router.get("/:id", verifyToken, getPurchaseById);
+
+router.put("/:id", verifyToken, updatePurchase);
+
+router.delete("/:id", verifyToken, deletePurchase);
+
 export default router;
