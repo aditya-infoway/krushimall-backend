@@ -59,6 +59,7 @@ model Company {
   leads                 Lead[]
   branches              Branch[]
   vehicleStockTransfers VehicleStockTransfer[]
+  accessoriesPurchases  AccessoriesPurchase[]
   orders                Order[]
 }
 
@@ -80,6 +81,7 @@ model FinancialYear {
   leads                 Lead[]
   branches              Branch[]
   vehicleStockTransfers VehicleStockTransfer[]
+  accessoriesPurchases  AccessoriesPurchase[]
   orders                Order[]
 
   @@unique([companyId, financialYear])
@@ -791,6 +793,7 @@ model Accessory {
   purchasePrice              Float?
   salesPrice                 Float?
   mrp                        Float?
+  barCode                    String?
   opStock                    Int                        @default(0)
   showroomVariants           Json?
   status                     String                     @default("ACTIVE")
@@ -801,10 +804,14 @@ model Accessory {
 }
 
 model AccessoriesPurchase {
-  id Int @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
+  companyId Int?
+  company   Company? @relation(fields: [companyId], references: [id])
 
-  billNo         String  @unique
-  purchaseBillNo String?
+  financialYearId Int?
+  financialYear   FinancialYear? @relation(fields: [financialYearId], references: [id])
+  billNo          String        @unique
+  purchaseBillNo  String?
 
   accountId Int
   account   Account @relation("AccessoriesPurchaseParty", fields: [accountId], references: [id])
@@ -848,7 +855,8 @@ model AccessoriesPurchase {
   grandTotal Float
 
   verifyStatus String @default("not_verify")
-
+createdBy   String?
+createdType String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -866,6 +874,7 @@ model AccessoriesPurchaseItem {
 
   itemName    String
   itemCode    String
+  barCode     String?
   shortName   String?
   hsnCode     String?
   unit        String?

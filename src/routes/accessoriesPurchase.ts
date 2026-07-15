@@ -1,4 +1,5 @@
 import express from "express";
+
 import {
   createAccessoriesPurchase,
   getAccessoriesPurchases,
@@ -7,27 +8,67 @@ import {
   deleteAccessoriesPurchase,
   getAccessoriesPurchaseBillNo,
   updateAccessoriesPurchase,
-  updateAccessoriesPurchaseItemStatus
+  updateAccessoriesPurchaseItemStatus,
 } from "../controllers/accessoriesPurchase.js";
+
+import { verifyToken } from "../middleware/middleware.js";
 
 const router = express.Router();
 
 // Generate Bill No
-router.get("/generate-bill-no", getAccessoriesPurchaseBillNo);
+router.get(
+  "/generate-bill-no",
+  verifyToken,
+  getAccessoriesPurchaseBillNo,
+);
 
-router.post("/", createAccessoriesPurchase);
+// Create Accessories Purchase
+router.post(
+  "/",
+  verifyToken,
+  createAccessoriesPurchase,
+);
 
-router.get("/", getAccessoriesPurchases);
+// Get all
+router.get(
+  "/",
+  verifyToken,
+  getAccessoriesPurchases,
+);
 
-router.get("/:id", getAccessoriesPurchaseById);
+// Verify
+router.put(
+  "/verify/:id",
+  verifyToken,
+  verifyAccessoriesPurchase,
+);
 
-router.put("/:id", updateAccessoriesPurchase);
-
-router.put("/verify/:id", verifyAccessoriesPurchase);
+// Update item status
 router.put(
   "/item-status/:id",
-  updateAccessoriesPurchaseItemStatus
+  verifyToken,
+  updateAccessoriesPurchaseItemStatus,
 );
-router.delete("/:id", deleteAccessoriesPurchase);
+
+// Get by ID
+router.get(
+  "/:id",
+  verifyToken,
+  getAccessoriesPurchaseById,
+);
+
+// Update
+router.put(
+  "/:id",
+  verifyToken,
+  updateAccessoriesPurchase,
+);
+
+// Delete
+router.delete(
+  "/:id",
+  verifyToken,
+  deleteAccessoriesPurchase,
+);
 
 export default router;

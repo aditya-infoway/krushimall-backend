@@ -32,7 +32,7 @@ export const createAccessory = async (
         opStock: req.body.opStock
           ? Number(req.body.opStock)
           : 0,
-
+        barCode:req.body.barCode,
         showroomVariants: req.body.showroomVariants || [],
 
         status: req.body.status || "ACTIVE",
@@ -139,7 +139,7 @@ export const updateAccessory = async (
         opStock: req.body.opStock
           ? Number(req.body.opStock)
           : 0,
-
+         barCode:req.body.barCode,
        showroomVariants: req.body.showroomVariants || [],
 
         status: req.body.status,
