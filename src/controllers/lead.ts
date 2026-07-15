@@ -4,6 +4,8 @@ import puppeteer from "puppeteer";
 import { generateQuotationNo } from "../utils/generateQuotationNo.js";
 import { generateCashReceiptVoucher } from "../utils/generateCashReceiptVoucher.js";
 import { generateBankReceiptVoucher } from "../utils/generateBankReceiptVoucher.js";
+import { getFileUrl } from "../utils/getFileUrl.js";
+
 export const createLead = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -121,9 +123,7 @@ export const createLead = async (req: Request, res: Response) => {
 
       vehicleNo: req.body.vehicleNo || null,
 
-     accountId: req.body.customerId
-  ? Number(req.body.customerId)
-  : null,
+      accountId: req.body.customerId ? Number(req.body.customerId) : null,
 
       professionId: req.body.profession ? Number(req.body.profession) : null,
 
@@ -369,10 +369,7 @@ export const getLeads = async (req: Request, res: Response) => {
     });
   }
 };
-export const getLeadById = async (
-  req: Request,
-  res: Response,
-) => {
+export const getLeadById = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
     const user = (req as any).user;
@@ -382,9 +379,7 @@ export const getLeadById = async (
     };
 
     if (user?.role === "BRANCH") {
-      whereClause.branchId = Number(
-        user.branchId,
-      );
+      whereClause.branchId = Number(user.branchId);
     }
 
     // =========================
@@ -426,16 +421,15 @@ export const getLeadById = async (
     // GET LATEST QUOTATION
     // =========================
 
-    const latestQuotation =
-      await prisma.quotationHistory.findFirst({
-        where: {
-          leadId: id,
-        },
+    const latestQuotation = await prisma.quotationHistory.findFirst({
+      where: {
+        leadId: id,
+      },
 
-        orderBy: {
-          revisionNo: "desc",
-        },
-      });
+      orderBy: {
+        revisionNo: "desc",
+      },
+    });
 
     // =========================
     // RESPONSE
@@ -447,25 +441,18 @@ export const getLeadById = async (
       data: {
         ...lead,
 
-        quotationGrandTotal:
-          latestQuotation?.grandTotal ?? 0,
+        quotationGrandTotal: latestQuotation?.grandTotal ?? 0,
       },
     });
   } catch (error) {
-    console.error(
-      "GET LEAD BY ID ERROR:",
-      error,
-    );
+    console.error("GET LEAD BY ID ERROR:", error);
 
     return res.status(500).json({
       success: false,
 
       message: "Failed to fetch lead",
 
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unknown error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
@@ -473,6 +460,7 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
   try {
     const leadId = Number(req.params.id);
     const company = await prisma.company.findFirst();
+    const logoUrl = getFileUrl(company?.logo);
 
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
@@ -1079,18 +1067,9 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
     </div>
   </div>
 
-  <div class="company-right">
-  ${
-    company?.logo
-      ? `
-      <img
-         src="http://127.0.0.1:5000/uploads/${company.logo}"
-        class="company-logo"
-      />
-    `
-      : ""
-  }
-  </div>
+ <div class="company-right">
+  ${logoUrl ? `<img src="${logoUrl}" class="company-logo" />` : ""}
+</div>
 
 </div>
         </div>
