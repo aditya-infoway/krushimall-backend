@@ -519,21 +519,29 @@ model EnquiryStatus {
 
 model Employee {
   id              Int      @id @default(autoincrement())
+
   department      String
   branch          String
   role            String
+
+  teamLeadId      Int?      // NEW
+
   employeeName    String
   mobileNumber    String   @unique
   alternateNumber String?
   email           String   @unique
   password        String
+
   status          String   @default("ACTIVE")
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
   leads           Lead[]
 
   createdType     String?
   createdBy       String?
+
   branchId        Int?
   createdByBranch Branch? @relation("EmployeeBranch", fields: [branchId], references: [id])
 }
@@ -742,7 +750,7 @@ model Lead {
   branchId    Int?
 
   branch Branch? @relation(fields: [branchId], references: [id])
-
+  quotationGrandTotal Float @default(0)
   company             Company?           @relation(fields: [companyId], references: [id])
   financialYear       FinancialYear?     @relation(fields: [financialYearId], references: [id])
   account             Account?           @relation("LeadAccount", fields: [accountId], references: [id])
@@ -1427,4 +1435,17 @@ model Order {
   @@index([cashAccountId])
   @@index([bankAccountId])
   @@index([financeDoneBy])
+}
+model Department {
+  id    Int    @id @default(autoincrement())
+  name  String
+  roles Role[]
+}
+
+model Role {
+  id            Int        @id @default(autoincrement())
+  roleName      String
+  departmentId  Int
+
+  department Department @relation(fields: [departmentId], references: [id])
 }

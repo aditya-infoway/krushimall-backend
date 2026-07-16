@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma.js";
 export const createEmployee = async (req: Request, res: Response) => {
   try {
@@ -16,7 +17,8 @@ export const createEmployee = async (req: Request, res: Response) => {
     const {
       department,
       branch,
-      role: employeeRole, // renamed to avoid clashing with the auth `role` above
+      role: employeeRole,
+        teamLeadId, // renamed to avoid clashing with the auth `role` above
       employeeName,
       mobileNumber,
       alternateNumber,
@@ -51,6 +53,7 @@ export const createEmployee = async (req: Request, res: Response) => {
         department,
         branch,
         role: employeeRole,
+           teamLeadId: teamLeadId ? Number(teamLeadId) : null,
         employeeName,
         mobileNumber,
         alternateNumber,
@@ -97,6 +100,7 @@ export const getEmployees = async (req: Request, res: Response) => {
         department: true,
         branch: true,
         role: true,
+         teamLeadId: true, 
         employeeName: true,
         mobileNumber: true,
         alternateNumber: true,
@@ -144,6 +148,7 @@ export const getEmployeeById = async (req: Request, res: Response) => {
         department: true,
         branch: true,
         role: true,
+          teamLeadId: true,
         employeeName: true,
         mobileNumber: true,
         alternateNumber: true,
@@ -208,6 +213,9 @@ export const updateEmployee = async (req: Request, res: Response) => {
       department: req.body.department,
       branch: req.body.branch,
       role: req.body.role,
+       teamLeadId: req.body.teamLeadId
+    ? Number(req.body.teamLeadId)
+    : null,
       employeeName: req.body.employeeName,
       mobileNumber: req.body.mobileNumber,
       alternateNumber: req.body.alternateNumber,
@@ -292,6 +300,156 @@ export const toggleEmployeeStatus = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Failed to update status",
+    });
+  }
+};
+export const getDepartments = async (req: Request, res: Response) => {
+  try {
+    const departments = await prisma.department.findMany({
+      orderBy: {
+        name: "asc",
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: departments,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch departments",
+    });
+  }
+};
+
+export const getRolesByDepartment = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const departmentId = Number(req.params.departmentId);
+
+    const roles = await prisma.role.findMany({
+      where: {
+        departmentId,
+      },
+      orderBy: {
+        roleName: "asc",
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      data: roles,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch roles",
+    });
+  }
+};
+export const getTeamLeads = async (req: Request, res: Response) => {
+  try {
+    const { department } = req.query;
+
+    const teamLeads = await prisma.employee.findMany({
+      where: {
+        department: String(department),
+        role: "Team Lead",
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+        employeeName: true,
+      },
+      orderBy: {
+        employeeName: "asc",
+      },
+    });
+
+    res.json({
+      success: true,
+      data: teamLeads,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed",
+    });
+  }
+};
+// employee controller
+export const employeeLogin = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+   const employee = await prisma.employee.findUnique({
+  where: { email },
+});
+
+if (!employee) {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid Email",
+  });
+}
+
+const isMatch = await bcrypt.compare(password, employee.password);
+
+if (!isMatch) {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid Password",
+  });
+}
+
+// Only Sales Executive can login
+if (employee.role !== "Sales Executive") {
+  return res.status(403).json({
+    success: false,
+    message: "You are not authorized to login.",
+  });
+}
+
+if (employee.status !== "ACTIVE") {
+  return res.status(400).json({
+    success: false,
+    message: "Employee is inactive",
+  });
+}
+
+    const token = jwt.sign(
+      {
+        id: employee.id,
+        role: employee.role,
+      
+        employeeName: employee.employeeName,
+      },
+      process.env.JWT_SECRET!,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    return res.json({
+      success: true,
+      token,
+      user: employee,
+    });
+  } catch (err) {
+    console.log(err);
+
+    res.status(500).json({
+      success: false,
+      message: "Login Failed",
     });
   }
 };

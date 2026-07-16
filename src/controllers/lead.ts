@@ -18,9 +18,54 @@ export const createLead = async (req: Request, res: Response) => {
       });
     }
 
+    // ==========================================
+    // CALCULATE INITIAL QUOTATION GRAND TOTAL
+    // Lead create hote waqt frontend sirf model/variant/colour
+    // bhejta hai, price calculation nahi bhejta.
+    // Isliye yaha ExShowroom + Insurance + RTO (tax ke saath)
+    // nikal ke quotationGrandTotal me save karenge.
+    // (Accessories yaha include nahi hote — wo sirf
+    //  updateQuotation ke waqt add hote hain, kyunki
+    //  accessories selection Lead create step me nahi hota)
+    // ==========================================
+    let initialQuotationGrandTotal = 0;
+
+    if (req.body.showroomVariantId) {
+      const showroomVariant = await prisma.showroomVariant.findUnique({
+        where: {
+          id: Number(req.body.showroomVariantId),
+        },
+      });
+
+      if (showroomVariant) {
+        const exShowroomTaxable =
+          Number(showroomVariant.exShowroomPrice) || 0;
+        const exShowroomTaxPercent =
+          Number(showroomVariant.exShowroomTaxPercent) || 0;
+        const exShowroomAmount =
+          exShowroomTaxable +
+          (exShowroomTaxable * exShowroomTaxPercent) / 100;
+
+        const insuranceTaxable = Number(showroomVariant.insurance) || 0;
+        const insuranceTaxPercent =
+          Number(showroomVariant.insuranceTaxPercent) || 0;
+        const insuranceAmount =
+          insuranceTaxable +
+          (insuranceTaxable * insuranceTaxPercent) / 100;
+
+        const rtoTaxable = Number(showroomVariant.rtoCharge) || 0;
+        const rtoTaxPercent = Number(showroomVariant.rtoTaxPercent) || 0;
+        const rtoAmount = rtoTaxable + (rtoTaxable * rtoTaxPercent) / 100;
+
+        initialQuotationGrandTotal =
+          exShowroomAmount + insuranceAmount + rtoAmount;
+      }
+    }
+
     const data: any = {
       ...req.body,
       // ...existing transforms...
+      quotationGrandTotal: initialQuotationGrandTotal,
       createdType: role,
       createdBy: user?.name,
       branchId: role === "BRANCH" ? Number(user.branchId) : null,
@@ -434,6 +479,11 @@ export const getLeadById = async (req: Request, res: Response) => {
     // =========================
     // RESPONSE
     // =========================
+    // Quotation revision hui hai -> uska grandTotal use karo
+    // Revision nahi hui -> Lead create hote waqt jo
+    // quotationGrandTotal (exShowroom+insurance+RTO) save
+    // hua tha wahi use karo — 0 par mat girao
+    // =========================
 
     return res.status(200).json({
       success: true,
@@ -441,7 +491,8 @@ export const getLeadById = async (req: Request, res: Response) => {
       data: {
         ...lead,
 
-        quotationGrandTotal: latestQuotation?.grandTotal ?? 0,
+        quotationGrandTotal:
+          latestQuotation?.grandTotal ?? lead.quotationGrandTotal ?? 0,
       },
     });
   } catch (error) {
@@ -1830,6 +1881,230 @@ export const getQuotationHistoryByLeadId = async (
         error instanceof Error
           ? error.message
           : "Unknown error",
+    });
+  }
+};
+export const getBookingBalance = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const leads = await prisma.lead.findMany({
+      include: {
+        customer: {
+          select: {
+            accountName: true,
+            mobile: true,
+          },
+        },
+
+        model: {
+          select: {
+            modelName: true,
+          },
+        },
+
+        showroomVariant: {
+          select: {
+            variantName: true,
+          },
+        },
+
+        colour: {
+          select: {
+            colourName: true,
+          },
+        },
+
+        cashReceipts: {
+          select: {
+            amount: true,
+          },
+        },
+
+        bankReceipts: {
+          select: {
+            amount: true,
+          },
+        },
+
+        // NEW: latest quotation revision, agar hai to
+        quotationHistories: {
+          orderBy: {
+            revisionNo: "desc",
+          },
+          take: 1,
+          select: {
+            grandTotal: true,
+          },
+        },
+
+        order: {
+          select: {
+            invoiceAmount: true,
+            total: true,
+            receivedAmount: true,
+            pendingAmount: true,
+            chassisNo: true,
+          },
+        },
+      },
+
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const bookingBalance = leads.map((lead, index) => {
+      // ==========================================
+      // 1) INVOICE AMOUNT
+      // Order bana hai -> Order.invoiceAmount
+      // Order nahi bana -> latest quotation grandTotal
+      //    -> agar wo bhi nahi to Lead.quotationGrandTotal (initial value)
+      // ==========================================
+      const invoiceAmount = lead.order
+        ? Number(lead.order.invoiceAmount || 0)
+        : Number(
+            lead.quotationHistories?.[0]?.grandTotal ??
+              lead.quotationGrandTotal ??
+              0,
+          );
+
+      // ==========================================
+      // 2) RECEIVED AMOUNT
+      // Order bana hai -> Order.receivedAmount (exchange discount + margin payment)
+      // Order nahi bana -> sirf jo advance payment (cash/bank receipts) leadId se linked hai uska total
+      // ==========================================
+      const advancePaid =
+        lead.cashReceipts.reduce(
+          (sum, r) => sum + Number(r.amount || 0),
+          0,
+        ) +
+        lead.bankReceipts.reduce(
+          (sum, r) => sum + Number(r.amount || 0),
+          0,
+        );
+
+     const receivedAmount = advancePaid;
+
+// Hamesha invoiceAmount - receivedAmount (never negative)
+const pendingAmount = Math.max(invoiceAmount - receivedAmount, 0);
+
+      const age = Math.floor(
+        (Date.now() - new Date(lead.createdAt).getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
+
+      return {
+        sr: index + 1,
+
+        leadDate: lead.createdAt,
+
+        leadId: lead.id,
+
+        dmsEnquiryNo: lead.dmsEnquiryNo,
+
+        dmsEnquiryDate: lead.dmsEnquiryDate,
+
+        customerName: lead.customer?.accountName || "-",
+
+        contact: lead.customer?.mobile || "-",
+
+        model: lead.model?.modelName || "-",
+
+        variant: lead.showroomVariant?.variantName || "-",
+
+        colour: lead.colour?.colourName || "-",
+
+        ageLead: `${age} Days`,
+
+        invoiceAmount,
+
+        receivedAmount,
+
+        pendingAmount,
+
+        // Order bana hai to hi chassis suggest hoga
+        suggestChassisNo: lead.order?.chassisNo || "-",
+
+        paymentHistory:
+          lead.cashReceipts.length + lead.bankReceipts.length > 0
+            ? "View"
+            : "-",
+      };
+    });
+
+    // ==========================================
+    // REMOVE FULLY SETTLED ENTRIES
+    // Jab invoiceAmount > 0 AND receivedAmount === invoiceAmount
+    // AND pendingAmount === 0 -> lead ka pura paisa aa chuka hai,
+    // isliye Booking Balance list se hata do.
+    // (invoiceAmount === 0 wale fresh leads list mein rahenge)
+    // ==========================================
+ const pendingBookingBalance = bookingBalance.filter((row) => {
+  const isFullySettled =
+    row.receivedAmount === row.invoiceAmount &&
+    row.pendingAmount === 0;
+
+  return !isFullySettled;
+});
+
+    const summary = {
+      invoiceAmount: pendingBookingBalance.reduce(
+        (sum, row) => sum + row.invoiceAmount,
+        0,
+      ),
+
+      receivedAmount: pendingBookingBalance.reduce(
+        (sum, row) => sum + row.receivedAmount,
+        0,
+      ),
+
+      pendingAmount: pendingBookingBalance.reduce(
+        (sum, row) => sum + row.pendingAmount,
+        0,
+      ),
+    };
+
+    const modelMap = new Map();
+
+    pendingBookingBalance.forEach((row) => {
+      if (!modelMap.has(row.model)) {
+        modelMap.set(row.model, {
+          model: row.model,
+          totalLead: 0,
+          bookedLead: 0,
+        });
+      }
+
+      const model = modelMap.get(row.model);
+
+      model.totalLead++;
+
+      // "Booked" ab order create hone par count hoga
+      if (row.invoiceAmount > 0 && row.receivedAmount > 0) {
+        model.bookedLead++;
+      }
+    });
+
+    return res.json({
+      success: true,
+
+      data: {
+        summary,
+
+        modelAnalysis: Array.from(modelMap.values()),
+
+        rows: pendingBookingBalance,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+
+      message: "Failed to fetch booking balance",
     });
   }
 };
