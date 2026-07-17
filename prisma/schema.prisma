@@ -116,24 +116,24 @@ model Brand {
 }
 
 model Model {
-  id               Int               @id @default(autoincrement())
-  categoryId       Int
-  brandId          Int
-  modelName        String
-  image            String?
-  status           String            @default("ACTIVE")
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  colours          Colour[]
-  leads            Lead[]
-  brand            Brand             @relation(fields: [brandId], references: [id])
-  category         Category          @relation(fields: [categoryId], references: [id])
-  modelYears       ModelYear[]
-  showroomVariants ShowroomVariant[]
-  tractors         Tractor[]
-  variants         Variant[]
-  websiteVariants  WebsiteVariant[]
-   quotationHistories QuotationHistory[]
+  id                 Int                @id @default(autoincrement())
+  categoryId         Int
+  brandId            Int
+  modelName          String
+  image              String?
+  status             String             @default("ACTIVE")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  colours            Colour[]
+  leads              Lead[]
+  brand              Brand              @relation(fields: [brandId], references: [id])
+  category           Category           @relation(fields: [categoryId], references: [id])
+  modelYears         ModelYear[]
+  showroomVariants   ShowroomVariant[]
+  tractors           Tractor[]
+  variants           Variant[]
+  websiteVariants    WebsiteVariant[]
+  quotationHistories QuotationHistory[]
 }
 
 model ModelYear {
@@ -185,10 +185,11 @@ model ShowroomVariant {
 
   accessories ShowroomVariantAccessory[]
 
-  colours  Colour[]
-  leads    Lead[]
-  tractors Tractor[]
- quotationHistories QuotationHistory[]
+  colours            Colour[]
+  leads              Lead[]
+  tractors           Tractor[]
+  quotationHistories QuotationHistory[]
+
   @@unique([modelId, variantId])
 }
 
@@ -374,21 +375,21 @@ model WebsiteVariant {
 }
 
 model Colour {
-  id                Int              @id @default(autoincrement())
-  modelId           Int
-  variantId         Int?
-  colourName        String
-  colourCode        String
-  status            String           @default("ACTIVE")
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  showroomVariantId Int?
-  model             Model            @relation(fields: [modelId], references: [id])
-  showroomVariant   ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
-  variant           Variant?         @relation(fields: [variantId], references: [id])
-  leads             Lead[]
-  tractors          Tractor[]
-   quotationHistories QuotationHistory[]
+  id                 Int                @id @default(autoincrement())
+  modelId            Int
+  variantId          Int?
+  colourName         String
+  colourCode         String
+  status             String             @default("ACTIVE")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  showroomVariantId  Int?
+  model              Model              @relation(fields: [modelId], references: [id])
+  showroomVariant    ShowroomVariant?   @relation(fields: [showroomVariantId], references: [id])
+  variant            Variant?           @relation(fields: [variantId], references: [id])
+  leads              Lead[]
+  tractors           Tractor[]
+  quotationHistories QuotationHistory[]
 }
 
 model Account {
@@ -454,10 +455,12 @@ model Account {
 
   createdType     String?
   createdBy       String?
+  createdById     Int?
   branchId        Int?
   createdByBranch Branch? @relation("AccountBranch", fields: [branchId], references: [id])
-
+employee        Employee? @relation(fields: [createdById], references: [id])
   finances Finance[]
+  @@index([createdById])
 }
 
 model EnquiryType {
@@ -518,32 +521,34 @@ model EnquiryStatus {
 }
 
 model Employee {
-  id              Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  department      String
-  branch          String
-  role            String
+  department String
+  branch     String
+  role       String
 
-  teamLeadId      Int?      // NEW
+  teamLeadId Int? // NEW
 
   employeeName    String
-  mobileNumber    String   @unique
+  mobileNumber    String  @unique
   alternateNumber String?
-  email           String   @unique
+  email           String  @unique
   password        String
 
-  status          String   @default("ACTIVE")
+  status String @default("ACTIVE")
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  leads           Lead[]
+  leads Lead[]
 
-  createdType     String?
-  createdBy       String?
+  createdType String?
+  createdBy   String?
 
   branchId        Int?
   createdByBranch Branch? @relation("EmployeeBranch", fields: [branchId], references: [id])
+  orders          Order[]
+  accounts Account[]
 }
 
 model Tractor {
@@ -749,8 +754,8 @@ model Lead {
   createdBy   String?
   branchId    Int?
 
-  branch Branch? @relation(fields: [branchId], references: [id])
-  quotationGrandTotal Float @default(0)
+  branch              Branch?            @relation(fields: [branchId], references: [id])
+  quotationGrandTotal Float              @default(0)
   company             Company?           @relation(fields: [companyId], references: [id])
   financialYear       FinancialYear?     @relation(fields: [financialYearId], references: [id])
   account             Account?           @relation("LeadAccount", fields: [accountId], references: [id])
@@ -814,13 +819,13 @@ model Accessory {
 }
 
 model AccessoriesPurchase {
-  id        Int     @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   companyId Int?
   company   Company? @relation(fields: [companyId], references: [id])
 
   financialYearId Int?
   financialYear   FinancialYear? @relation(fields: [financialYearId], references: [id])
-  billNo          String        @unique
+  billNo          String         @unique
   purchaseBillNo  String?
 
   accountId Int
@@ -864,11 +869,11 @@ model AccessoriesPurchase {
 
   grandTotal Float
 
-  verifyStatus String @default("not_verify")
-createdBy   String?
-createdType String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  verifyStatus String   @default("not_verify")
+  createdBy    String?
+  createdType  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   items AccessoriesPurchaseItem[]
 }
@@ -1299,10 +1304,11 @@ model QuotationHistory {
 
   createdAt DateTime @default(now())
 
-   lead            Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead            Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
   model           Model?           @relation(fields: [modelId], references: [id])
   showroomVariant ShowroomVariant? @relation(fields: [showroomVariantId], references: [id])
   colour          Colour?          @relation(fields: [colourId], references: [id])
+
   @@unique([leadId, revisionNo])
   @@index([leadId])
 }
@@ -1424,7 +1430,11 @@ model Order {
   other              Boolean @default(false)
 
   createdBy   String?
+  createdById Int?
   createdType String?
+
+  // Optional relation
+  employee Employee? @relation(fields: [createdById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1436,63 +1446,73 @@ model Order {
   @@index([bankAccountId])
   @@index([financeDoneBy])
 }
+model Department {
+  id    Int    @id @default(autoincrement())
+  name  String
+  roles Role[]
+}
 
+model Role {
+  id            Int        @id @default(autoincrement())
+  roleName      String
+  departmentId  Int
 
-
+  department Department @relation(fields: [departmentId], references: [id])
+}
 model WebUser {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  phone     String   @unique
-  password  String
-  
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  phone    String @unique
+  password String
+
   // Profile
-  country   String?
-  state     String?
-  district  String?
-  city      String?
-  address   String?
-  pincode   String?
-  
+  country  String?
+  state    String?
+  district String?
+  city     String?
+  address  String?
+  pincode  String?
+
   // OTP for email/phone verification
-  otp       String?
-  otpExpiry DateTime?
-  isVerified Boolean @default(false)
-  
+  otp        String?
+  otpExpiry  DateTime?
+  isVerified Boolean   @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Vendor data (optional - only exists if user becomes vendor)
-  vendor    WebVendor?
+  vendor WebVendor?
 }
 
 model WebVendor {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @unique
-  user      WebUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     Int     @id @default(autoincrement())
+  userId Int     @unique
+  user   WebUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Step 1: Vendor Type & Personal Details
-  vendorType        String  // "vehicle", "spare-parts", "service"
-  vehicleType       String? // "new", "used" (only for vehicle vendors)
-  name              String  // Full name from step 1
-  number            String  // Phone number from step 1
-  email             String  // Email from step 1
-  
+  vendorType  String // "vehicle", "spare-parts", "service"
+  vehicleType String? // "new", "used" (only for vehicle vendors)
+  name        String // Full name from step 1
+  number      String // Phone number from step 1
+  email       String // Email from step 1
+
   // Step 2: Address Details
-  country           String
-  state             String
-  district          String
-  city              String
-  address           String
-  pincode           String
-  
+  country  String
+  state    String
+  district String
+  city     String
+  address  String
+  pincode  String
+
   // Step 3: Only Password (no business fields in your component)
-  vendorPassword    String
-  
+  vendorPassword String
+
   // Vendor status
-  isVerified        Boolean @default(false)
-  verifiedAt        DateTime?
-  
+  isVerified Boolean   @default(false)
+  verifiedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
