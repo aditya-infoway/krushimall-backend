@@ -1,133 +1,112 @@
 // src/controllers/vendor.ts
 
-import { Request, Response } from "express";
+import { Response } from "express";
 import prisma from "../lib/prisma.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { WebAuthedRequest } from "../type/webAuthRequest.js";
 
 // ==================== BECOME VENDOR ====================
 
-// Become Vendor - 3 step registration
-export const becomeVendor = async (req: Request, res: Response) => {
+export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
+   console.log("🟢 becomeVendor hit, req.user:", req.user);
   try {
     const userId = req.user?.id;
     const {
-      // Step 1: Vendor Type & Personal Details
       vendorType,
       vehicleType,
       name,
       number,
       email,
-      
-      // Step 2: Address Details
       country,
       state,
       district,
       city,
       address,
       pincode,
-      
-      // Step 3: Vendor Password
-      vendorPassword
+      vendorPassword,
     } = req.body;
 
-    // Validate required fields
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
     if (!vendorType || !name || !number || !email) {
       return res.status(400).json({
         success: false,
-        message: "Step 1: All personal details are required"
+        message: "Step 1: All personal details are required",
       });
     }
 
     if (!country || !state || !district || !city || !address || !pincode) {
       return res.status(400).json({
         success: false,
-        message: "Step 2: All address fields are required"
+        message: "Step 2: All address fields are required",
       });
     }
 
     if (!vendorPassword || vendorPassword.length < 8) {
       return res.status(400).json({
         success: false,
-        message: "Step 3: Password must be at least 8 characters"
+        message: "Step 3: Password must be at least 8 characters",
       });
     }
 
-    // Check if user exists
     const user = await prisma.webUser.findUnique({
       where: { id: userId },
-      include: { vendor: true }
+      include: { vendor: true },
     });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
-    // Check if already a vendor
     if (user.vendor) {
       return res.status(400).json({
         success: false,
-        message: "You are already registered as a vendor"
+        message: "You are already registered as a vendor",
       });
     }
 
-    // Check if vendor password is same as login password
     const isSamePassword = await bcrypt.compare(vendorPassword, user.password);
     if (isSamePassword) {
       return res.status(400).json({
         success: false,
-        message: "Vendor password must be different from your login password"
+        message: "Vendor password must be different from your login password",
       });
     }
 
-    // Hash vendor password
     const hashedVendorPassword = await bcrypt.hash(vendorPassword, 10);
 
-    // Create vendor record and update user profile
     const vendor = await prisma.$transaction(async (tx) => {
-      // 1. Create vendor with all 3 steps data
       const newVendor = await tx.webVendor.create({
         data: {
           userId: user.id,
-          // Step 1
           vendorType,
           vehicleType: vendorType === "vehicle" ? vehicleType : null,
           name,
           number,
           email,
-          // Step 2
           country,
           state,
           district,
           city,
           address,
           pincode,
-          // Step 3
           vendorPassword: hashedVendorPassword,
-          isVerified: false
-        }
+          isVerified: false,
+        },
       });
 
-      // 2. Update user profile with address from step 2
       await tx.webUser.update({
         where: { id: user.id },
-        data: {
-          country,
-          state,
-          district,
-          city,
-          address,
-          pincode
-        }
+        data: { country, state, district, city, address, pincode },
       });
 
       return newVendor;
@@ -149,30 +128,28 @@ export const becomeVendor = async (req: Request, res: Response) => {
         city: vendor.city,
         address: vendor.address,
         pincode: vendor.pincode,
-        isVerified: vendor.isVerified
-      }
+        isVerified: vendor.isVerified,
+      },
     });
-
   } catch (error) {
     console.error("Become vendor error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to register as vendor"
+      message: "Failed to register as vendor",
     });
   }
 };
 
 // ==================== GET VENDOR DATA ====================
 
-// Get vendor data
-export const getVendorData = async (req: Request, res: Response) => {
+export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
@@ -189,16 +166,16 @@ export const getVendorData = async (req: Request, res: Response) => {
             district: true,
             city: true,
             address: true,
-            pincode: true
-          }
-        }
-      }
+            pincode: true,
+          },
+        },
+      },
     });
 
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: "Vendor not found"
+        message: "Vendor not found",
       });
     }
 
@@ -221,23 +198,21 @@ export const getVendorData = async (req: Request, res: Response) => {
         verifiedAt: vendor.verifiedAt,
         createdAt: vendor.createdAt,
         updatedAt: vendor.updatedAt,
-        user: vendor.user
-      }
+        user: vendor.user,
+      },
     });
-
   } catch (error) {
     console.error("Get vendor error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to get vendor data"
+      message: "Failed to get vendor data",
     });
   }
 };
 
 // ==================== UPDATE VENDOR ====================
 
-// Update vendor data
-export const updateVendor = async (req: Request, res: Response) => {
+export const updateVendor = async (req: WebAuthedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const updateData = req.body;
@@ -245,34 +220,32 @@ export const updateVendor = async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
-    // Remove sensitive fields that shouldn't be updated here
     delete updateData.id;
     delete updateData.userId;
     delete updateData.createdAt;
     delete updateData.updatedAt;
-    delete updateData.vendorPassword; // Password update should be separate
+    delete updateData.vendorPassword;
 
-    // Only allow updating specific fields
     const allowedFields = [
-      'vendorType',
-      'vehicleType',
-      'name',
-      'number',
-      'email',
-      'country',
-      'state',
-      'district',
-      'city',
-      'address',
-      'pincode'
+      "vendorType",
+      "vehicleType",
+      "name",
+      "number",
+      "email",
+      "country",
+      "state",
+      "district",
+      "city",
+      "address",
+      "pincode",
     ];
 
     const filteredData = Object.keys(updateData)
-      .filter(key => allowedFields.includes(key))
+      .filter((key) => allowedFields.includes(key))
       .reduce((obj, key) => {
         obj[key] = updateData[key];
         return obj;
@@ -281,34 +254,32 @@ export const updateVendor = async (req: Request, res: Response) => {
     if (Object.keys(filteredData).length === 0) {
       return res.status(400).json({
         success: false,
-        message: "No valid fields to update"
+        message: "No valid fields to update",
       });
     }
 
     const vendor = await prisma.webVendor.update({
       where: { userId },
-      data: filteredData
+      data: filteredData,
     });
 
     return res.json({
       success: true,
       message: "Vendor data updated successfully",
-      vendor
+      vendor,
     });
-
   } catch (error) {
     console.error("Update vendor error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to update vendor data"
+      message: "Failed to update vendor data",
     });
   }
 };
 
 // ==================== VENDOR PASSWORD ====================
 
-// Update vendor password
-export const updateVendorPassword = async (req: Request, res: Response) => {
+export const updateVendorPassword = async (req: WebAuthedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const { currentPassword, newPassword } = req.body;
@@ -316,167 +287,212 @@ export const updateVendorPassword = async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Current password and new password are required"
+        message: "Current password and new password are required",
       });
     }
 
     if (newPassword.length < 8) {
       return res.status(400).json({
         success: false,
-        message: "New password must be at least 8 characters"
+        message: "New password must be at least 8 characters",
       });
     }
 
-    // Get vendor with password
-    const vendor = await prisma.webVendor.findUnique({
-      where: { userId }
-    });
+    const vendor = await prisma.webVendor.findUnique({ where: { userId } });
 
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: "Vendor not found"
+        message: "Vendor not found",
       });
     }
 
-    // Verify current password
     const isValid = await bcrypt.compare(currentPassword, vendor.vendorPassword);
     if (!isValid) {
       return res.status(401).json({
         success: false,
-        message: "Current password is incorrect"
+        message: "Current password is incorrect",
       });
     }
 
-    // Check if new password is same as login password
-    const user = await prisma.webUser.findUnique({
-      where: { id: userId }
-    });
+    const user = await prisma.webUser.findUnique({ where: { id: userId } });
 
     if (user) {
       const isSameAsLogin = await bcrypt.compare(newPassword, user.password);
       if (isSameAsLogin) {
         return res.status(400).json({
           success: false,
-          message: "Vendor password must be different from your login password"
+          message: "Vendor password must be different from your login password",
         });
       }
     }
 
-    // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update password
     await prisma.webVendor.update({
       where: { userId },
-      data: { vendorPassword: hashedPassword }
+      data: { vendorPassword: hashedPassword },
     });
 
     return res.json({
       success: true,
-      message: "Vendor password updated successfully"
+      message: "Vendor password updated successfully",
     });
-
   } catch (error) {
     console.error("Update vendor password error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to update vendor password"
+      message: "Failed to update vendor password",
     });
   }
 };
 
 // ==================== VERIFY VENDOR (ADMIN) ====================
+// Note: these two stay on plain Request — admins aren't webUsers, so
+// they should eventually get your existing admin verifyToken middleware
+// instead, not verifyWebToken.
 
-// Verify vendor (admin action)
-export const verifyVendor = async (req: Request, res: Response) => {
+export const verifyVendor = async (req: WebAuthedRequest, res: Response) => {
   try {
-    const { vendorId } = req.params;
-    const userId = parseInt(vendorId);
+    const vendorId = Array.isArray(req.params.vendorId)
+      ? req.params.vendorId[0]
+      : req.params.vendorId;
 
-    if (isNaN(userId)) {
+    const userId = Number(vendorId);
+
+    if (!vendorId || Number.isNaN(userId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid vendor ID"
+        message: "Invalid vendor ID",
       });
     }
 
-    const vendor = await prisma.webVendor.findUnique({
-      where: { userId }
-    });
+    const vendor = await prisma.webVendor.findUnique({ where: { userId } });
 
     if (!vendor) {
       return res.status(404).json({
         success: false,
-        message: "Vendor not found"
+        message: "Vendor not found",
       });
     }
 
     if (vendor.isVerified) {
       return res.status(400).json({
         success: false,
-        message: "Vendor already verified"
+        message: "Vendor already verified",
       });
     }
 
     const updatedVendor = await prisma.webVendor.update({
       where: { userId },
-      data: {
-        isVerified: true,
-        verifiedAt: new Date()
-      }
+      data: { isVerified: true, verifiedAt: new Date() },
     });
 
     return res.json({
       success: true,
       message: "Vendor verified successfully",
-      vendor: updatedVendor
+      vendor: updatedVendor,
     });
-
   } catch (error) {
     console.error("Verify vendor error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to verify vendor"
+      message: "Failed to verify vendor",
     });
   }
 };
 
-// Get all vendors (admin)
-export const getAllVendors = async (req: Request, res: Response) => {
+export const getAllVendors = async (req: WebAuthedRequest, res: Response) => {
   try {
     const vendors = await prisma.webVendor.findMany({
       include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            phone: true
-          }
-        }
+        user: { select: { name: true, email: true, phone: true } },
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: { createdAt: "desc" },
     });
 
-    return res.json({
-      success: true,
-      vendors
-    });
-
+    return res.json({ success: true, vendors });
   } catch (error) {
     console.error("Get all vendors error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to get vendors"
+      message: "Failed to get vendors",
+    });
+  }
+};
+
+// ==================== VENDOR LOGIN ====================
+
+export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    const vendor = await prisma.webVendor.findFirst({
+      where: { email },
+      include: { user: true },
+    });
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    const validPassword = await bcrypt.compare(password, vendor.vendorPassword);
+
+    if (!validPassword) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        id: vendor.user.id,
+        name: vendor.user.name,
+        email: vendor.user.email,
+        type: "web",
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      success: true,
+      message: "Vendor login successful",
+      token,
+      vendor: {
+        id: vendor.id,
+        userId: vendor.userId,
+        vendorType: vendor.vendorType,
+        vehicleType: vendor.vehicleType,
+        isVerified: vendor.isVerified,
+        name: vendor.name,
+        email: vendor.email,
+        number: vendor.number,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Vendor login failed",
     });
   }
 };

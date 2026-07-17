@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 
+
 export const createWebsiteVariant = async (req: Request, res: Response) => {
   try {
     const createData: any = {
