@@ -8,7 +8,8 @@ import {
   getLeadById,
   updateQuotation,
   getQuotationHistoryList,
-  getQuotationHistoryByLeadId
+  getQuotationHistoryByLeadId,
+  getBookingBalance
 } from "../controllers/lead.js";
 
 
@@ -24,6 +25,11 @@ router.get(
   "/quotation-history/:id",
   verifyToken,
   getQuotationHistoryByLeadId,
+);
+router.get(
+  "/booking-balance",
+  verifyToken,
+  getBookingBalance,
 );
 router.get("/:id/quotation", generateOrderBillPdf);
 
