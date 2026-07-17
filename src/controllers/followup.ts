@@ -93,8 +93,16 @@ export const createFollowUp = async (req: Request, res: Response) => {
         callResponse,
         discussion,
         followupCount: count + 1,
-        createdType: user?.role || null,
-        createdBy: user?.name || null,
+       createdType:
+  req.body.createdType ||
+  user?.role ||
+  null,
+
+createdBy:
+  req.body.createdBy ||
+  user?.employeeName ||
+  user?.name ||
+  null,
       },
     });
 
@@ -121,8 +129,72 @@ export const getFollowUpsByLead = async (req: Request, res: Response) => {
       orderBy: { createdAt: "desc" },
     });
 
-    const lead = await prisma.lead.findUnique({
-      where: { id: leadId },
+   const user = (req as any).user;
+
+const whereClause: any = {
+  id: leadId,
+};
+
+if (user?.role?.toUpperCase() === "BRANCH") {
+  whereClause.branchId = Number(user.branchId);
+}
+
+if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+  whereClause.executiveId = Number(user.id);
+}
+
+const lead = await prisma.lead.findFirst({
+  where: whereClause,
+  include: {
+    customer: true,
+    executive: true,
+    company: true,
+    branch: true,
+  },
+});
+
+if (!lead) {
+  return res.status(404).json({
+    success: false,
+    message: "Lead not found",
+  });
+}
+
+    res.json({ success: true, data: followups, lead });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false });
+  }
+};
+export const getLatestFollowUpByLead = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const leadId = Number(req.params.leadId);
+
+    const followups = await prisma.followUp.findMany({
+      where: { leadId },
+      orderBy: { createdAt: "desc" },
+      take: 1,
+    });
+
+    const user = (req as any).user;
+
+    const whereClause: any = {
+      id: leadId,
+    };
+
+    if (user?.role?.toUpperCase() === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+
+    if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+      whereClause.executiveId = Number(user.id);
+    }
+
+    const lead = await prisma.lead.findFirst({
+      where: whereClause,
       include: {
         customer: true,
         executive: true,
@@ -131,13 +203,25 @@ export const getFollowUpsByLead = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({ success: true, data: followups, lead });
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: followups,
+      lead,
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false });
+    res.status(500).json({
+      success: false,
+    });
   }
 };
-
 // Global board — used by grid AND table on the Followup menu page
 export const getFollowUpBoard = async (req: Request, res: Response) => {
   try {
@@ -150,7 +234,9 @@ export const getFollowUpBoard = async (req: Request, res: Response) => {
     if (user?.role === "BRANCH") {
       whereClause.branchId = Number(user.branchId);
     }
-
+if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+  whereClause.executiveId = Number(user.id);
+}
     const leads = await prisma.lead.findMany({
       where: whereClause,
       include: {
