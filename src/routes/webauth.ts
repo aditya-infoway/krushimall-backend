@@ -1,5 +1,5 @@
 // src/routes/webAuth.ts
-import { verifyToken } from "../middleware/middleware.js";
+import { verifyWebToken } from "../middleware/verifyWebToken.js";
 import { Router } from "express";
 import {
   register,
@@ -22,7 +22,7 @@ router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 // Protected routes
-router.get("/me",  verifyToken, getCurrentUser);
-router.put("/profile", verifyToken,  updateProfile);
+router.get("/me",  verifyWebToken, getCurrentUser);
+router.put("/profile", verifyWebToken,  updateProfile);
 
 export default router;

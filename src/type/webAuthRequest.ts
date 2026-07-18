@@ -8,4 +8,11 @@ export interface WebAuthedRequest extends Request {
     email: string;
     name: string;
   };
+
+  vendor?: {
+    vendorId: number;
+    userId: number;
+    email: string;
+    role: string;
+  };
 }

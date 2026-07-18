@@ -1,37 +1,3 @@
-// // src/routes/vendor.ts
-// import { verifyToken } from "../middleware/middleware.js";
-// import { Router } from "express";
-// import {
-//   becomeVendor,
-//   getVendorData,
-//   updateVendor,
-//   updateVendorPassword,
-//   verifyVendor,
-//   getAllVendors,
-//   // vendorLogin
-// } from "../controllers/vendor.js";
-
-
-// const router = Router();
-
-// // Protected routes (require authentication)
-// router.post("/become", verifyToken, becomeVendor);
-// // router.post("/login", vendorLogin);
-
-// router.get("/me", getVendorData);
-// router.put("/update",  updateVendor);
-// router.put("/update-password",  updateVendorPassword);
-
-// // Admin routes (you can add admin middleware here)
-// router.put("/verify/:vendorId", verifyVendor);
-// router.get("/all", getAllVendors);
-
-// export default router;
-
-
-
-// src/routes/vendor.ts
-
 import { Router } from "express";
 import {
   becomeVendor,
@@ -42,22 +8,52 @@ import {
   getAllVendors,
   vendorLogin,
 } from "../controllers/vendor.js";
+
 import { verifyWebToken } from "../middleware/verifyWebToken.js";
+import { verifyVendorToken } from "../middleware/verifyVendorToken.js";
+
+
+console.log("vendor.ts loaded");
+
 
 const router = Router();
 
+router.use((req, res, next) => {
+  console.log("Vendor router reached:", req.method, req.originalUrl);
+  next();
+});
+
+// =========================
 // Public
+// =========================
+
 router.post("/login", vendorLogin);
 
-// Protected — require a logged-in web user's token
-router.post("/become", verifyWebToken, becomeVendor);
-router.get("/me", verifyWebToken, getVendorData);
-router.put("/update", verifyWebToken, updateVendor);
-router.put("/update-password", verifyWebToken, updateVendorPassword);
+// =========================
+// Website User
+// =========================
 
-// Admin routes — TODO: swap in your existing admin/branch verifyToken
-// middleware here. These are still wide open right now.
-router.put("/verify/:vendorId",verifyWebToken, verifyVendor);
-router.get("/all", verifyWebToken, getAllVendors);
+// User is logged into the website and wants to become a vendor
+router.post("/become", verifyWebToken, becomeVendor);
+
+// =========================
+// Vendor Dashboard
+// =========================
+
+router.get("/me", verifyVendorToken, getVendorData);
+
+router.put("/update", verifyVendorToken, updateVendor);
+
+router.put("/update-password", verifyVendorToken, updateVendorPassword);
+
+// =========================
+// Admin
+// =========================
+
+// Later these should use your admin verifyToken middleware,
+// not verifyVendorToken.
+router.put("/verify/:vendorId", verifyVendorToken, verifyVendor);
+
+router.get("/all", verifyVendorToken, getAllVendors);
 
 export default router;

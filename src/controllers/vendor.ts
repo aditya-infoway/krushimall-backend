@@ -9,9 +9,9 @@ import { WebAuthedRequest } from "../type/webAuthRequest.js";
 // ==================== BECOME VENDOR ====================
 
 export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
-   console.log("🟢 becomeVendor hit, req.user:", req.user);
   try {
-    const userId = req.user?.id;
+    
+    const userId = req.vendor?.userId;
     const {
       vendorType,
       vehicleType,
@@ -143,8 +143,11 @@ export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
 // ==================== GET VENDOR DATA ====================
 
 export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
+  console.log("Inside getVendorData");
+  console.log(req.user);
   try {
-    const userId = req.user?.id;
+    
+    const userId = req.vendor?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -152,6 +155,8 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
         message: "Authentication required",
       });
     }
+
+    console.log("userId =", userId);
 
     const vendor = await prisma.webVendor.findUnique({
       where: { userId },
@@ -171,6 +176,8 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
         },
       },
     });
+
+    console.log("vendor =", vendor);
 
     if (!vendor) {
       return res.status(404).json({
@@ -214,7 +221,8 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
 
 export const updateVendor = async (req: WebAuthedRequest, res: Response) => {
   try {
-    const userId = req.user?.id;
+    
+    const userId = req.vendor?.userId;
     const updateData = req.body;
 
     if (!userId) {
@@ -279,9 +287,13 @@ export const updateVendor = async (req: WebAuthedRequest, res: Response) => {
 
 // ==================== VENDOR PASSWORD ====================
 
-export const updateVendorPassword = async (req: WebAuthedRequest, res: Response) => {
+export const updateVendorPassword = async (
+  req: WebAuthedRequest,
+  res: Response,
+) => {
   try {
-    const userId = req.user?.id;
+    
+    const userId = req.vendor?.userId;
     const { currentPassword, newPassword } = req.body;
 
     if (!userId) {
@@ -314,7 +326,10 @@ export const updateVendorPassword = async (req: WebAuthedRequest, res: Response)
       });
     }
 
-    const isValid = await bcrypt.compare(currentPassword, vendor.vendorPassword);
+    const isValid = await bcrypt.compare(
+      currentPassword,
+      vendor.vendorPassword,
+    );
     if (!isValid) {
       return res.status(401).json({
         success: false,
@@ -431,6 +446,7 @@ export const getAllVendors = async (req: WebAuthedRequest, res: Response) => {
 // ==================== VENDOR LOGIN ====================
 
 export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
+    console.log("🔥 vendorLogin called");
   try {
     const { email, password } = req.body;
 
@@ -464,13 +480,15 @@ export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
 
     const token = jwt.sign(
       {
-        id: vendor.user.id,
-        name: vendor.user.name,
-        email: vendor.user.email,
-        type: "web",
+        vendorId: vendor.id,
+        userId: vendor.userId,
+        email: vendor.email,
+        role: "vendor",
       },
       process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
+      {
+        expiresIn: "1d",
+      },
     );
 
     return res.json({

@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { WebAuthedRequest } from "../type/webAuthRequest.js";
 
 // Generate OTP
 const generateOTP = (): string => {
@@ -486,7 +487,10 @@ export const resetPassword = async (req: Request, res: Response) => {
 // ==================== GET USER ====================
 
 // Get current user with vendor data
-export const getCurrentUser = async (req: Request, res: Response) => {
+export const getCurrentUser = async (
+  req: WebAuthedRequest,
+  res: Response
+) => {
   try {
     const userId = req.user?.id;
 
@@ -541,7 +545,10 @@ export const getCurrentUser = async (req: Request, res: Response) => {
 };
 
 // Update user profile
-export const updateProfile = async (req: Request, res: Response) => {
+export const updateProfile = async (
+  req: WebAuthedRequest,
+  res: Response
+) => {
   try {
     const userId = req.user?.id;
     const { name, phone, country, state, district, city, address, pincode } = req.body;
