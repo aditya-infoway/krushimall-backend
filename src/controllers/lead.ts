@@ -38,20 +38,17 @@ export const createLead = async (req: Request, res: Response) => {
       });
 
       if (showroomVariant) {
-        const exShowroomTaxable =
-          Number(showroomVariant.exShowroomPrice) || 0;
+        const exShowroomTaxable = Number(showroomVariant.exShowroomPrice) || 0;
         const exShowroomTaxPercent =
           Number(showroomVariant.exShowroomTaxPercent) || 0;
         const exShowroomAmount =
-          exShowroomTaxable +
-          (exShowroomTaxable * exShowroomTaxPercent) / 100;
+          exShowroomTaxable + (exShowroomTaxable * exShowroomTaxPercent) / 100;
 
         const insuranceTaxable = Number(showroomVariant.insurance) || 0;
         const insuranceTaxPercent =
           Number(showroomVariant.insuranceTaxPercent) || 0;
         const insuranceAmount =
-          insuranceTaxable +
-          (insuranceTaxable * insuranceTaxPercent) / 100;
+          insuranceTaxable + (insuranceTaxable * insuranceTaxPercent) / 100;
 
         const rtoTaxable = Number(showroomVariant.rtoCharge) || 0;
         const rtoTaxPercent = Number(showroomVariant.rtoTaxPercent) || 0;
@@ -67,9 +64,9 @@ export const createLead = async (req: Request, res: Response) => {
       // ...existing transforms...
       quotationGrandTotal: initialQuotationGrandTotal,
       createdType: role,
-      createdBy: user?.name,
+      createdBy: req.body.createdBy || user?.employeeName || user?.name,
       branchId: role === "BRANCH" ? Number(user.branchId) : null,
-
+      executiveId: req.body.executiveId ? Number(req.body.executiveId) : null,
       companyId: Number(req.body.companyId),
       financialYearId: Number(req.body.financialYearId),
       // ========================
@@ -333,10 +330,12 @@ export const getLeads = async (req: Request, res: Response) => {
     const user = (req as any).user;
 
     const whereClause: any = {};
-
-    if (user?.role === "BRANCH") {
-      // Branch panel: only leads created by THIS branch
+    if (user?.role?.toUpperCase() === "BRANCH") {
       whereClause.branchId = Number(user.branchId);
+    }
+
+    if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+      whereClause.executiveId = Number(user.id);
     }
     // Admin panel: no filter — sees everything (admin-created + all branches)
 
@@ -426,7 +425,9 @@ export const getLeadById = async (req: Request, res: Response) => {
     if (user?.role === "BRANCH") {
       whereClause.branchId = Number(user.branchId);
     }
-
+    if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+      whereClause.executiveId = Number(user.id);
+    }
     // =========================
     // GET LEAD
     // =========================
@@ -1542,7 +1543,11 @@ export const updateQuotation = async (
           // Only ON accessories
           selectedAccessories,
 
-          updatedBy: (req as any).user?.name || null,
+          updatedBy:
+            req.body.createdBy ||
+            (req as any).user?.employeeName ||
+            (req as any).user?.name ||
+            null,
         },
       });
 
@@ -1592,7 +1597,9 @@ export const getQuotationHistoryList = async (req: Request, res: Response) => {
     if (user?.role?.toUpperCase() === "BRANCH") {
       whereClause.branchId = Number(user.branchId);
     }
-
+    if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+      whereClause.executiveId = Number(user.id);
+    }
     const leads = await prisma.lead.findMany({
       where: whereClause,
 
@@ -1674,7 +1681,7 @@ export const getQuotationHistoryByLeadId = async (
         id: true,
         quotationNo: true,
         quotationRevision: true,
-        
+
         createdAt: true,
         updatedAt: true,
         createdBy: true,
@@ -1766,21 +1773,15 @@ export const getQuotationHistoryByLeadId = async (
 
         revisionNo: 0,
 
-        revisionName:
-          "Original Quotation",
+        revisionName: "Original Quotation",
 
-        quotationNo:
-          lead.quotationNo || "-",
+        quotationNo: lead.quotationNo || "-",
 
-        modelName:
-          lead.model?.modelName || "-",
+        modelName: lead.model?.modelName || "-",
 
-        variantName:
-          lead.showroomVariant
-            ?.variantName || "-",
+        variantName: lead.showroomVariant?.variantName || "-",
 
-        colourName:
-          lead.colour?.colourName || "-",
+        colourName: lead.colour?.colourName || "-",
 
         /*
          Original total is not currently
@@ -1790,11 +1791,9 @@ export const getQuotationHistoryByLeadId = async (
         */
         totalAmount: null,
 
-        createdBy:
-          lead.createdBy || "-",
+        createdBy: lead.createdBy || "-",
 
-        createdAt:
-          lead.createdAt,
+        createdAt: lead.createdAt,
 
         isOriginal: true,
       },
@@ -1803,91 +1802,62 @@ export const getQuotationHistoryByLeadId = async (
       // UPDATED QUOTATIONS
       // =========================
 
-      ...lead.quotationHistories.map(
-        (item) => ({
-          id:
-            item.id,
+      ...lead.quotationHistories.map((item) => ({
+        id: item.id,
 
-          leadId:
-            lead.id,
+        leadId: lead.id,
 
-          revisionNo:
-            item.revisionNo,
+        revisionNo: item.revisionNo,
 
-          revisionName:
-            `Revision ${item.revisionNo}`,
+        revisionName: `Revision ${item.revisionNo}`,
 
-          quotationNo:
-            lead.quotationNo
-              ? `${lead.quotationNo}-R${item.revisionNo}`
-              : "-",
+        quotationNo: lead.quotationNo
+          ? `${lead.quotationNo}-R${item.revisionNo}`
+          : "-",
 
-          modelName:
-            item.model?.modelName || "-",
+        modelName: item.model?.modelName || "-",
 
-          variantName:
-            item.showroomVariant
-              ?.variantName || "-",
+        variantName: item.showroomVariant?.variantName || "-",
 
-          colourName:
-            item.colour?.colourName || "-",
+        colourName: item.colour?.colourName || "-",
 
-          // Direct saved value — no calculation
-          totalAmount:
-            Number(item.grandTotal) || 0,
+        // Direct saved value — no calculation
+        totalAmount: Number(item.grandTotal) || 0,
 
-          createdBy:
-            item.updatedBy || "-",
+        createdBy: item.updatedBy || "-",
 
-          createdAt:
-            item.createdAt,
+        createdAt: item.createdAt,
 
-          isOriginal:
-            false,
-        }),
-      ),
+        isOriginal: false,
+      })),
     ];
 
     return res.status(200).json({
       success: true,
 
       customer: {
-        customerName:
-          lead.customer?.accountName || "-",
+        customerName: lead.customer?.accountName || "-",
 
-        mobile:
-          lead.customer?.mobile || "-",
+        mobile: lead.customer?.mobile || "-",
 
-        city:
-          lead.customer?.city || "-",
+        city: lead.customer?.city || "-",
       },
 
-      data:
-        history,
+      data: history,
     });
   } catch (error) {
-    console.error(
-      "GET QUOTATION HISTORY DETAILS ERROR:",
-      error,
-    );
+    console.error("GET QUOTATION HISTORY DETAILS ERROR:", error);
 
     return res.status(500).json({
       success: false,
 
-      message:
-        "Failed to fetch quotation history details",
+      message: "Failed to fetch quotation history details",
 
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unknown error",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
-export const getBookingBalance = async (
-  req: Request,
-  res: Response,
-) => {
+export const getBookingBalance = async (req: Request, res: Response) => {
   try {
     const leads = await prisma.lead.findMany({
       include: {
@@ -1976,19 +1946,13 @@ export const getBookingBalance = async (
       // Order nahi bana -> sirf jo advance payment (cash/bank receipts) leadId se linked hai uska total
       // ==========================================
       const advancePaid =
-        lead.cashReceipts.reduce(
-          (sum, r) => sum + Number(r.amount || 0),
-          0,
-        ) +
-        lead.bankReceipts.reduce(
-          (sum, r) => sum + Number(r.amount || 0),
-          0,
-        );
+        lead.cashReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0) +
+        lead.bankReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
-     const receivedAmount = advancePaid;
+      const receivedAmount = advancePaid;
 
-// Hamesha invoiceAmount - receivedAmount (never negative)
-const pendingAmount = Math.max(invoiceAmount - receivedAmount, 0);
+      // Hamesha invoiceAmount - receivedAmount (never negative)
+      const pendingAmount = Math.max(invoiceAmount - receivedAmount, 0);
 
       const age = Math.floor(
         (Date.now() - new Date(lead.createdAt).getTime()) /
@@ -2041,13 +2005,12 @@ const pendingAmount = Math.max(invoiceAmount - receivedAmount, 0);
     // isliye Booking Balance list se hata do.
     // (invoiceAmount === 0 wale fresh leads list mein rahenge)
     // ==========================================
- const pendingBookingBalance = bookingBalance.filter((row) => {
-  const isFullySettled =
-    row.receivedAmount === row.invoiceAmount &&
-    row.pendingAmount === 0;
+    const pendingBookingBalance = bookingBalance.filter((row) => {
+      const isFullySettled =
+        row.receivedAmount === row.invoiceAmount && row.pendingAmount === 0;
 
-  return !isFullySettled;
-});
+      return !isFullySettled;
+    });
 
     const summary = {
       invoiceAmount: pendingBookingBalance.reduce(

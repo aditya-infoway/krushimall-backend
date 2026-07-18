@@ -1,13 +1,9 @@
 import { Request, Response } from "express";
 
 import prisma from "../lib/prisma.js";
-import {
-  generateCashReceiptVoucher,
-} from "../utils/generateCashReceiptVoucher.js";
+import { generateCashReceiptVoucher } from "../utils/generateCashReceiptVoucher.js";
 
-import {
-  generateBankReceiptVoucher,
-} from "../utils/generateBankReceiptVoucher.js";
+import { generateBankReceiptVoucher } from "../utils/generateBankReceiptVoucher.js";
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
@@ -54,7 +50,9 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const role = user?.role?.toUpperCase() || "ADMIN";
 
-    const name = user?.name || "Admin";
+    const name = user?.employeeName || user?.name || "Admin";
+
+    const userId = Number(user?.id) || null;
     const {
       companyId,
       financialYearId,
@@ -159,24 +157,20 @@ export const createOrder = async (req: Request, res: Response) => {
       },
       select: {
         id: true,
-         accountId: true,
+        accountId: true,
       },
     });
 
-// Check whether Lead exists
-if (!lead) {
-  return res.status(404).json({
-    success: false,
-    message: "Lead not found",
-  });
-}
+    // Check whether Lead exists
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
 
-// Check whether Customer Account is selected
-const customerAccountId =
-  lead?.accountId
-    ? Number(lead.accountId)
-    : null;
-
+    // Check whether Customer Account is selected
+    const customerAccountId = lead?.accountId ? Number(lead.accountId) : null;
 
     // ======================================
     // ONE ORDER PER LEAD
@@ -252,414 +246,355 @@ const customerAccountId =
     // CREATE ORDER
     // ======================================
 
-  const order = await prisma.$transaction(
-  async (tx) => {
-    const createdOrder =
-      await tx.order.create({
-      data: {
-        companyId: Number(companyId),
-
-        financialYearId: Number(financialYearId),
-
-        leadId: Number(leadId),
-
-        // =================================
-        // VEHICLE CHARGES
-        // =================================
-
-        exShowroomPrice: toNumber(vehicleCharges.exShowroomPrice),
-
-        insurance: toNumber(vehicleCharges.insurance),
-
-        roadSideAssistance: toNumber(vehicleCharges.roadSideAssistance),
-
-        exWarranty2_3: toNumber(vehicleCharges.exWarranty2_3),
-
-        hypothecationCharges: toNumber(vehicleCharges.hypothecationCharges),
-
-        exWarranty2_8: toNumber(vehicleCharges.exWarranty2_8),
-
-        rtoRegistrationCharge: toNumber(
-          vehicleCharges.rtoRegistrationCharge ??
-            vehicleCharges.rtoRegistrationCharges,
-        ),
-
-        rtoOtherCharge: toNumber(vehicleCharges.rtoOtherCharge),
-
-        // =================================
-        // ALLOTMENT DETAILS
-        // =================================
-
-        model: allotment.model || null,
-
-        variant: allotment.variant || null,
-
-        colour: allotment.colour ?? allotment.color ?? null,
-
-        chassisNo: allotment.chassisNo || null,
-
-        policyNo: allotment.policyNo || null,
-
-        nomineeName: allotment.nomineeName || null,
-
-        nomineeDob: toOptionalDate(allotment.nomineeDob),
-
-        relationWithNominee: allotment.relationWithNominee || null,
-
-        // =================================
-        // HYPOTHECATION DETAILS
-        // =================================
-
-        hypothecationType: hypothecation.type || null,
-
-        financeDoneBy: toOptionalInt(hypothecation.financeDoneBy),
-
-        bankOfFinance: hypothecation.bankOfFinance || null,
-
-        financeAmount: toNumber(hypothecation.financeAmount),
-
-        emi: toNumber(hypothecation.emi),
-
-        tenureMonths: Math.trunc(toNumber(hypothecation.tenureMonths)),
-
-        processingCharge: toNumber(
-          hypothecation.processingCharge ?? hypothecation.apronCharge,
-        ),
-
-        loanRoi: toNumber(hypothecation.loanRoi ?? hypothecation.loanROI),
-
-        marginMoney,
-
-        paymentStatus: hypothecation.paymentStatus || "pending",
-
-        assignBy: hypothecation.assignBy || null,
-
-        // =================================
-        // CASH PAYMENT
-        // =================================
-
-        cashAmount,
-
-        cashAccountId: toOptionalInt(hypothecation.cashAccountId),
-
-        // =================================
-        // BANK PAYMENT
-        // =================================
-
-        bankAmount,
-
-        bankAccountId: toOptionalInt(hypothecation.bankAccountId),
-
-        paymentMode: hypothecation.paymentMode || null,
-
-        chequeNo: hypothecation.chequeNo || null,
-
-        chequeDate: toOptionalDate(hypothecation.chequeDate),
-
-        clearDate: toOptionalDate(hypothecation.clearDate),
-
-        narration: hypothecation.narration || null,
-
-        // =================================
-        // EXCHANGE DETAILS
-        // =================================
-
-        existingCustomerModel: exchange.existingCustomerModel || null,
-
-        existingCustomerVariant: exchange.existingCustomerVariant || null,
-
-        existingVehicleYear: exchange.existingVehicleYear || null,
-
-        customerExpectedPrice: toNumber(exchange.customerExpectedPrice),
-
-        marketPrice: toNumber(exchange.marketPrice),
-
-        exchangeChassisNo: exchange.chassisNo || null,
-
-        companyShare: toNumber(exchange.companyShare),
-
-        dealerShares: toNumber(exchange.dealerShares),
-
-        rcNo: exchange.rcNo || null,
-
-        exchangeInsurance:
-          exchange.insurance != null ? String(exchange.insurance) : null,
-
-        vehicleNo: exchange.vehicleNo || null,
-
-        // =================================
-        // PAYMENT DETAILS
-        // =================================
-
-        discount: toNumber(payment.discount),
-
-        schemeDiscount: toNumber(payment.schemeDiscount),
-
-        exchangeDiscount: toNumber(payment.exchangeDiscount),
-
-        invoiceAmount: toNumber(payment.invoiceAmount),
-
-        total: toNumber(payment.total),
-
-        receivedAmount: toNumber(payment.receivedAmount),
-
-        pendingAmount: toNumber(payment.pendingAmount),
-
-        // =================================
-        // BROKER DETAILS
-        // =================================
-
-        brokerName: broker.brokerName || null,
-
-        brokerAmount: toNumber(broker.brokerAmount),
-
-        // =================================
-        // DELIVERY DETAILS
-        // =================================
-
-        invoiceBill: Boolean(delivery.invoiceBill),
-
-        accessoriesInvoice: Boolean(delivery.accessoriesInvoice),
-
-        serviceBook: Boolean(delivery.serviceBook),
-
-        insuranceCopy: Boolean(delivery.insuranceCopy),
-
-        helmetInvoice: Boolean(delivery.helmetInvoice),
-
-        warrantyBook: Boolean(delivery.warrantyBook),
-
-        keychainPouch: Boolean(delivery.keychainPouch),
-
-        allGuard: Boolean(delivery.allGuard),
-
-        matting: Boolean(delivery.matting),
-
-        footrest: Boolean(delivery.footrest),
-
-        helmet: Boolean(delivery.helmet),
-
-        visor: Boolean(delivery.visor),
-
-        seatCover: Boolean(delivery.seatCover),
-
-        bodyCover: Boolean(delivery.bodyCover),
-
-        mirrorSet: Boolean(delivery.mirrorSet),
-
-        other: Boolean(delivery.other),
-
-        createdBy: name,
-
-        createdType: role,
-      },
-
-      include: {
-        company: true,
-
-        financialYear: true,
-
-        lead: true,
-
-        finance: {
-          include: {
-            account: true,
-          },
-        },
-
-        cashAccount: true,
-
-        bankAccount: true,
-      },
-    });
-    if (allotment.chassisNo) {
-  await tx.purchaseItem.update({
-    where: {
-      chassisNo: allotment.chassisNo,
-    },
-    data: {
-      status: "Booked",
-    },
-  });
-}
-    // =====================================
-    // CREATE CASH RECEIPT — DCPR
-    // =====================================
-
-   if (
-  hypothecation.paymentStatus === "received" &&
-  cashAmount > 0 &&
-  customerAccountId !== null
-) {
-   
-  await tx.cashReceipt.create({
-    data: {
-      voucherNo:
-        await generateCashReceiptVoucher(),
-
-      date: new Date(),
-
-      companyId:
-        Number(companyId),
-
-      financialYearId:
-        Number(financialYearId),
-
-      cashAccountId:
-        Number(
-          hypothecation.cashAccountId,
-        ),
-
-      oppAccountId:
-        customerAccountId,
-
-      leadId:
-        Number(leadId),
-
-      amount:
-        cashAmount,
-
-      narration:
-        hypothecation.narration ||
-        "Order margin cash received",
-
-      type:
-        "DPCR",
-
-      createdType:
-        role,
-
-      createdBy:
-        name,
-    },
-  });
-
-  // Increase Cash Account balance
-  await tx.account.update({
-    where: {
-      id: Number(
-        hypothecation.cashAccountId,
-      ),
-    },
-
-    data: {
-      closingBalance: {
-        increment:
-          cashAmount,
-      },
-    },
-  });
-}
-    // =====================================
-    // CREATE BANK RECEIPT — DPBR
-    // =====================================
-
-  if (
-  hypothecation.paymentStatus === "received" &&
-  bankAmount > 0 &&
-  customerAccountId !== null
-) {
-      await tx.bankReceipt.create({
+    const order = await prisma.$transaction(async (tx) => {
+      const createdOrder = await tx.order.create({
         data: {
-          voucherNo:
-            await generateBankReceiptVoucher(),
+          companyId: Number(companyId),
 
-          date:
-            new Date(),
+          financialYearId: Number(financialYearId),
 
-          companyId:
-            Number(companyId),
+          leadId: Number(leadId),
 
-          financialYearId:
-            Number(financialYearId),
+          // =================================
+          // VEHICLE CHARGES
+          // =================================
 
-          bankAccountId:
-            Number(
-              hypothecation
-                .bankAccountId,
-            ),
+          exShowroomPrice: toNumber(vehicleCharges.exShowroomPrice),
 
-          // Customer account from Lead
-        oppAccountId:
-  customerAccountId,
+          insurance: toNumber(vehicleCharges.insurance),
 
-          leadId:
-            Number(leadId),
+          roadSideAssistance: toNumber(vehicleCharges.roadSideAssistance),
 
-          amount:
-            bankAmount,
+          exWarranty2_3: toNumber(vehicleCharges.exWarranty2_3),
 
-          paymentType:
-            hypothecation
-              .paymentMode ||
-            "UPI",
+          hypothecationCharges: toNumber(vehicleCharges.hypothecationCharges),
 
-          chequeNo:
-            hypothecation
-              .paymentMode ===
-            "CHEQUE"
-              ? hypothecation
-                    .chequeNo ||
-                null
-              : null,
+          exWarranty2_8: toNumber(vehicleCharges.exWarranty2_8),
 
-          chequeDate:
-            hypothecation
-              .paymentMode ===
-            "CHEQUE"
-              ? toOptionalDate(
-                  hypothecation
-                    .chequeDate,
-                )
-              : null,
-
-          chequeClearDate:
-            hypothecation
-              .paymentMode ===
-            "CHEQUE"
-              ? toOptionalDate(
-                  hypothecation
-                    .clearDate,
-                )
-              : null,
-
-          narration:
-            hypothecation
-              .narration ||
-            "Order margin bank received",
-
-          type:
-            "DPBR",
-
-          createdType:
-            role,
-
-          createdBy:
-            name,
-        },
-      });
-
-      // Increase Bank Account balance
-      await tx.account.update({
-        where: {
-          id: Number(
-            hypothecation
-              .bankAccountId,
+          rtoRegistrationCharge: toNumber(
+            vehicleCharges.rtoRegistrationCharge ??
+              vehicleCharges.rtoRegistrationCharges,
           ),
+
+          rtoOtherCharge: toNumber(vehicleCharges.rtoOtherCharge),
+
+          // =================================
+          // ALLOTMENT DETAILS
+          // =================================
+
+          model: allotment.model || null,
+
+          variant: allotment.variant || null,
+
+          colour: allotment.colour ?? allotment.color ?? null,
+
+          chassisNo: allotment.chassisNo || null,
+
+          policyNo: allotment.policyNo || null,
+
+          nomineeName: allotment.nomineeName || null,
+
+          nomineeDob: toOptionalDate(allotment.nomineeDob),
+
+          relationWithNominee: allotment.relationWithNominee || null,
+
+          // =================================
+          // HYPOTHECATION DETAILS
+          // =================================
+
+          hypothecationType: hypothecation.type || null,
+
+          financeDoneBy: toOptionalInt(hypothecation.financeDoneBy),
+
+          bankOfFinance: hypothecation.bankOfFinance || null,
+
+          financeAmount: toNumber(hypothecation.financeAmount),
+
+          emi: toNumber(hypothecation.emi),
+
+          tenureMonths: Math.trunc(toNumber(hypothecation.tenureMonths)),
+
+          processingCharge: toNumber(
+            hypothecation.processingCharge ?? hypothecation.apronCharge,
+          ),
+
+          loanRoi: toNumber(hypothecation.loanRoi ?? hypothecation.loanROI),
+
+          marginMoney,
+
+          paymentStatus: hypothecation.paymentStatus || "pending",
+
+          assignBy: hypothecation.assignBy || null,
+
+          // =================================
+          // CASH PAYMENT
+          // =================================
+
+          cashAmount,
+
+          cashAccountId: toOptionalInt(hypothecation.cashAccountId),
+
+          // =================================
+          // BANK PAYMENT
+          // =================================
+
+          bankAmount,
+
+          bankAccountId: toOptionalInt(hypothecation.bankAccountId),
+
+          paymentMode: hypothecation.paymentMode || null,
+
+          chequeNo: hypothecation.chequeNo || null,
+
+          chequeDate: toOptionalDate(hypothecation.chequeDate),
+
+          clearDate: toOptionalDate(hypothecation.clearDate),
+
+          narration: hypothecation.narration || null,
+
+          // =================================
+          // EXCHANGE DETAILS
+          // =================================
+
+          existingCustomerModel: exchange.existingCustomerModel || null,
+
+          existingCustomerVariant: exchange.existingCustomerVariant || null,
+
+          existingVehicleYear: exchange.existingVehicleYear || null,
+
+          customerExpectedPrice: toNumber(exchange.customerExpectedPrice),
+
+          marketPrice: toNumber(exchange.marketPrice),
+
+          exchangeChassisNo: exchange.chassisNo || null,
+
+          companyShare: toNumber(exchange.companyShare),
+
+          dealerShares: toNumber(exchange.dealerShares),
+
+          rcNo: exchange.rcNo || null,
+
+          exchangeInsurance:
+            exchange.insurance != null ? String(exchange.insurance) : null,
+
+          vehicleNo: exchange.vehicleNo || null,
+
+          // =================================
+          // PAYMENT DETAILS
+          // =================================
+
+          discount: toNumber(payment.discount),
+
+          schemeDiscount: toNumber(payment.schemeDiscount),
+
+          exchangeDiscount: toNumber(payment.exchangeDiscount),
+
+          invoiceAmount: toNumber(payment.invoiceAmount),
+
+          total: toNumber(payment.total),
+
+          receivedAmount: toNumber(payment.receivedAmount),
+
+          pendingAmount: toNumber(payment.pendingAmount),
+
+          // =================================
+          // BROKER DETAILS
+          // =================================
+
+          brokerName: broker.brokerName || null,
+
+          brokerAmount: toNumber(broker.brokerAmount),
+
+          // =================================
+          // DELIVERY DETAILS
+          // =================================
+
+          invoiceBill: Boolean(delivery.invoiceBill),
+
+          accessoriesInvoice: Boolean(delivery.accessoriesInvoice),
+
+          serviceBook: Boolean(delivery.serviceBook),
+
+          insuranceCopy: Boolean(delivery.insuranceCopy),
+
+          helmetInvoice: Boolean(delivery.helmetInvoice),
+
+          warrantyBook: Boolean(delivery.warrantyBook),
+
+          keychainPouch: Boolean(delivery.keychainPouch),
+
+          allGuard: Boolean(delivery.allGuard),
+
+          matting: Boolean(delivery.matting),
+
+          footrest: Boolean(delivery.footrest),
+
+          helmet: Boolean(delivery.helmet),
+
+          visor: Boolean(delivery.visor),
+
+          seatCover: Boolean(delivery.seatCover),
+
+          bodyCover: Boolean(delivery.bodyCover),
+
+          mirrorSet: Boolean(delivery.mirrorSet),
+
+          other: Boolean(delivery.other),
+
+          createdBy: name,
+          createdById: userId,
+          createdType: role,
         },
 
-        data: {
-          closingBalance: {
-            increment:
-              bankAmount,
+        include: {
+          company: true,
+
+          financialYear: true,
+
+          lead: true,
+
+          finance: {
+            include: {
+              account: true,
+            },
           },
+
+          cashAccount: true,
+
+          bankAccount: true,
         },
       });
-    }
+      if (allotment.chassisNo) {
+        await tx.purchaseItem.update({
+          where: {
+            chassisNo: allotment.chassisNo,
+          },
+          data: {
+            status: "Booked",
+          },
+        });
+      }
+      // =====================================
+      // CREATE CASH RECEIPT — DCPR
+      // =====================================
 
-    return createdOrder;
-  },
-);
+      if (
+        hypothecation.paymentStatus === "received" &&
+        cashAmount > 0 &&
+        customerAccountId !== null
+      ) {
+        await tx.cashReceipt.create({
+          data: {
+            voucherNo: await generateCashReceiptVoucher(),
+
+            date: new Date(),
+
+            companyId: Number(companyId),
+
+            financialYearId: Number(financialYearId),
+
+            cashAccountId: Number(hypothecation.cashAccountId),
+
+            oppAccountId: customerAccountId,
+
+            leadId: Number(leadId),
+
+            amount: cashAmount,
+
+            narration: hypothecation.narration || "Order margin cash received",
+
+            type: "DPCR",
+
+            createdType: role,
+
+            createdBy: name,
+          },
+        });
+
+        // Increase Cash Account balance
+        await tx.account.update({
+          where: {
+            id: Number(hypothecation.cashAccountId),
+          },
+
+          data: {
+            closingBalance: {
+              increment: cashAmount,
+            },
+          },
+        });
+      }
+      // =====================================
+      // CREATE BANK RECEIPT — DPBR
+      // =====================================
+
+      if (
+        hypothecation.paymentStatus === "received" &&
+        bankAmount > 0 &&
+        customerAccountId !== null
+      ) {
+        await tx.bankReceipt.create({
+          data: {
+            voucherNo: await generateBankReceiptVoucher(),
+
+            date: new Date(),
+
+            companyId: Number(companyId),
+
+            financialYearId: Number(financialYearId),
+
+            bankAccountId: Number(hypothecation.bankAccountId),
+
+            // Customer account from Lead
+            oppAccountId: customerAccountId,
+
+            leadId: Number(leadId),
+
+            amount: bankAmount,
+
+            paymentType: hypothecation.paymentMode || "UPI",
+
+            chequeNo:
+              hypothecation.paymentMode === "CHEQUE"
+                ? hypothecation.chequeNo || null
+                : null,
+
+            chequeDate:
+              hypothecation.paymentMode === "CHEQUE"
+                ? toOptionalDate(hypothecation.chequeDate)
+                : null,
+
+            chequeClearDate:
+              hypothecation.paymentMode === "CHEQUE"
+                ? toOptionalDate(hypothecation.clearDate)
+                : null,
+
+            narration: hypothecation.narration || "Order margin bank received",
+
+            type: "DPBR",
+
+            createdType: role,
+
+            createdBy: name,
+          },
+        });
+
+        // Increase Bank Account balance
+        await tx.account.update({
+          where: {
+            id: Number(hypothecation.bankAccountId),
+          },
+
+          data: {
+            closingBalance: {
+              increment: bankAmount,
+            },
+          },
+        });
+      }
+
+      return createdOrder;
+    });
     return res.status(201).json({
       success: true,
 
@@ -738,7 +673,12 @@ export const getOrders = async (req: Request, res: Response) => {
             account: true,
           },
         },
-
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
         cashAccount: true,
 
         bankAccount: true,
@@ -814,7 +754,6 @@ export const getOrderById = async (req: Request, res: Response) => {
         bankAccount: true,
       },
     });
-
 
     if (!order) {
       return res.status(404).json({

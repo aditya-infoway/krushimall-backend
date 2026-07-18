@@ -22,7 +22,14 @@ export const createAccount = async (req: Request, res: Response) => {
       anniversary: req.body.anniversary ? new Date(req.body.anniversary) : null,
 
       createdType: role,
-      createdBy: user?.name,
+      createdBy:
+  req.body.createdBy ||
+  user?.employeeName ||
+  user?.name,
+      createdById:
+    req.body.createdById
+      ? Number(req.body.createdById)
+      : null,
       branchId: role === "BRANCH" ? Number(user.branchId) : null,
     };
 
@@ -59,6 +66,21 @@ export const getAccounts = async (req: Request, res: Response) => {
 
     const accounts = await prisma.account.findMany({
       where: whereClause,
+        include: {
+    employee: {
+      select: {
+        id: true,
+        employeeName: true,
+      },
+    },
+    createdByBranch: {
+      select: {
+        id: true,
+        branchName: true,
+      },
+    },
+  },
+
       orderBy: {
         id: "desc",
       },

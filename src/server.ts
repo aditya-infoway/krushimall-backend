@@ -18,6 +18,8 @@ app.use(
   express.static(path.join(process.cwd(), "uploads"))
 );
 
+
+
 // All routes
 app.use("/api", router);
 

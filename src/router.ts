@@ -35,8 +35,8 @@ import vehicleStockTransferRoutes from "./routes/vehicleStockTransfer.js";
 import orderRoutes from "./routes/order.js";
 import webauthRoutes from "./routes/webauth.js";
 import vendorRoutes from "./routes/vendor.js";
-
-
+import salesExecutiveRoutes from "./routes/employee/salesexecutive/index.js";
+import WebvendorRoutes from "./routes/vendor/index.js";
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -75,4 +75,6 @@ router.use("/vehicle-stock-transfer", vehicleStockTransferRoutes);
 router.use("/orders", orderRoutes);
 router.use("/webauth", webauthRoutes);
 router.use("/vendor", vendorRoutes);
+router.use("/salesexecutive", salesExecutiveRoutes);
+router.use("/vendor-web", WebvendorRoutes);
 export default router;
