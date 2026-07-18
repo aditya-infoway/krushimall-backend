@@ -1,6 +1,6 @@
 import { Router } from "express";
 import * as WebsiteVariantController from "../../controllers/vendor/websiteVariant.js";
-import { verifyWebToken } from "../../middleware/verifyWebToken.js";
+import { verifyVendorToken } from "../../middleware/verifyVendorToken.js";
 import { upload } from "../../middleware/upload.js";
 
 const router = Router();
@@ -33,46 +33,46 @@ const mediaUpload = upload.fields([
 ]);
 router.post(
   "/",
-  verifyWebToken,
+  verifyVendorToken,
  mediaUpload,
   WebsiteVariantController.createWebsiteVariant
 );
 
 router.get(
   "/",
-  verifyWebToken,
+  verifyVendorToken,
   WebsiteVariantController.getWebsiteVariants
 );
 
 router.get(
   "/:id",
-  verifyWebToken,
+  verifyVendorToken,
   WebsiteVariantController.getWebsiteVariantById
 );
 
 router.put(
   "/:id",
-  verifyWebToken,
+  verifyVendorToken,
   upload.any(),
   WebsiteVariantController.updateWebsiteVariant
 );
 
 router.put(
   "/:id/save-step",
-  verifyWebToken,
+  verifyVendorToken,
   mediaUpload,
   WebsiteVariantController.saveStep
 );
 
 router.put(
   "/:id/submit",
-  verifyWebToken,
+  verifyVendorToken,
   WebsiteVariantController.submitWebsiteVariant
 );
 
 router.delete(
   "/:id",
-  verifyWebToken,
+  verifyVendorToken,
   WebsiteVariantController.deleteWebsiteVariant
 );
 

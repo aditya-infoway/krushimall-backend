@@ -76,5 +76,5 @@ router.use("/orders", orderRoutes);
 router.use("/webauth", webauthRoutes);
 router.use("/vendor", vendorRoutes);
 router.use("/salesexecutive", salesExecutiveRoutes);
-router.use("/vendor", WebvendorRoutes);
+router.use("/vendor-web", WebvendorRoutes);
 export default router;

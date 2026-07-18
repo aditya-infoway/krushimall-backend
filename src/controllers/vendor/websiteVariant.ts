@@ -8,13 +8,13 @@ export const createWebsiteVariant = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+  const vendorAuth = (req as any).vendor;
 
-    const vendor = await prisma.webVendor.findUnique({
-      where: {
-        userId: user.id,
-      },
-    });
+   const vendor = await prisma.webVendor.findUnique({
+  where: {
+    id: vendorAuth.vendorId,
+  },
+});
 
     if (!vendor) {
       return res.status(404).json({
@@ -23,10 +23,10 @@ export const createWebsiteVariant = async (
       });
     }
 
-    req.body.vendorId = vendor.id;
-    req.body.createdById = user.id;
-    req.body.createdBy = user.name;
-    req.body.createdType = "VENDOR";
+  req.body.vendorId = vendor.id;
+req.body.createdById = vendorAuth.userId;
+req.body.createdBy = vendor.name; // or vendor.vendorName
+req.body.createdType = "VENDOR";
 
     return WebsiteVariantController.createWebsiteVariant(req, res);
   } catch (error) {
@@ -45,13 +45,13 @@ export const getWebsiteVariants = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+    const vendorAuth = (req as any).vendor;
 
-    const vendor = await prisma.webVendor.findUnique({
-      where: {
-        userId: user.id,
-      },
-    });
+   const vendor = await prisma.webVendor.findUnique({
+  where: {
+    id: vendorAuth.vendorId,
+  },
+});
 
     if (!vendor) {
       return res.status(404).json({
@@ -96,13 +96,13 @@ export const getWebsiteVariantById = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+    const vendorAuth = (req as any).vendor;
 
-    const vendor = await prisma.webVendor.findUnique({
-      where: {
-        userId: user.id,
-      },
-    });
+   const vendor = await prisma.webVendor.findUnique({
+  where: {
+    id: vendorAuth.vendorId,
+  },
+});
 
     if (!vendor) {
       return res.status(404).json({
@@ -152,13 +152,13 @@ export const updateWebsiteVariant = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+    const vendorAuth = (req as any).vendor;
 
-    const vendor = await prisma.webVendor.findUnique({
-      where: {
-        userId: user.id,
-      },
-    });
+   const vendor = await prisma.webVendor.findUnique({
+  where: {
+    id: vendorAuth.vendorId,
+  },
+});
 
     if (!vendor) {
       return res.status(404).json({
@@ -198,13 +198,13 @@ export const saveStep = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+     const vendorAuth = (req as any).vendor;
 
-    const vendor = await prisma.webVendor.findUnique({
-      where: {
-        userId: user.id,
-      },
-    });
+   const vendor = await prisma.webVendor.findUnique({
+  where: {
+    id: vendorAuth.vendorId,
+  },
+});
 
     if (!vendor) {
       return res.status(404).json({
@@ -243,13 +243,13 @@ export const submitWebsiteVariant = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+    const vendorAuth = (req as any).vendor;
 
-    const vendor = await prisma.webVendor.findUnique({
-      where: {
-        userId: user.id,
-      },
-    });
+   const vendor = await prisma.webVendor.findUnique({
+  where: {
+    id: vendorAuth.vendorId,
+  },
+});
 
     if (!vendor) {
       return res.status(404).json({
@@ -289,13 +289,13 @@ export const deleteWebsiteVariant = async (
   res: Response
 ) => {
   try {
-    const user = (req as any).user;
+    const vendorAuth = (req as any).vendor;
 
-    const vendor = await prisma.webVendor.findUnique({
-      where: {
-        userId: user.id,
-      },
-    });
+   const vendor = await prisma.webVendor.findUnique({
+  where: {
+    id: vendorAuth.vendorId,
+  },
+});
 
     if (!vendor) {
       return res.status(404).json({

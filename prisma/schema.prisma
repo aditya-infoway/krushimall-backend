@@ -377,6 +377,7 @@ model WebsiteVariant {
   model                     Model?     @relation(fields: [modelId], references: [id])
   modelYear                 ModelYear? @relation(fields: [modelYearId], references: [id])
   variant                   Variant?   @relation(fields: [variantId], references: [id])
+    enquiries WebsiteEnquiry[]
 }
 
 model Colour {
@@ -1520,4 +1521,22 @@ model WebVendor {
  websiteVariants WebsiteVariant[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+model WebsiteEnquiry {
+  id               Int      @id @default(autoincrement())
+
+  websiteVariantId Int?
+  websiteVariant   WebsiteVariant? @relation(fields: [websiteVariantId], references: [id])
+
+  fullName         String
+  email            String
+  mobileNumber     String
+
+  interestedIn     String?   // New Tractor / Used Tractor
+  message          String?
+
+  status           String     @default("PENDING")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
