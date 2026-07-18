@@ -12,6 +12,9 @@ interface WebTokenPayload {
 }
 
 export const verifyWebToken = (req: WebAuthedRequest, res: Response, next: NextFunction) => {
+   console.log("verifyWebToken hit");
+  console.log("Authorization:", req.headers.authorization);
+
   try {
     const authHeader = req.headers.authorization;
 
