@@ -4,10 +4,18 @@ import prisma from "../lib/prisma.js";
 
 export const createWebsiteVariant = async (req: Request, res: Response) => {
   try {
+     const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+
     const createData: any = {
       ...req.body,
+
       currentStep: 1,
       status: "DRAFT",
+
+      createdType: role,
+     createdBy: user?.employeeName || user?.name,
+     createdById: user?.id,
     };
 
     const files = req.files as {

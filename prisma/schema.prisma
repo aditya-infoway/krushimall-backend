@@ -236,6 +236,11 @@ model WebsiteVariant {
   isCompleted               Boolean    @default(false)
   createdAt                 DateTime   @default(now())
   updatedAt                 DateTime   @updatedAt
+     vendorId Int?
+  vendor   WebVendor? @relation(fields: [vendorId], references: [id])
+  createdById               Int?
+  createdBy                 String?
+  createdType               String?
   categoryId                Int?
   brandId                   Int?
   modelId                   Int?
@@ -1512,7 +1517,7 @@ model WebVendor {
   // Vendor status
   isVerified Boolean   @default(false)
   verifiedAt DateTime?
-
+ websiteVariants WebsiteVariant[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
