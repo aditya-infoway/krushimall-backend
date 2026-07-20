@@ -15,8 +15,25 @@ export const createWebsiteEnquiry = async (
       message,
     } = req.body;
 
+    const variant = await prisma.websiteVariant.findUnique({
+      where: {
+        id: Number(websiteVariantId),
+      },
+      select: {
+        vendorId: true,
+      },
+    });
+
+    if (!variant) {
+      return res.status(404).json({
+        success: false,
+        message: "Website Variant not found.",
+      });
+    }
+
     const enquiry = await prisma.websiteEnquiry.create({
       data: {
+        vendorId: variant.vendorId,
         websiteVariantId: Number(websiteVariantId),
         fullName,
         email,
@@ -40,12 +57,19 @@ export const createWebsiteEnquiry = async (
     });
   }
 };
+
+
 export const getWebsiteEnquiries = async (
   req: Request,
   res: Response
 ) => {
   try {
+    const vendor = (req as any).vendor;
+
     const enquiries = await prisma.websiteEnquiry.findMany({
+      where: {
+        vendorId: vendor.vendorId,
+      },
       include: {
         websiteVariant: true,
       },
@@ -62,6 +86,8 @@ export const getWebsiteEnquiries = async (
     });
   }
 };
+
+
 export const getWebsiteEnquiry = async (
   req: Request,
   res: Response
@@ -77,6 +103,8 @@ export const getWebsiteEnquiry = async (
 
   res.json(enquiry);
 };
+
+
 export const updateStatus = async (
   req: Request,
   res: Response
