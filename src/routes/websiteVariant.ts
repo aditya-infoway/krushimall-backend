@@ -11,7 +11,7 @@ deleteWebsiteVariant,
 } from "../controllers/websiteVariant.js";
 
 import { upload } from "../middleware/upload.js";
-
+import { verifyToken } from "../middleware/middleware.js";
 const router = Router();
 
 const mediaUpload = upload.fields([
@@ -47,6 +47,7 @@ const mediaUpload = upload.fields([
 // Create
 router.post(
 "/",
+verifyToken,
 mediaUpload,
 createWebsiteVariant
 );
@@ -54,18 +55,21 @@ createWebsiteVariant
 // Get All
 router.get(
 "/",
+
 getWebsiteVariants
 );
 
 // Get By Id
 router.get(
 "/:id",
+
 getWebsiteVariantById
 );
 
 // Update Full Record
 router.put(
 "/:id",
+verifyToken,
 mediaUpload,
 updateWebsiteVariant
 );
@@ -73,6 +77,7 @@ updateWebsiteVariant
 // Save Step
 router.put(
 "/:id/save-step",
+verifyToken,
 mediaUpload,
 saveStep
 );
@@ -80,17 +85,20 @@ saveStep
 // Final Submit
 router.put(
 "/:id/submit",
+verifyToken,
 submitWebsiteVariant
 );
 ;
 
 router.patch(
   "/:id/toggle-status",
+  verifyToken,
   toggleWebsiteVariantStatus
 );
 // Delete
 router.delete(
 "/:id",
+verifyToken,
 deleteWebsiteVariant
 );
 
