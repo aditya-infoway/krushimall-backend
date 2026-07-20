@@ -144,21 +144,53 @@ export const updateAccount = async (
     const openingBalance = Number(req.body.openingBalance || 0);
 
     const account = await prisma.account.update({
-      where: {
-        id: Number(req.params.id),
-      },
-      data: {
-        ...req.body,
-        openingBalance,
-        closingBalance: openingBalance, // Update closing balance as well
-        birthday: req.body.birthday
-          ? new Date(req.body.birthday)
-          : null,
-        anniversary: req.body.anniversary
-          ? new Date(req.body.anniversary)
-          : null,
-      },
-    });
+  where: {
+    id: Number(req.params.id),
+  },
+  data: {
+    accountName: req.body.accountName,
+    printName: req.body.printName,
+    group: req.body.group,
+    drCr: req.body.drCr,
+
+    openingBalance,
+    closingBalance: openingBalance,
+
+    country: req.body.country,
+    countryCode: req.body.countryCode,
+    state: req.body.state,
+    stateCode: req.body.stateCode,
+    district: req.body.district,
+    taluka: req.body.taluka,
+    city: req.body.city,
+    area: req.body.area,
+    address1: req.body.address1,
+    address2: req.body.address2,
+    pincode: req.body.pincode,
+    phone: req.body.phone,
+    mobile: req.body.mobile,
+    email: req.body.email,
+    contactPerson: req.body.contactPerson,
+
+    birthday: req.body.birthday
+      ? new Date(req.body.birthday)
+      : null,
+
+    anniversary: req.body.anniversary
+      ? new Date(req.body.anniversary)
+      : null,
+
+    bankAccountNo: req.body.bankAccountNo,
+    bankName: req.body.bankName,
+    ifscCode: req.body.ifscCode,
+    branch: req.body.branch,
+    gstNo: req.body.gstNo,
+    panCard: req.body.panCard,
+    aadharNo: req.body.aadharNo,
+
+    status: req.body.status,
+  },
+});
 
     res.status(200).json({
       success: true,

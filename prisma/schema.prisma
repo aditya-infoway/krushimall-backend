@@ -134,6 +134,7 @@ model Model {
   variants           Variant[]
   websiteVariants    WebsiteVariant[]
   quotationHistories QuotationHistory[]
+    testDrives  TestDrive[]
 }
 
 model ModelYear {
@@ -189,8 +190,9 @@ model ShowroomVariant {
   leads              Lead[]
   tractors           Tractor[]
   quotationHistories QuotationHistory[]
-
+  testDrives  TestDrive[]
   @@unique([modelId, variantId])
+
 }
 
 model ShowroomVariantAccessory {
@@ -396,6 +398,7 @@ model Colour {
   leads              Lead[]
   tractors           Tractor[]
   quotationHistories QuotationHistory[]
+    testDrives  TestDrive[]
 }
 
 model Account {
@@ -781,6 +784,7 @@ model Lead {
   bankReceipts        BankReceipt[]
   quotationRevision   Int                @default(0)
   quotationHistories  QuotationHistory[]
+    testDrives  TestDrive[]
 }
 
 model FollowUp {
@@ -1518,25 +1522,60 @@ model WebVendor {
   // Vendor status
   isVerified Boolean   @default(false)
   verifiedAt DateTime?
- websiteVariants WebsiteVariant[]
+   websiteVariants WebsiteVariant[]
+  websiteEnquiries WebsiteEnquiry[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+
+
 model WebsiteEnquiry {
-  id               Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
+
+  vendorId Int
+  vendor   WebVendor @relation(fields: [vendorId], references: [id])
 
   websiteVariantId Int?
-  websiteVariant   WebsiteVariant? @relation(fields: [websiteVariantId], references: [id])
+  websiteVariant WebsiteVariant? @relation(fields:[websiteVariantId], references:[id])
 
-  fullName         String
-  email            String
-  mobileNumber     String
+  fullName String
+  email String
+  mobileNumber String
 
-  interestedIn     String?   // New Tractor / Used Tractor
-  message          String?
+  interestedIn String?
+  message String?
 
-  status           String     @default("PENDING")
+  status String @default("PENDING")
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+model TestDrive {
+  id                        Int      @id @default(autoincrement())
+
+  leadId                    Int
+  modelId                   Int
+  showroomVariantId         Int
+  colourId                  Int
+
+  testDriveDate             DateTime
+  testDriveFromTime         String
+  testDriveToTime           String
+  duration                  String
+
+  vehicleSpeedometerRunning String
+  licenceNo                 String
+
+  feedback                  String
+  remarks                   String?
+  placeOfTestDrive          String
+
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  lead             Lead             @relation(fields: [leadId], references: [id])
+  model            Model            @relation(fields: [modelId], references: [id])
+  showroomVariant  ShowroomVariant  @relation(fields: [showroomVariantId], references: [id])
+  colour           Colour           @relation(fields: [colourId], references: [id])
 }

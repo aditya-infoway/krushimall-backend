@@ -629,19 +629,24 @@ export const getPurchases = async (req: Request, res: Response) => {
         id: "desc",
       },
     });
-    const data = purchases.map((purchase) => {
-      const totalItems = purchase.items.length;
+  const data = purchases.map((purchase) => {
+  const totalItems = purchase.items.length;
 
-      const inwardItems = purchase.items.filter(
-        (item) => item.status === "Inward",
-      ).length;
+  const inwardItems = purchase.items.filter(
+    (item) => item.status === "Inward"
+  ).length;
 
-      return {
-        ...purchase,
-        verified: purchase.status === "VERIFY",
-        allInward: totalItems > 0 && totalItems === inwardItems,
-      };
-    });
+  const hasBookedItem = purchase.items.some(
+    (item) => item.status === "Booked"
+  );
+
+  return {
+    ...purchase,
+    verified: purchase.status === "VERIFY",
+    allInward: totalItems > 0 && totalItems === inwardItems,
+    hasBookedItem,
+  };
+});
 
     return res.status(200).json({
       success: true,
