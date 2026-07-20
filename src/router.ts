@@ -37,6 +37,7 @@ import webauthRoutes from "./routes/webauth.js";
 import vendorRoutes from "./routes/vendor.js";
 import salesExecutiveRoutes from "./routes/employee/salesexecutive/index.js";
 import WebvendorRoutes from "./routes/vendor/index.js";
+import testDriveRoutes from "./routes/testDrive.js";
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -77,4 +78,5 @@ router.use("/webauth", webauthRoutes);
 router.use("/vendor", vendorRoutes);
 router.use("/salesexecutive", salesExecutiveRoutes);
 router.use("/vendor-web", WebvendorRoutes);
+router.use("/test-drives", testDriveRoutes);
 export default router;
