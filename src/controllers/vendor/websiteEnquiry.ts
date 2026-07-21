@@ -1,10 +1,25 @@
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma.js";
 
-export const createWebsiteEnquiry = async (
-  req: Request,
-  res: Response
-) => {
+
+
+function computeFollowupStage(
+  latestFollowup?: { nextScheduledDate: Date | null } | null,
+): "PENDING" | "ATTEND" | "DELAY" {
+  if (!latestFollowup || !latestFollowup.nextScheduledDate) {
+    return "PENDING";
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const followupDate = new Date(latestFollowup.nextScheduledDate);
+  followupDate.setHours(0, 0, 0, 0);
+
+  return followupDate.getTime() < today.getTime() ? "DELAY" : "ATTEND";
+}
+
+export const createWebsiteEnquiry = async (req: Request, res: Response) => {
   try {
     const {
       websiteVariantId,
@@ -19,9 +34,6 @@ export const createWebsiteEnquiry = async (
       where: {
         id: Number(websiteVariantId),
       },
-      select: {
-        vendorId: true,
-      },
     });
 
     if (!variant) {
@@ -33,7 +45,6 @@ export const createWebsiteEnquiry = async (
 
     const enquiry = await prisma.websiteEnquiry.create({
       data: {
-        vendorId: variant.vendorId,
         websiteVariantId: Number(websiteVariantId),
         fullName,
         email,
@@ -58,7 +69,6 @@ export const createWebsiteEnquiry = async (
   }
 };
 
-
 export const getWebsiteEnquiries = async (
   req: Request,
   res: Response
@@ -68,40 +78,72 @@ export const getWebsiteEnquiries = async (
 
     const enquiries = await prisma.websiteEnquiry.findMany({
       where: {
-        vendorId: vendor.vendorId,
+        websiteVariant: {
+          vendorId: vendor.vendorId,
+        },
       },
       include: {
         websiteVariant: true,
+        followUps: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
       orderBy: {
         createdAt: "desc",
       },
     });
 
-    return res.json(enquiries);
+   const withStage = enquiries.map((e) => ({
+      ...e,
+      followupStage: computeFollowupStage(e.followUps[0]),
+    }));
+
+    return res.json(withStage);
   } catch (error) {
     console.log(error);
-    res.status(500).json({
+
+    return res.status(500).json({
       message: "Error fetching enquiries",
     });
   }
 };
 
 
+
 export const getWebsiteEnquiry = async (
   req: Request,
   res: Response
 ) => {
-  const enquiry = await prisma.websiteEnquiry.findUnique({
-    where: {
-      id: Number(req.params.id),
-    },
-    include: {
-      websiteVariant: true,
-    },
-  });
+  try {
+    const vendor = (req as any).vendor;
 
-  res.json(enquiry);
+    const enquiry = await prisma.websiteEnquiry.findFirst({
+      where: {
+        id: Number(req.params.id),
+        websiteVariant: {
+          vendorId: vendor.vendorId,
+        },
+      },
+      include: {
+        websiteVariant: true,
+      },
+    });
+
+    if (!enquiry) {
+      return res.status(404).json({
+        message: "Enquiry not found",
+      });
+    }
+
+    return res.json(enquiry);
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      message: "Error fetching enquiry",
+    });
+  }
 };
 
 
@@ -109,17 +151,42 @@ export const updateStatus = async (
   req: Request,
   res: Response
 ) => {
-  const enquiry = await prisma.websiteEnquiry.update({
-    where: {
-      id: Number(req.params.id),
-    },
-    data: {
-      status: req.body.status,
-    },
-  });
+  try {
+    const vendor = (req as any).vendor;
 
-  res.json({
-    message: "Status Updated",
-    data: enquiry,
-  });
+    const enquiry = await prisma.websiteEnquiry.findFirst({
+      where: {
+        id: Number(req.params.id),
+        websiteVariant: {
+          vendorId: vendor.vendorId,
+        },
+      },
+    });
+
+    if (!enquiry) {
+      return res.status(404).json({
+        message: "Enquiry not found",
+      });
+    }
+
+    const updated = await prisma.websiteEnquiry.update({
+      where: {
+        id: enquiry.id,
+      },
+      data: {
+        status: req.body.status,
+      },
+    });
+
+    return res.json({
+      message: "Status Updated",
+      data: updated,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      message: "Error updating status",
+    });
+  }
 };
