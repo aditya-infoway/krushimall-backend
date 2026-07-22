@@ -558,6 +558,13 @@ model Employee {
   createdByBranch Branch? @relation("EmployeeBranch", fields: [branchId], references: [id])
   orders          Order[]
   accounts Account[]
+    purchases Purchase[]
+    accessoriesPurchases AccessoriesPurchase[]
+   cashPayments CashPayment[] @relation("CashPaymentEmployee")
+   bankPayments BankPayment[] @relation("BankPaymentEmployee")
+   cashReceipts CashReceipt[] @relation("CashReceiptEmployee")
+   bankReceipts BankReceipt[] @relation("BankReceiptEmployee")
+   contras Contra[] @relation("ContraEmployee")
 }
 
 model Tractor {
@@ -600,7 +607,10 @@ model Purchase {
   id              Int  @id @default(autoincrement())
   companyId       Int?
   financialYearId Int?
-
+  createdById     Int?
+  createdBy       String?
+  createdType     String?
+   employee Employee? @relation(fields: [createdById], references: [id])
   company          Company?       @relation(fields: [companyId], references: [id])
   financialYear    FinancialYear? @relation(fields: [financialYearId], references: [id])
   billNo           String         @unique
@@ -666,7 +676,9 @@ model PurchaseItem {
 
   chassisNo String @unique
   engineNo  String @unique
-
+  createdById Int?
+  createdBy   String?
+  createdType String?
   qty           Int
   ratePer       Float
   gstPercent    Float
@@ -880,8 +892,11 @@ model AccessoriesPurchase {
   grandTotal Float
 
   verifyStatus String   @default("not_verify")
-  createdBy    String?
-  createdType  String?
+   createdById Int?
+  createdBy   String?
+  createdType String?
+
+  employee Employee? @relation(fields: [createdById], references: [id])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -915,6 +930,7 @@ model AccessoriesPurchaseItem {
   gstAmount    Float
   netAmount    Float
   status       String   @default("Pending")
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -949,8 +965,11 @@ model CashPayment {
 
   narration String?
 
+  createdById Int?
+  createdBy String?
   createdType String?
-  createdBy   String?
+
+employee Employee? @relation("CashPaymentEmployee", fields: [createdById], references: [id])
 
   branchId Int?
   branch   Branch? @relation("CashPaymentBranch", fields: [branchId], references: [id])
@@ -998,6 +1017,9 @@ model BankPayment {
 
   createdType String?
   createdBy   String?
+  createdById Int?
+
+employee Employee? @relation("BankPaymentEmployee", fields: [createdById], references: [id])
   branchId    Int?
   branch      Branch? @relation("BankPaymentBranch", fields: [branchId], references: [id])
 
@@ -1032,6 +1054,9 @@ model Contra {
 
   createdType String? @default("Manual")
   createdBy   String?
+  createdById Int?
+
+employee Employee? @relation("ContraEmployee", fields: [createdById], references: [id])
   branchId    Int?
   branch      Branch? @relation("ContraBranch", fields: [branchId], references: [id])
 
@@ -1076,7 +1101,10 @@ model CashReceipt {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdType String?
-  createdBy   String?
+createdBy   String?
+createdById Int?
+
+employee Employee? @relation("CashReceiptEmployee", fields: [createdById], references: [id])
   branchId    Int?
   branch      Branch?  @relation("CashReceiptBranch", fields: [branchId], references: [id])
 }
@@ -1119,6 +1147,9 @@ model BankReceipt {
 
   createdType String?
   createdBy   String?
+  createdById Int?
+
+employee Employee? @relation("BankReceiptEmployee", fields: [createdById], references: [id])
   branchId    Int?
   branch      Branch? @relation("BankReceiptBranch", fields: [branchId], references: [id])
 
