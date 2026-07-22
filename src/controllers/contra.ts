@@ -68,7 +68,7 @@ export const createContra = async (req: Request, res: Response) => {
 
     const user = (req as any).user;
     const role = user?.role?.toUpperCase();
-    const name = user?.name;
+   const name = user?.employeeName || user?.name || "Admin";
 
     if (role === "BRANCH" && !user?.branchId) {
       return res.status(400).json({
@@ -108,9 +108,10 @@ export const createContra = async (req: Request, res: Response) => {
           oppAccountId: Number(oppAccountId),
           amount: amountValue,
           narration,
-          createdBy: name,
-          createdType: role,
-          branchId: role === "BRANCH" ? Number(user.branchId) : null,
+         createdById: Number(user.id),
+createdBy: name,
+createdType: role,
+branchId: role === "BRANCH" ? Number(user.branchId) : null,
         },
       });
 
@@ -196,6 +197,12 @@ export const getContras = async (req: Request, res: Response): Promise<void> => 
             mobile: true,
           },
         },
+        employee: {
+    select: {
+      id: true,
+      employeeName: true,
+    },
+  },
       },
     });
 
@@ -227,6 +234,12 @@ export const getContraById = async (req: Request, res: Response): Promise<void> 
         financialYear: true,
         cashBankAccount: true,
         oppAccount: true,
+        employee: {
+    select: {
+      id: true,
+      employeeName: true,
+    },
+  },
       },
     });
 
@@ -267,6 +280,11 @@ export const exportContraExcel = async (
             accountName: true,
           },
         },
+         employee: {
+    select: {
+      employeeName: true,
+    },
+  },
       },
     });
 
@@ -303,7 +321,7 @@ export const exportContraExcel = async (
         amount: Number(item.amount),
         narration: item.narration || "",
         createdType: item.createdType || "",
-        createdBy: item.createdBy || "",
+       createdBy: item.employee?.employeeName || item.createdBy || "",
       });
     });
 

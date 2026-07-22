@@ -11,9 +11,9 @@ export const createAccount = async (
 ) => {
   const user = (req as any).user;
 
-  req.body.createdType = "SALES_EXECUTIVE";
-  req.body.createdBy = user?.employeeName || user?.name;
-  req.body.createdById = user?.id;
+  req.body.createdType = user.role?.toUpperCase().replace(/\s+/g, "_");
+  req.body.createdBy = user.employeeName || user.name;
+  req.body.createdById = user.id;
 
   return AccountController.createAccount(req, res);
 };

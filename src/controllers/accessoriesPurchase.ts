@@ -154,8 +154,9 @@ export const createAccessoriesPurchase = async (
       }
     }
     const billNo = await generateAccessoriesPurchaseBillNo();
-    const user = (req as any).user;
-    const role = user?.role?.toUpperCase();
+const user = (req as any).user;
+const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+const name = user?.employeeName || user?.name || "Admin";
     const purchase = await prisma.accessoriesPurchase.create({
       data: {
         companyId: Number(companyId),
@@ -164,8 +165,9 @@ export const createAccessoriesPurchase = async (
         billNo,
 
         accountId: Number(accountId),
-        createdType: role,
-        createdBy: user?.name,
+        createdById: Number(user.id),
+createdBy: name,
+createdType: role,
         purchaseBillNo,
 
         purchaseDate: new Date(purchaseDate),
@@ -383,7 +385,7 @@ export const createAccessoriesPurchase = async (
           narration: narration || "",
 
           createdType: role,
-          createdBy: user?.name,
+          createdBy: name,
         },
       });
     }
@@ -424,7 +426,7 @@ export const createAccessoriesPurchase = async (
           narration: bankNarration || narration || "",
 
           createdType: role,
-          createdBy: user?.name,
+          createdBy: name,
         },
       });
     }

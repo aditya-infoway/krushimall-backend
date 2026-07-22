@@ -42,6 +42,12 @@ export const getCashPayments = async (req: Request, res: Response): Promise<void
             billNo: true,
           },
         },
+         employee: {
+    select: {
+      id: true,
+      employeeName: true,
+    },
+  },
       },
     });
 
@@ -71,6 +77,12 @@ export const getCashPaymentById = async (req: Request, res: Response): Promise<v
         cashAccount: true,
         oppAccount: true,
         purchase: true,
+          employee: {
+    select: {
+      id: true,
+      employeeName: true,
+    },
+  },
       },
     });
 
@@ -111,8 +123,9 @@ export const createCashPayment = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    const user = (req as any).user;
-    const role = user?.role?.toUpperCase();
+   const user = (req as any).user;
+const role = user?.role?.toUpperCase();
+const name = user?.employeeName || user?.name || "Admin";
 
     if (role === "BRANCH" && !user?.branchId) {
       res.status(400).json({
@@ -138,8 +151,9 @@ export const createCashPayment = async (req: Request, res: Response): Promise<vo
           leadId: leadId ? Number(leadId) : null,
           amount: Number(amount),
           narration,
-          createdType: role,
-          createdBy: user?.name,
+       createdById: Number(user.id),
+createdType: role,
+createdBy: name,
           branchId: role === "BRANCH" ? Number(user.branchId) : null,
         },
       });
