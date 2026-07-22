@@ -144,9 +144,9 @@ export const createPurchase = async (req: Request, res: Response) => {
       }
     }
     const billNo = await generateBillNo("PURCHASE", "purchase");
-    const user = (req as any).user;
-    const role = user?.role?.toUpperCase() || "ADMIN";
-    const name = user?.name || "Admin";
+  const user = (req as any).user;
+const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+const name = user?.employeeName || user?.name || "Admin";
     const purchase = await prisma.purchase.create({
       data: {
         companyId: Number(companyId),
@@ -156,7 +156,9 @@ export const createPurchase = async (req: Request, res: Response) => {
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
         purchaseBillNo,
         purchaseLocation,
-
+           createdById: Number(user.id),
+    createdBy: user.employeeName || user.name,
+    createdType: role,
         dueDate: dueDate ? new Date(dueDate) : null,
         terms,
         narration,
@@ -624,29 +626,37 @@ export const getPurchases = async (req: Request, res: Response) => {
       include: {
         account: true,
         items: true,
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
       orderBy: {
         id: "desc",
       },
     });
-  const data = purchases.map((purchase) => {
-  const totalItems = purchase.items.length;
 
-  const inwardItems = purchase.items.filter(
-    (item) => item.status === "Inward"
-  ).length;
+    const data = purchases.map((purchase) => {
+      const totalItems = purchase.items.length;
 
-  const hasBookedItem = purchase.items.some(
-    (item) => item.status === "Booked"
-  );
+      const inwardItems = purchase.items.filter(
+        (item) => item.status === "Inward"
+      ).length;
 
-  return {
-    ...purchase,
-    verified: purchase.status === "VERIFY",
-    allInward: totalItems > 0 && totalItems === inwardItems,
-    hasBookedItem,
-  };
-});
+      const hasBookedItem = purchase.items.some(
+        (item) => item.status === "Booked"
+      );
+
+      return {
+        ...purchase,
+      createdBy: purchase.createdBy,
+        verified: purchase.status === "VERIFY",
+        allInward: totalItems > 0 && totalItems === inwardItems,
+        hasBookedItem,
+      };
+    });
 
     return res.status(200).json({
       success: true,
@@ -670,6 +680,12 @@ export const getPurchaseById = async (req: Request, res: Response) => {
       include: {
         account: true,
         items: true,
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -684,6 +700,7 @@ export const getPurchaseById = async (req: Request, res: Response) => {
       success: true,
       data: {
         ...purchase,
+        createdBy: purchase.createdBy,
         transportSaved:
           !!purchase.transporterName &&
           !!purchase.mobileNumber &&
@@ -741,6 +758,10 @@ export const submitPurchaseItemInward = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+    const name = user?.employeeName || user?.name;
+
     const {
       vehicleSrNo,
       mfgDate,
@@ -774,17 +795,22 @@ export const submitPurchaseItemInward = async (req: Request, res: Response) => {
         grnDate: grnDate ? new Date(grnDate) : null,
         grnRecordDate: grnRecordDate ? new Date(grnRecordDate) : null,
         status: "Inward",
+
+        createdById: Number(user.id),
+        createdBy: name,
+        createdType: role,
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: item,
       message: "Inward saved successfully",
     });
   } catch (err) {
     console.log(err);
-    res.status(500).json({
+
+    return res.status(500).json({
       success: false,
       message: "Failed",
     });

@@ -38,6 +38,12 @@ export const getBankPayments = async (req: Request, res: Response) => {
             billNo: true,
           },
         },
+          employee: {
+    select: {
+      id: true,
+      employeeName: true,
+    },
+  },
       },
     });
 
@@ -63,11 +69,17 @@ export const getBankPaymentById = async (req: Request, res: Response) => {
 
     const payment = await prisma.bankPayment.findFirst({
       where: whereClause,
-      include: {
-        bankAccount: true,
-        oppAccount: true,
-        purchase: true,
-      },
+     include: {
+  bankAccount: true,
+  oppAccount: true,
+  purchase: true,
+  employee: {
+    select: {
+      id: true,
+      employeeName: true,
+    },
+  },
+},
     });
 
     if (!payment) {
@@ -104,9 +116,8 @@ export const createBankPayment = async (req: Request, res: Response) => {
     } = req.body;
 
     const user = (req as any).user;
-    const role = user?.role?.toUpperCase() || "ADMIN";
-    const name = user?.name || "Admin";
-
+const role = user?.role?.toUpperCase() ;
+const name = user?.employeeName || user?.name ;
     if (role === "BRANCH" && !user?.branchId) {
       return res.status(400).json({
         success: false,
@@ -138,8 +149,9 @@ export const createBankPayment = async (req: Request, res: Response) => {
           chequeDate: chequeDate ? new Date(chequeDate) : null,
           clearDate: clearDate ? new Date(clearDate) : null,
 
-          createdBy: name,
-          createdType: role,
+          createdById: Number(user.id),
+createdBy: name,
+createdType: role,
           branchId: role === "BRANCH" ? Number(user.branchId) : null,
         },
       });
@@ -251,6 +263,11 @@ export const exportBankPaymentExcel = async (
             accountName: true,
           },
         },
+         employee: {
+    select: {
+      employeeName: true,
+    },
+  },
       },
     });
 
@@ -299,7 +316,7 @@ export const exportBankPaymentExcel = async (
           : "",
         narration: item.narration || "",
         createdType: item.createdType || "",
-        createdBy: item.createdBy || "",
+       createdBy: item.employee?.employeeName || item.createdBy || "",
       });
     });
 

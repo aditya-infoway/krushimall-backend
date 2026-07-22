@@ -44,6 +44,12 @@ export const getBankReceipt = async (
             quotationNo: true,
           },
         },
+        employee: {
+  select: {
+    id: true,
+    employeeName: true,
+  },
+},
       },
     });
 
@@ -77,6 +83,12 @@ export const getBankReceiptById = async (
         bankAccount: true,
         oppAccount: true,
         lead: true,
+        employee: {
+  select: {
+    id: true,
+    employeeName: true,
+  },
+},
       },
     });
 
@@ -118,7 +130,8 @@ export const createBankReceipt = async (
     } = req.body;
 
     const user = (req as any).user;
-    const role = user?.role?.toUpperCase();
+const role = user?.role?.toUpperCase();
+const name = user?.employeeName || user?.name || "Admin";
 
     if (role === "BRANCH" && !user?.branchId) {
       res.status(400).json({
@@ -155,9 +168,10 @@ export const createBankReceipt = async (
 
           narration,
 
-          createdType: role,
-          createdBy: user?.name,
-          branchId: role === "BRANCH" ? Number(user.branchId) : null,
+         createdById: Number(user.id),
+createdBy: name,
+createdType: role,
+branchId: role === "BRANCH" ? Number(user.branchId) : null,
         },
       });
 
@@ -295,6 +309,11 @@ export const exportBankReceiptExcel = async (
             accountName: true,
           },
         },
+         employee: {
+    select: {
+      employeeName: true,
+    },
+  },
       },
     });
 
@@ -341,7 +360,7 @@ export const exportBankReceiptExcel = async (
           : "",
         narration: item.narration || "",
         createdType: item.createdType || "",
-        createdBy: item.createdBy || "",
+       createdBy: item.employee?.employeeName || item.createdBy || "",
       });
     });
 

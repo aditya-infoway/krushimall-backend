@@ -25,7 +25,7 @@ export const verifyVendorToken = (
   next: NextFunction
 ) => {
   try {
-    console.log("verifyVendorToken hit");
+
 
     const authHeader = req.headers.authorization;
 
