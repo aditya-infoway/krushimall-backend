@@ -391,46 +391,37 @@ export const employeeLogin = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-   const employee = await prisma.employee.findUnique({
-  where: { email },
-});
+    const employee = await prisma.employee.findUnique({
+      where: { email },
+    });
 
-if (!employee) {
-  return res.status(400).json({
-    success: false,
-    message: "Invalid Email",
-  });
-}
+    if (!employee) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Email",
+      });
+    }
 
-const isMatch = await bcrypt.compare(password, employee.password);
+    const isMatch = await bcrypt.compare(password, employee.password);
 
-if (!isMatch) {
-  return res.status(400).json({
-    success: false,
-    message: "Invalid Password",
-  });
-}
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Password",
+      });
+    }
 
-// Only Sales Executive can login
-if (employee.role !== "Sales Executive") {
-  return res.status(403).json({
-    success: false,
-    message: "You are not authorized to login.",
-  });
-}
-
-if (employee.status !== "ACTIVE") {
-  return res.status(400).json({
-    success: false,
-    message: "Employee is inactive",
-  });
-}
+    if (employee.status !== "ACTIVE") {
+      return res.status(400).json({
+        success: false,
+        message: "Employee is inactive",
+      });
+    }
 
     const token = jwt.sign(
       {
         id: employee.id,
         role: employee.role,
-      
         employeeName: employee.employeeName,
       },
       process.env.JWT_SECRET!,
@@ -447,7 +438,7 @@ if (employee.status !== "ACTIVE") {
   } catch (err) {
     console.log(err);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Login Failed",
     });
