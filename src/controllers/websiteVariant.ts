@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 
-
 export const createWebsiteVariant = async (req: Request, res: Response) => {
   try {
-     const user = (req as any).user;
+    const user = (req as any).user;
     const role = user?.role?.toUpperCase();
 
     const createData: any = {
@@ -14,8 +13,8 @@ export const createWebsiteVariant = async (req: Request, res: Response) => {
       status: "DRAFT",
 
       createdType: role,
-     createdBy: user?.employeeName || user?.name,
-     createdById: user?.id,
+      createdBy: user?.employeeName || user?.name,
+      createdById: user?.id,
     };
 
     const files = req.files as {
@@ -49,12 +48,12 @@ export const createWebsiteVariant = async (req: Request, res: Response) => {
   }
 };
 
-export const getWebsiteVariants = async (
-  req: Request,
-  res: Response
-) => {
+export const getWebsiteVariants = async (req: Request, res: Response) => {
   try {
+    const { status } = req.query;
+
     const variants = await prisma.websiteVariant.findMany({
+      where: status ? { status: status as string } : undefined,
       include: {
         category: true,
         brand: true,
@@ -80,10 +79,8 @@ export const getWebsiteVariants = async (
     });
   }
 };
-export const getWebsiteVariantById = async (
-  req: Request,
-  res: Response
-) => {
+
+export const getWebsiteVariantById = async (req: Request, res: Response) => {
   try {
     const variant = await prisma.websiteVariant.findUnique({
       where: {
@@ -94,7 +91,7 @@ export const getWebsiteVariantById = async (
         category: true,
         model: true,
         variant: true,
-         modelYear: true,
+        modelYear: true,
       },
     });
 
@@ -250,7 +247,7 @@ export const deleteWebsiteVariant = async (req: Request, res: Response) => {
 };
 export const toggleWebsiteVariantStatus = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const id = Number(req.params.id);
@@ -266,10 +263,7 @@ export const toggleWebsiteVariantStatus = async (
       });
     }
 
-    const newStatus =
-      existing.status === "ACTIVE"
-        ? "INACTIVE"
-        : "ACTIVE";
+    const newStatus = existing.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
 
     const updated = await prisma.websiteVariant.update({
       where: { id },

@@ -38,6 +38,7 @@ import vendorRoutes from "./routes/vendor.js";
 import salesExecutiveRoutes from "./routes/employee/salesexecutive/index.js";
 import WebvendorRoutes from "./routes/vendor/index.js";
 import testDriveRoutes from "./routes/testDrive.js";
+import compareTractorRoutes from "./routes/compareTractor.js"
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -79,4 +80,5 @@ router.use("/vendor", vendorRoutes);
 router.use("/salesexecutive", salesExecutiveRoutes);
 router.use("/vendor-web", WebvendorRoutes);
 router.use("/test-drives", testDriveRoutes);
+router.use("/compare-tractor", compareTractorRoutes);
 export default router;
