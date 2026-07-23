@@ -2,12 +2,12 @@ import { Request, Response } from "express";
 
 import prisma from "../lib/prisma.js";
 import { generateCashReceiptVoucher } from "../utils/generateCashReceiptVoucher.js";
-
+import { getFileUrl } from "../utils/getFileUrl.js";
 import { generateBankReceiptVoucher } from "../utils/generateBankReceiptVoucher.js";
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
-
+import { generateDeliveryChallanHtml } from "../utils/generateDeliveryChallanHtml.js";
 const toNumber = (value: unknown): number => {
   if (value === "" || value === null || value === undefined) {
     return 0;
@@ -847,7 +847,104 @@ export const getOrderByLeadId = async (req: Request, res: Response) => {
     });
   }
 };
+export const printDeliveryChallan = async (req: Request, res: Response) => {
+  try {
+    const leadId = Number(req.params.leadId);
+ 
+    if (!Number.isInteger(leadId)) {
+      return res.status(400).send("Invalid lead ID");
+    }
+ 
+    const order = await prisma.order.findUnique({
+      where: {
+        leadId,
+      },
+      include: {
+        company: true,
+        lead: {
+          include: {
+            customer: true,
+            model: true,
+            showroomVariant: true,
+            colour: true,
+            executive: true,
+          },
+        },
+      },
+    });
+ 
+    if (!order) {
+      res.status(404);
+      return res.send(
+        "<h2 style='font-family:sans-serif;text-align:center;margin-top:60px;'>Order not created yet for this lead. Please create the order first.</h2>",
+      );
+    }
+ 
+    // Chassis ke against purchase item se Key No / Engine No nikalne ki koshish
+    // (agar aapke PurchaseItem model me ye fields hain to bhar jayenge, warna blank rahenge).
+    let keyNo = "";
+    let engineNo = "";
+    if (order.chassisNo) {
+      try {
+        const purchaseItem = (await prisma.purchaseItem.findUnique({
+          where: { chassisNo: order.chassisNo },
+        })) as any;
+        keyNo = purchaseItem?.keyNo ?? "";
+        engineNo = purchaseItem?.engineNo ?? purchaseItem?.engineNumber ?? "";
+      } catch {
+        // fields exist na karein to silently ignore — challan blank field ke saath print hoga
+      }
+    }
 
+    const html = generateDeliveryChallanHtml({
+      companyName: order.company?.companyName ,
+      addressLine1: (order.company as any)?.addressLine1 ?? "",
+      mobileNumber: (order.company as any)?.mobileNumber ?? (order.company as any)?.mobileNumber ?? "",
+      logoUrl: getFileUrl(order.company?.logo),
+ 
+      customerName: order.lead?.customer?.accountName ?? "",
+      model: order.model ?? order.lead?.model?.modelName ?? "",
+      colour: order.colour ?? order.lead?.colour?.colourName ?? "",
+      keyNo,
+      chassisNo: order.chassisNo ?? "",
+      engineNo,
+      registrationNo: (order as any).registrationNo ?? "",
+      mobileNo: order.lead?.customer?.mobile ?? "",
+ 
+      financeBankName: order.bankOfFinance ?? "",
+      salesExecutive: order.lead?.executive?.employeeName ?? "",
+ 
+      checklist: {
+        invoiceBill: order.invoiceBill,
+        accessoriesInvoice: order.accessoriesInvoice,
+        serviceBook: order.serviceBook,
+        insuranceCopy: order.insuranceCopy,
+        helmetInvoice: order.helmetInvoice,
+        warrantyBook: order.warrantyBook,
+        rtoReceipt: false,
+        keychainPouch: order.keychainPouch,
+        allGuard: order.allGuard,
+        matting: order.matting,
+        footrest: order.footrest,
+        helmet: order.helmet,
+        visor: order.visor,
+        seatCover: order.seatCover,
+        bodyCover: order.bodyCover,
+        mirrorSet: order.mirrorSet,
+        other: order.other,
+      },
+    });
+ 
+    res.setHeader("Content-Type", "text/html");
+    return res.send(html);
+  } catch (error: any) {
+    console.error("PRINT DELIVERY CHALLAN ERROR:", error);
+    res.status(500);
+    return res.send(
+      "<h2 style='font-family:sans-serif;text-align:center;margin-top:60px;'>Failed to generate delivery challan.</h2>",
+    );
+  }
+};
 // ==========================================
 // DELETE ORDER
 // DELETE /api/orders/:id

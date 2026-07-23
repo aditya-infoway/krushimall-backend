@@ -8,6 +8,7 @@ import {
   getOrderById,
   getOrderByLeadId,
   getOrders,
+  printDeliveryChallan
 } from "../controllers/order.js";
 
 import {
@@ -44,7 +45,7 @@ router.get(
   verifyToken,
   getOrderById,
 );
-
+router.get("/lead/:leadId/delivery-challan", printDeliveryChallan);
 // Delete
 router.delete(
   "/:id",

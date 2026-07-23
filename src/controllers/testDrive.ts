@@ -18,7 +18,9 @@ export const createTestDrive = async (req: Request, res: Response) => {
       remarks,
       placeOfTestDrive,
     } = req.body;
-
+const user = (req as any).user;
+const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+const name = user?.employeeName || user?.name || "Admin";
     const testDrive = await prisma.testDrive.create({
       data: {
         leadId: Number(leadId),
@@ -36,13 +38,17 @@ export const createTestDrive = async (req: Request, res: Response) => {
         feedback,
         remarks,
         placeOfTestDrive,
-      },
-      include: {
-        lead: true,
-        model: true,
-        showroomVariant: true,
-        colour: true,
-      },
+     createdById: Number(user.id),
+    createdBy: name,
+    createdType: role,
+  },
+  include: {
+    lead: true,
+    model: true,
+    showroomVariant: true,
+    colour: true,
+    employee: true,
+  },
     });
 
     return res.status(201).json({
@@ -62,12 +68,18 @@ export const createTestDrive = async (req: Request, res: Response) => {
 export const getTestDrives = async (_req: Request, res: Response) => {
   try {
     const testDrives = await prisma.testDrive.findMany({
-      include: {
-        lead: true,
-        model: true,
-        showroomVariant: true,
-        colour: true,
-      },
+     include: {
+  lead: true,
+  model: true,
+  showroomVariant: true,
+  colour: true,
+  employee: {
+    select: {
+      id: true,
+      employeeName: true,
+    },
+  },
+},
       orderBy: {
         createdAt: "desc",
       },
@@ -97,6 +109,12 @@ export const getTestDriveById = async (req: Request, res: Response) => {
         model: true,
         showroomVariant: true,
         colour: true,
+         employee: {
+    select: {
+      id: true,
+      employeeName: true,
+    },
+  },
       },
     });
 
@@ -192,6 +210,107 @@ export const deleteTestDrive = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete",
+    });
+  }
+};
+export const getTestDriveHistory = async (_req: Request, res: Response) => {
+  try {
+    const history = await prisma.testDrive.groupBy({
+      by: ["leadId"],
+      _count: {
+        id: true,
+      },
+      _max: {
+        createdAt: true,
+      },
+      orderBy: {
+        _max: {
+          createdAt: "desc",
+        },
+      },
+    });
+
+   const result = await Promise.all(
+  history.map(async (item) => {
+    const lead = await prisma.lead.findUnique({
+      where: {
+        id: item.leadId,
+      },
+      include: {
+        customer: {
+          select: {
+            accountName: true,
+            mobile: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: lead?.id,
+      customerName: lead?.customer?.accountName,
+      mobile: lead?.customer?.mobile,
+      testDriveCount: item._count.id,
+      updatedAt: item._max.createdAt,
+    };
+  })
+);
+
+    return res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch Test Drive History",
+    });
+  }
+};
+export const getTestDriveHistoryByLead = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const leadId = Number(req.params.id);
+
+    const history = await prisma.testDrive.findMany({
+      where: {
+        leadId,
+      },
+     include: {
+  lead: {
+    include: {
+      customer: true,
+    },
+  },
+  model: true,
+  showroomVariant: true,
+  colour: true,
+  employee: {
+    select: {
+      id: true,
+      employeeName: true,
+    },
+  },
+},
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return res.json({
+      success: true,
+      data: history,
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch Test Drive History Details",
     });
   }
 };
