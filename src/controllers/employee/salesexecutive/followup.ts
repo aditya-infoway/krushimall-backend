@@ -8,7 +8,7 @@ export const createFollowUp = async (
   try {
     const user = (req as any).user;
 
-    req.body.createdType = "SALES_EXECUTIVE";
+   req.body.createdType = user.role?.toUpperCase().replace(/\s+/g, "_");
     req.body.createdBy = user?.employeeName || user?.name;
 
     return FollowUpController.createFollowUp(req, res);

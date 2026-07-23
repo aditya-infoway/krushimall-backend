@@ -741,13 +741,27 @@ export const updateAccessoriesPurchaseItemStatus = async (
     const { id } = req.params;
     const { status } = req.body;
 
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+    const name = user?.employeeName || user?.name || "Admin";
+
+    const updateData: any = {
+      status,
+    };
+
+    // Save inward audit only when status becomes Inward
+    if (status === "Inward") {
+      updateData.inwardById = Number(user.id);
+      updateData.inwardBy = name;
+      updateData.inwardType = role;
+      updateData.inwardDate = new Date();
+    }
+
     const item = await prisma.accessoriesPurchaseItem.update({
       where: {
         id: Number(id),
       },
-      data: {
-        status,
-      },
+      data: updateData,
     });
 
     return res.json({

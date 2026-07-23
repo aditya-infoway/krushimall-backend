@@ -565,6 +565,8 @@ model Employee {
    cashReceipts CashReceipt[] @relation("CashReceiptEmployee")
    bankReceipts BankReceipt[] @relation("BankReceiptEmployee")
    contras Contra[] @relation("ContraEmployee")
+   accessoriesPurchaseItems AccessoriesPurchaseItem[] @relation("AccessoriesPurchaseItemEmployee")
+   testDrives TestDrive[] @relation("TestDriveEmployee")
 }
 
 model Tractor {
@@ -930,7 +932,12 @@ model AccessoriesPurchaseItem {
   gstAmount    Float
   netAmount    Float
   status       String   @default("Pending")
-  
+   inwardById Int?
+  inwardBy String?
+  inwardType String?
+  inwardDate DateTime?
+
+  employee Employee? @relation("AccessoriesPurchaseItemEmployee", fields: [inwardById], references: [id])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -1626,7 +1633,11 @@ model TestDrive {
 
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
+createdById Int?
+createdBy String?
+createdType String?
 
+employee Employee? @relation("TestDriveEmployee", fields: [createdById], references: [id])
   lead             Lead             @relation(fields: [leadId], references: [id])
   model            Model            @relation(fields: [modelId], references: [id])
   showroomVariant  ShowroomVariant  @relation(fields: [showroomVariantId], references: [id])

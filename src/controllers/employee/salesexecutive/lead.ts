@@ -6,7 +6,7 @@ export const createLead = async (req: Request, res: Response) => {
     const user = (req as any).user;
 
     // Sales Executive specific values
-    req.body.createdType = "SALES_EXECUTIVE";
+     req.body.createdType = user.role?.toUpperCase().replace(/\s+/g, "_");
     req.body.createdBy = user?.employeeName || user?.name;
     req.body.executiveId = user?.id;
 

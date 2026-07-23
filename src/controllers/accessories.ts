@@ -1,10 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 
-export const createAccessory = async (
-  req: Request,
-  res: Response
-) => {
+export const createAccessory = async (req: Request, res: Response) => {
   try {
     const accessory = await prisma.accessory.create({
       data: {
@@ -21,18 +18,12 @@ export const createAccessory = async (
           ? Number(req.body.purchasePrice)
           : null,
 
-        salesPrice: req.body.salesPrice
-          ? Number(req.body.salesPrice)
-          : null,
+        salesPrice: req.body.salesPrice ? Number(req.body.salesPrice) : null,
 
-        mrp: req.body.mrp
-          ? Number(req.body.mrp)
-          : null,
+        mrp: req.body.mrp ? Number(req.body.mrp) : null,
 
-        opStock: req.body.opStock
-          ? Number(req.body.opStock)
-          : 0,
-        barCode:req.body.barCode,
+        opStock: req.body.opStock ? Number(req.body.opStock) : 0,
+        barCode: req.body.barCode,
         showroomVariants: req.body.showroomVariants || [],
 
         status: req.body.status || "ACTIVE",
@@ -53,10 +44,7 @@ export const createAccessory = async (
   }
 };
 
-export const getAccessories = async (
-  req: Request,
-  res: Response
-) => {
+export const getAccessories = async (req: Request, res: Response) => {
   try {
     const accessories = await prisma.accessory.findMany({
       orderBy: {
@@ -64,32 +52,61 @@ export const getAccessories = async (
       },
     });
 
-   const data = await Promise.all(
-  accessories.map(async (item) => {
-    const variantIds = Array.isArray(item.showroomVariants)
-      ? item.showroomVariants
-          .map((v: any) => Number(v.id))
-          .filter((id) => !isNaN(id))
-      : [];
+    const data = await Promise.all(
+      accessories.map(async (item) => {
+        // Showroom Variants
+        const variantIds = Array.isArray(item.showroomVariants)
+          ? item.showroomVariants
+              .map((v: any) => Number(v.id))
+              .filter((id) => !isNaN(id))
+          : [];
 
-    const variants = await prisma.showroomVariant.findMany({
-      where: {
-        id: {
-          in: variantIds,
-        },
-      },
-      include: {
-        model: true,
-      },
-    });
+        const variants = await prisma.showroomVariant.findMany({
+          where: {
+            id: {
+              in: variantIds,
+            },
+          },
+          include: {
+            model: true,
+          },
+        });
 
-    return {
-      ...item,
-      showroomVariantDetails: variants,
-    };
-  })
-);
-    
+        // Total verified inward purchase qty
+        const inward = await prisma.accessoriesPurchaseItem.aggregate({
+          _sum: {
+            qty: true,
+          },
+          where: {
+            accessoryId: item.id,
+            status: "Inward",
+            purchase: {
+              verifyStatus: "verify",
+            },
+          },
+        });
+
+        const purchaseQty = Number(inward._sum.qty || 0);
+
+        // Future stock movements
+        const saleQty = 0;
+        const transferOutQty = 0;
+        const transferInQty = 0;
+
+        const currentStock =
+          Number(item.opStock || 0) +
+          purchaseQty +
+          transferInQty -
+          saleQty -
+          transferOutQty;
+
+        return {
+          ...item,
+          currentStock,
+          showroomVariantDetails: variants,
+        };
+      }),
+    );
 
     return res.json({
       success: true,
@@ -104,11 +121,101 @@ export const getAccessories = async (
     });
   }
 };
+export const getAccessoriesHistory = async (req: Request, res: Response) => {
+  try {
+    const accessoryId = Number(req.params.id);
 
-export const updateAccessory = async (
-  req: Request,
-  res: Response
-) => {
+    const accessory = await prisma.accessory.findUnique({
+      where: {
+        id: accessoryId,
+      },
+    });
+
+    if (!accessory) {
+      return res.status(404).json({
+        success: false,
+        message: "Accessory not found",
+      });
+    }
+
+    let balance = Number(accessory.opStock || 0);
+
+    const history: any[] = [];
+
+    // Opening Stock
+    history.push({
+      date: accessory.createdAt,
+      type: "Opening Stock",
+      reference: "Opening",
+      qtyIn: balance,
+      qtyOut: 0,
+      balance,
+      createdBy: "System",
+    });
+
+    // Purchase History
+    const purchases = await prisma.accessoriesPurchaseItem.findMany({
+      where: {
+        accessoryId,
+        status: "Inward",
+        purchase: {
+          verifyStatus: "verify",
+        },
+      },
+      include: {
+        purchase: {
+          include: {
+            account: true,
+          },
+        },
+      },
+      orderBy: {
+        purchase: {
+          purchaseDate: "asc",
+        },
+      },
+    });
+
+    for (const purchase of purchases) {
+      balance += Number(purchase.qty);
+
+      history.push({
+        date: purchase.purchase.purchaseDate,
+        type: "Purchase",
+
+        partyName: purchase.purchase.account?.accountName || "-",
+
+        reference:
+          purchase.purchase.billNo ?? purchase.purchase.purchaseBillNo ?? "-",
+
+        qtyIn: Number(purchase.qty),
+        qtyOut: 0,
+
+        billAmount: Number(purchase.netAmount || 0),
+
+        balance,
+
+        createdBy: purchase.purchase.createdBy,
+      });
+    }
+
+   return res.json({
+  success: true,
+  itemName: accessory.itemName,
+  codeNo: accessory.codeNo,
+  group: accessory.group,
+  history,
+});
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch accessory history",
+    });
+  }
+};
+export const updateAccessory = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
@@ -128,19 +235,13 @@ export const updateAccessory = async (
           ? Number(req.body.purchasePrice)
           : null,
 
-        salesPrice: req.body.salesPrice
-          ? Number(req.body.salesPrice)
-          : null,
+        salesPrice: req.body.salesPrice ? Number(req.body.salesPrice) : null,
 
-        mrp: req.body.mrp
-          ? Number(req.body.mrp)
-          : null,
+        mrp: req.body.mrp ? Number(req.body.mrp) : null,
 
-        opStock: req.body.opStock
-          ? Number(req.body.opStock)
-          : 0,
-         barCode:req.body.barCode,
-       showroomVariants: req.body.showroomVariants || [],
+        opStock: req.body.opStock ? Number(req.body.opStock) : 0,
+        barCode: req.body.barCode,
+        showroomVariants: req.body.showroomVariants || [],
 
         status: req.body.status,
       },
@@ -160,10 +261,7 @@ export const updateAccessory = async (
   }
 };
 
-export const deleteAccessory = async (
-  req: Request,
-  res: Response
-) => {
+export const deleteAccessory = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
