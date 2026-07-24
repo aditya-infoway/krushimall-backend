@@ -9,7 +9,8 @@ import {
   updateQuotation,
   getQuotationHistoryList,
   getQuotationHistoryByLeadId,
-  getBookingBalance
+  getBookingBalance,
+  getLeadsForCashReceipt
 } from "../controllers/lead.js";
 
 
@@ -20,21 +21,26 @@ router.post("/", verifyToken, createLead);
 
 router.get("/", verifyToken, getLeads);
 
+router.get("/pending", verifyToken, getLeadsForCashReceipt);
+
 router.get("/quotation-history", verifyToken, getQuotationHistoryList);
+
 router.get(
   "/quotation-history/:id",
   verifyToken,
-  getQuotationHistoryByLeadId,
+  getQuotationHistoryByLeadId
 );
+
 router.get(
   "/booking-balance",
   verifyToken,
-  getBookingBalance,
+  getBookingBalance
 );
+
 router.get("/:id/quotation", generateOrderBillPdf);
 
 router.put("/:id/quotation", verifyToken, updateQuotation);
 
-router.get("/:id", verifyToken, getLeadById);
+router.get("/:id", verifyToken, getLeadById);;
 
 export default router;

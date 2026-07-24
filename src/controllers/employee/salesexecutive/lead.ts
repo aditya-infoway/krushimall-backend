@@ -24,7 +24,12 @@ export const createLead = async (req: Request, res: Response) => {
 export const getLeads = async (req: Request, res: Response) => {
   return LeadController.getLeads(req, res);
 };
-
+export const getLeadsForCashReceipt = async (
+  req: Request,
+  res: Response,
+) => {
+  return LeadController.getLeadsForCashReceipt(req, res);
+};
 export const getLeadById = async (req: Request, res: Response) => {
   return LeadController.getLeadById(req, res);
 };

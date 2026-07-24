@@ -770,7 +770,18 @@ ${
     await page.setContent(html, {
       waitUntil: "domcontentloaded",
     });
-
+await page.evaluate(async () => {
+  const images = Array.from(document.images);
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.addEventListener("load", resolve);
+        img.addEventListener("error", resolve); // don't hang forever on broken image
+      });
+    })
+  );
+});
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
