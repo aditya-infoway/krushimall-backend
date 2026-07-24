@@ -33,6 +33,8 @@ export const createWebsiteVariant = async (req: Request, res: Response) => {
       data: createData,
     });
 
+    
+
     return res.status(201).json({
       success: true,
       data: websiteVariant,
@@ -283,6 +285,122 @@ export const toggleWebsiteVariantStatus = async (
     return res.status(500).json({
       success: false,
       message: "Failed to update status",
+    });
+  }
+};
+
+
+
+export const getLatestWebsiteVariants = async (req: Request, res: Response) => {
+  try {
+    const variants = await prisma.websiteVariant.findMany({
+      where: {
+        status: "ACTIVE",
+        AND: [
+          { frontView: { not: null } },
+          { frontView: { not: "" } },
+          { productName: { not: null } },
+          { productName: { not: "" } },
+        ],
+      },
+      select: {
+        id: true,
+        productName: true,
+        frontView: true,
+        exShowroomPrice: true,
+        horsePower: true,
+        fuelType: true,
+        createdAt: true,
+        state: true,
+        city: true,
+        brand: { select: { brandName: true } },
+        model: { select: { modelName: true } },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 8,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: variants,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch latest tractors",
+    });
+  }
+};
+
+
+
+export const getPopularWebsiteVariants = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const variants = await prisma.websiteVariant.findMany({
+      where: {
+        status: "ACTIVE",
+        AND: [
+          { frontView: { not: null } },
+          { frontView: { not: "" } },
+          { productName: { not: null } },
+          { productName: { not: "" } },
+        ],
+      },
+
+      select: {
+        id: true,
+        productName: true,
+        frontView: true,
+        exShowroomPrice: true,
+        horsePower: true,
+        fuelType: true,
+        createdAt: true,
+        state: true,
+        city: true,
+        enquiryCount: true,
+
+        brand: {
+          select: {
+            brandName: true,
+          },
+        },
+
+        model: {
+          select: {
+            modelName: true,
+          },
+        },
+      },
+
+      orderBy: [
+        {
+          enquiryCount: "desc",
+        },
+        {
+          createdAt: "desc",
+        },
+      ],
+
+      take: 8,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: variants,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch popular tractors",
     });
   }
 };

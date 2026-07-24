@@ -75,18 +75,21 @@ export const getCompareVariants = async (req: Request, res: Response) => {
   try {
     const modelId = Number(req.params.modelId);
 
-    const variants = await prisma.variant.findMany({
+    const variants = await prisma.websiteVariant.findMany({
       where: {
         modelId,
         status: "ACTIVE",
       },
       select: {
         id: true,
-        variantName: true,
-        image: true,
+        productName: true,
+        frontView: true,
+        variant: {
+          select: { variantName: true },
+        },
       },
       orderBy: {
-        variantName: "asc",
+        productName: "asc",
       },
     });
 
@@ -104,53 +107,13 @@ export const getCompareVariants = async (req: Request, res: Response) => {
   }
 };
 
+
 export const getCompareVariantDetails = async (req: Request, res: Response) => {
   try {
-    const variantId = Number(req.params.variantId);
+    const id = Number(req.params.variantId); 
 
-    // const tractor = await prisma.websiteVariant.findFirst({
-    //   where: {
-    //     variantId,
-    //     status: "ACTIVE",
-    //   },
-    //   select: {
-    //     id: true,
-    //     productName: true,
-    //     frontView: true,
-    //     exShowroomPrice: true,
-
-    //     horsePower: true,
-    //     engineType: true,
-    //     fuelType: true,
-    //     numberOfCylinders: true,
-    //     clutchType: true,
-    //     forwardGears: true,
-    //     reverseGears: true,
-    //     ptoHp: true,
-    //     liftingCapacity: true,
-
-    //     brand: {
-    //       select: {
-    //         brandName: true,
-    //       },
-    //     },
-    //     model: {
-    //       select: {
-    //         modelName: true,
-    //       },
-    //     },
-    //     variant: {
-    //       select: {
-    //         variantName: true,
-    //       },
-    //     },
-    //   },
-    // });
-
-    const tractor = await prisma.websiteVariant.findFirst({
-      where: {
-        variantId,
-      },
+    const tractor = await prisma.websiteVariant.findUnique({
+      where: { id },
     });
 
     if (!tractor) {
@@ -174,19 +137,29 @@ export const getCompareVariantDetails = async (req: Request, res: Response) => {
   }
 };
 
+
 // existing compare controller
 export const getTrendingTractors = async (req: Request, res: Response) => {
   try {
     let tractors = await prisma.websiteVariant.findMany({
       where: {
         status: "ACTIVE",
+        AND: [
+          { frontView: { not: null } },
+          { frontView: { not: "" } },
+          { productName: { not: null } },
+          { productName: { not: "" } },
+        ],
       },
       select: {
         id: true,
+        variantId: true,
         productName: true,
         frontView: true,
         horsePower: true,
         exShowroomPrice: true,
+        brand: { select: { brandName: true } },
+        model: { select: { modelName: true } },
 
         _count: {
           select: {
@@ -201,9 +174,9 @@ export const getTrendingTractors = async (req: Request, res: Response) => {
     if (hasEnquiry) {
       tractors = tractors
         .sort((a, b) => b._count.enquiries - a._count.enquiries)
-        .slice(0, 3);
+        .slice(0, 4);
     } else {
-      tractors = tractors.sort(() => Math.random() - 0.5).slice(0, 3);
+      tractors = tractors.sort(() => Math.random() - 0.5).slice(0, 4);
     }
 
     return res.status(200).json({
