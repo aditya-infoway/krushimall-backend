@@ -143,8 +143,6 @@ export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
 // ==================== GET VENDOR DATA ====================
 
 export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
-  console.log("Inside getVendorData");
-  console.log(req.user);
   try {
     
     const userId = req.vendor?.userId;
@@ -156,7 +154,7 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
       });
     }
 
-    console.log("userId =", userId);
+   
 
     const vendor = await prisma.webVendor.findUnique({
       where: { userId },
@@ -177,7 +175,7 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
       },
     });
 
-    console.log("vendor =", vendor);
+  
 
     if (!vendor) {
       return res.status(404).json({
@@ -446,7 +444,6 @@ export const getAllVendors = async (req: WebAuthedRequest, res: Response) => {
 // ==================== VENDOR LOGIN ====================
 
 export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
-    console.log("🔥 vendorLogin called");
   try {
     const { email, password } = req.body;
 

@@ -8,7 +8,10 @@ import {
   getOrderById,
   getOrderByLeadId,
   getOrders,
-  printDeliveryChallan
+  printDeliveryChallan,
+  getVehicleInchargeList,
+  completeVehicleIncharge,
+  getAccessoriesAllotList
 } from "../controllers/order.js";
 
 import {
@@ -30,9 +33,23 @@ router.get(
   verifyToken,
   getOrders,
 );
-
+router.get(
+  "/vehicle-incharge",
+  verifyToken,
+  getVehicleInchargeList
+);
+router.get(
+  "/accessories-allot",
+  verifyToken,
+  getAccessoriesAllotList
+);
 // Get by lead ID
 // Keep this ABOVE "/:id"
+router.patch(
+  "/vehicle-incharge/:id",
+  verifyToken,
+  completeVehicleIncharge
+);
 router.get(
   "/lead/:leadId",
   verifyToken,

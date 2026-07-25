@@ -706,7 +706,317 @@ export const getOrders = async (req: Request, res: Response) => {
     });
   }
 };
+// ==========================================
+// GET VEHICLE INCHARGE LIST
+// Har Order create hote hi yahan entry dikhegi
+// GET /api/orders/vehicle-incharge
+// ==========================================
 
+export const getVehicleInchargeList = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+
+    const whereClause: any = {};
+
+    // Branch/Sales Executive ka data unke hisaab se filter (agar lead se linked ho)
+    if (user?.role?.toUpperCase() === "BRANCH") {
+      whereClause.lead = { branchId: Number(user.branchId) };
+    }
+    if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+      whereClause.lead = { executiveId: Number(user.id) };
+    }
+
+    const orders = await prisma.order.findMany({
+      where: whereClause,
+      include: {
+        lead: {
+          include: {
+            customer: true,
+            executive: true,
+            model: true,
+            showroomVariant: true,
+            colour: true,
+          },
+        },
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    const data = orders.map((order) => ({
+      id: order.id,
+
+      accountName: order.lead?.customer?.accountName || "-",
+
+      mobileNo: order.lead?.customer?.mobile || "-",
+
+      quotationNo: order.lead?.quotationNo || "-",
+
+      dmsEnquiryNo: order.lead?.dmsEnquiryNo || "-",
+
+      dmsEnquiryDate: order.lead?.dmsEnquiryDate
+        ? new Date(order.lead.dmsEnquiryDate).toLocaleDateString("en-GB")
+        : "-",
+
+      salesExecutive: order.lead?.executive?.employeeName || "-",
+
+      // Order ke apne allotment fields pehle try karo, warna Lead ke fallback
+      model: order.model || order.lead?.model?.modelName || "-",
+
+      variant: order.variant || order.lead?.showroomVariant?.variantName || "-",
+
+      color: order.colour || order.lead?.colour?.colourName || "-",
+
+      chassisNo: order.chassisNo || "-",
+
+    status: order.vehicleInchargeStatus,
+    }));
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.error("GET VEHICLE INCHARGE LIST ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch vehicle incharge list",
+      error: error?.message,
+    });
+  }
+};
+// ==========================================
+// GET ACCESSORIES ALLOT LIST
+// GET /api/orders/accessories-allot
+// ==========================================
+
+export const getAccessoriesAllotList = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const user = (req as any).user;
+
+    const whereClause: any = {};
+
+    if (user?.role?.toUpperCase() === "BRANCH") {
+      whereClause.lead = {
+        branchId: Number(user.branchId),
+      };
+    }
+
+    if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+      whereClause.lead = {
+        executiveId: Number(user.id),
+      };
+    }
+
+    const orders = await prisma.order.findMany({
+  where: whereClause,
+  include: {
+    lead: {
+      include: {
+        customer: true,
+        executive: true,
+        model: true,
+        colour: true,
+        showroomVariant: {
+          include: {
+            accessories: {
+              include: {
+                accessory: true,
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  orderBy: {
+    id: "desc",
+  },
+});
+
+    const data = [];
+
+    for (const order of orders) {
+      const quotation = await prisma.quotationHistory.findFirst({
+        where: {
+          leadId: order.leadId,
+        },
+        orderBy: {
+          revisionNo: "desc",
+        },
+      });
+
+   let accessories: any[] = [];
+
+if (
+  quotation &&
+  Array.isArray(quotation.selectedAccessories) &&
+  quotation.selectedAccessories.length > 0
+) {
+  accessories = quotation.selectedAccessories as any[];
+} else {
+  accessories =
+    (order.lead?.showroomVariant?.accessories || []).map((item: any) => ({
+      id: item.id,
+      accessoryId: item.accessoryId,
+      name: item.accessory?.itemName,
+      qty: item.qty,
+      price: item.price,
+      totalPrice: item.totalPrice,
+    }));
+}
+
+if (accessories.length === 0) {
+  continue;
+}
+
+      data.push({
+        id: order.id,
+
+        accountName:
+          order.lead?.customer?.accountName || "-",
+
+        mobileNo:
+          order.lead?.customer?.mobile || "-",
+
+        quotationNo:
+          order.lead?.quotationNo || "-",
+
+        dmsEnquiryNo:
+          order.lead?.dmsEnquiryNo || "-",
+
+        dmsEnquiryDate: order.lead?.dmsEnquiryDate
+          ? new Date(
+              order.lead.dmsEnquiryDate
+            ).toLocaleDateString("en-GB")
+          : "-",
+
+        salesExecutive:
+          order.lead?.executive?.employeeName || "-",
+
+        model:
+          order.model ||
+          order.lead?.model?.modelName ||
+          "-",
+
+        variant:
+          order.variant ||
+          order.lead?.showroomVariant?.variantName ||
+          "-",
+
+        color:
+          order.colour ||
+          order.lead?.colour?.colourName ||
+          "-",
+
+        chassisNo: order.chassisNo || "-",
+
+        numberOfAccessories: accessories.length,
+
+        status:
+          order.accessoriesAllotStatus || "pending",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch accessories allot list",
+      error: error.message,
+    });
+  }
+};
+export const getAccessoriesAllotDetails = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const orderId = Number(req.params.id);
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        lead: {
+          include: {
+            customer: true,
+            executive: true,
+            model: true,
+            colour: true,
+            showroomVariant: {
+              include: {
+                accessories: {
+                  include: {
+                    accessory: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const accessories = (order.lead?.showroomVariant?.accessories || []).map(
+      (item: any) => ({
+        id: item.id,
+        itemId: item.accessoryId,
+        itemName: item.accessory?.itemName || "-",
+        itemCode: item.accessory?.codeNo || "-",
+        hsnCode: item.accessory?.hsnCode || "-",
+        qty: item.qty,
+        tax: item.taxPercent,
+        salesPrice: item.price,
+        totalPrice: item.totalPrice,
+        status: "Pending",
+      })
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        id: order.id,
+        accountName: order.lead?.customer?.accountName,
+        mobileNo: order.lead?.customer?.mobile,
+        quotationNo: order.lead?.quotationNo,
+        dmsEnquiryNo: order.lead?.dmsEnquiryNo,
+        dmsEnquiryDate: order.lead?.dmsEnquiryDate,
+        salesExecutive: order.lead?.executive?.employeeName,
+        model: order.model || order.lead?.model?.modelName,
+        variant:
+          order.variant || order.lead?.showroomVariant?.variantName,
+        color: order.colour || order.lead?.colour?.colourName,
+        chassisNo: order.chassisNo,
+        accessories,
+      },
+    });
+  } catch (error: any) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch accessories details",
+      error: error.message,
+    });
+  }
+};
 // ==========================================
 // GET ORDER BY ID
 // GET /api/orders/:id
@@ -844,6 +1154,31 @@ export const getOrderByLeadId = async (req: Request, res: Response) => {
       message: "Failed to fetch order",
 
       error: error?.message,
+    });
+  }
+};
+export const completeVehicleIncharge = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const id = Number(req.params.id);
+
+    await prisma.order.update({
+      where: { id },
+      data: {
+        vehicleInchargeStatus: "completed",
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: "Vehicle verification completed",
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };
