@@ -40,6 +40,8 @@ import WebvendorRoutes from "./routes/vendor/index.js";
 import testDriveRoutes from "./routes/testDrive.js";
 import compareTractorRoutes from "./routes/compareTractor.js"
 import accountantRoute from "./routes/employee/accountant/index.js"
+import wishlistRoutes from "./routes/wishlist.js";
+import notificationRoutes from "./routes/notification.js";
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -83,4 +85,6 @@ router.use("/vendor-web", WebvendorRoutes);
 router.use("/test-drives", testDriveRoutes);
 router.use("/compare-tractor", compareTractorRoutes);
 router.use("/accountant", accountantRoute);
+router.use("/wishlist", wishlistRoutes);
+router.use("/notifications", notificationRoutes);
 export default router;

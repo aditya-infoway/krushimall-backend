@@ -382,6 +382,7 @@ model WebsiteVariant {
   variant                   Variant?   @relation(fields: [variantId], references: [id])
     enquiries WebsiteEnquiry[]
     enquiryCount  Int @default(0)
+    wishlistedBy Wishlist[]   
 }
 
 model Colour {
@@ -1538,6 +1539,7 @@ model WebUser {
 
   // Vendor data (optional - only exists if user becomes vendor)
   vendor WebVendor?
+  wishlist  Wishlist[] 
 }
 
 
@@ -1645,3 +1647,34 @@ employee Employee? @relation("TestDriveEmployee", fields: [createdById], referen
   showroomVariant  ShowroomVariant  @relation(fields: [showroomVariantId], references: [id])
   colour           Colour           @relation(fields: [colourId], references: [id])
 }
+
+
+
+model Wishlist {
+  id        Int      @id @default(autoincrement())
+  webUserId Int
+  variantId Int
+  createdAt DateTime @default(now())
+
+  webUser   WebUser        @relation(fields: [webUserId], references: [id], onDelete: Cascade)
+  variant   WebsiteVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([webUserId, variantId])
+  @@index([webUserId])
+}
+
+
+
+model NotificationToken {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  vendorId   Int?
+
+  token      String   @unique
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+
+
