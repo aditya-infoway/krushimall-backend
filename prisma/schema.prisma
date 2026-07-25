@@ -1414,6 +1414,8 @@ model Order {
   loanRoi          Float   @default(0)
   marginMoney      Float   @default(0)
   paymentStatus    String  @default("pending")
+    vehicleInchargeStatus String @default("pending")
+    accessoriesAllotStatus String @default("pending")
   assignBy         String?
 
   // Cash Payment

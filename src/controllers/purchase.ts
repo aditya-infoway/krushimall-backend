@@ -1061,20 +1061,20 @@ export const getModelWiseInventoryAnalysis = async (
   res: Response,
 ) => {
   try {
-    const { fromDate, toDate } = req.query;
+     const { fromDate, toDate } = req.query;
 
     const dateFilter: any = {};
     if (fromDate) dateFilter.gte = new Date(String(fromDate));
     if (toDate) {
       const end = new Date(String(toDate));
-      end.setHours(23, 59, 59, 999); // pura din cover karo
+      end.setHours(23, 59, 59, 999);
       dateFilter.lte = end;
     }
 
     const purchases = await prisma.purchase.findMany({
       where: {
         status: "VERIFY",
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+        ...(Object.keys(dateFilter).length > 0 && { purchaseDate: dateFilter }), // ✅ createdAt → purchaseDate
       },
       include: { items: true },
     });
@@ -1154,7 +1154,7 @@ export const getInventoryDetails = async (req: Request, res: Response) => {
     // ==========================================
     // 1) PURCHASE ORDERS — Present/Transit yahin se
     // ==========================================
-    const { fromDate, toDate } = req.query;
+      const { fromDate, toDate } = req.query;
 
     const dateFilter: any = {};
     if (fromDate) dateFilter.gte = new Date(String(fromDate));
@@ -1167,7 +1167,7 @@ export const getInventoryDetails = async (req: Request, res: Response) => {
     const purchases = await prisma.purchase.findMany({
       where: {
         status: "VERIFY",
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+        ...(Object.keys(dateFilter).length > 0 && { purchaseDate: dateFilter }), // ✅ createdAt → purchaseDate
       },
       include: { items: true },
       orderBy: { id: "asc" },
@@ -1175,7 +1175,7 @@ export const getInventoryDetails = async (req: Request, res: Response) => {
 
     const leads = await prisma.lead.findMany({
       where: {
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }), // Lead ke liye createdAt theek hai
       },
       include: {
         model: { select: { modelName: true } },
