@@ -671,6 +671,64 @@ export const getPurchases = async (req: Request, res: Response) => {
     });
   }
 };
+export const getPendingPurchasesForCashPayment = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        terms: {
+          equals: "Credit",
+          mode: "insensitive",
+        },
+      },
+      include: {
+        account: true,
+        cashPayments: true,
+        bankPayments: true,
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    const data = purchases
+      .map((purchase) => {
+        const paidAmount =
+          purchase.cashPayments.reduce(
+            (sum, item) => sum + Number(item.amount || 0),
+            0
+          ) +
+          purchase.bankPayments.reduce(
+            (sum, item) => sum + Number(item.amount || 0),
+            0
+          );
+
+        const grandTotal = Number(purchase.grandTotal || 0);
+        const pendingAmount = Math.max(grandTotal - paidAmount, 0);
+
+        return {
+          ...purchase,
+          paidAmount,
+          pendingAmount,
+        };
+      })
+      .filter((purchase) => purchase.pendingAmount > 0);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending purchases",
+    });
+  }
+};
 export const getPurchaseById = async (req: Request, res: Response) => {
   try {
     const purchase = await prisma.purchase.findUnique({
@@ -995,6 +1053,213 @@ export const getTractorInventory = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Failed",
+    });
+  }
+};
+export const getModelWiseInventoryAnalysis = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { fromDate, toDate } = req.query;
+
+    const dateFilter: any = {};
+    if (fromDate) dateFilter.gte = new Date(String(fromDate));
+    if (toDate) {
+      const end = new Date(String(toDate));
+      end.setHours(23, 59, 59, 999); // pura din cover karo
+      dateFilter.lte = end;
+    }
+
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        status: "VERIFY",
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+      },
+      include: { items: true },
+    });
+
+    // ==========================================
+    // MODEL WISE GROUPING
+    // ==========================================
+   const modelMap = new Map<
+  string,
+  {
+    model: string;
+    present: number;
+    transit: number;
+    purchase: number;
+    sales: number;
+  }
+>();
+
+    purchases.forEach((purchase) => {
+      purchase.items.forEach((item) => {
+        const modelName = item.modelName || "Unknown";
+
+        if (!modelMap.has(modelName)) {
+          modelMap.set(modelName, {
+            model: modelName,
+            present: 0,
+            transit: 0,
+            purchase: 0,
+            sales: 0,
+          });
+        }
+
+        const entry = modelMap.get(modelName)!;
+
+        // Purchase = model ke total items (kharide gaye)
+        entry.purchase += 1;
+
+        if (item.status === "Inward") {
+          entry.present += 1;
+        } else if (item.status === "Booked") {
+          entry.sales += 1; // Booked = sold
+        } else {
+          entry.transit += 1; // baaki sab In Transit
+        }
+      });
+    });
+
+    const modelAnalysis = Array.from(modelMap.values());
+
+    // ==========================================
+    // PIE CHART — MODEL WISE TOTAL STOCK DISTRIBUTION
+    // Har model ka total (present + transit + sales) ek slice
+    // ==========================================
+    const pieData = modelAnalysis.map((row) => ({
+      name: row.model,
+      value: row.present + row.transit + row.sales,
+    }));
+
+    return res.json({
+      success: true,
+      data: {
+        modelAnalysis,
+        pieData,
+      },
+    });
+  } catch (error) {
+    console.error("GET MODEL WISE INVENTORY ANALYSIS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch model wise inventory analysis",
+    });
+  }
+};
+export const getInventoryDetails = async (req: Request, res: Response) => {
+  try {
+    // ==========================================
+    // 1) PURCHASE ORDERS — Present/Transit yahin se
+    // ==========================================
+    const { fromDate, toDate } = req.query;
+
+    const dateFilter: any = {};
+    if (fromDate) dateFilter.gte = new Date(String(fromDate));
+    if (toDate) {
+      const end = new Date(String(toDate));
+      end.setHours(23, 59, 59, 999);
+      dateFilter.lte = end;
+    }
+
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        status: "VERIFY",
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+      },
+      include: { items: true },
+      orderBy: { id: "asc" },
+    });
+
+    const leads = await prisma.lead.findMany({
+      where: {
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
+      },
+      include: {
+        model: { select: { modelName: true } },
+        order: { select: { id: true } },
+      },
+    });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const hotCountByModel = new Map<string, number>();
+    const bookedCountByModel = new Map<string, number>();
+
+    leads.forEach((lead) => {
+      const modelName = lead.model?.modelName || "Unknown";
+
+      let leadTemperature = "Cold";
+      if (lead.expectedPurchaseDate) {
+        const expectedDate = new Date(lead.expectedPurchaseDate);
+        expectedDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil(
+          (expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        if (diffDays <= 7) leadTemperature = "Hot";
+      }
+
+      if (leadTemperature === "Hot") {
+        hotCountByModel.set(
+          modelName,
+          (hotCountByModel.get(modelName) || 0) + 1,
+        );
+      }
+
+      // Order ban chuka hai matlab lead booked ho chuka hai
+      if (lead.order) {
+        bookedCountByModel.set(
+          modelName,
+          (bookedCountByModel.get(modelName) || 0) + 1,
+        );
+      }
+    });
+
+    // ==========================================
+    // 3) EK ROW PER PURCHASE ORDER
+    // ==========================================
+    const data = purchases.map((purchase, index) => {
+      const firstItem = purchase.items[0];
+
+      const modelName = firstItem?.modelName || "-";
+      const variantName = firstItem?.variantName || "-";
+      const colour = firstItem?.color || "-";
+
+      const present = purchase.items.filter(
+        (i) => i.status === "Inward",
+      ).length;
+
+      const bookedItems = purchase.items.filter(
+        (i) => i.status === "Booked",
+      ).length;
+
+      const transit = purchase.items.length - present - bookedItems;
+
+      return {
+        srNo: index + 1,
+        model: modelName,
+        variant: variantName,
+        colour,
+        purchaseOrder:  purchase.billNo,
+        present,
+        transit,
+        hot: hotCountByModel.get(modelName) || 0,
+        booked: bookedCountByModel.get(modelName) || 0,
+        lost: null, // ⚠️ abhi track nahi hota, isliye "-" dikhega
+      };
+    });
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error("GET INVENTORY DETAILS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch inventory details",
     });
   }
 };

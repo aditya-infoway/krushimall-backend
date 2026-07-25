@@ -351,7 +351,7 @@ export const getLeads = async (req: Request, res: Response) => {
         enquirySourceMaster: true,
         enquiryStatus: true,
         account: true,
-
+  order: true,
         showroomVariant: {
           include: {
             accessories: {
@@ -370,37 +370,68 @@ export const getLeads = async (req: Request, res: Response) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const data = leads.map((lead) => {
-      let leadTemperature = "Cold";
-      let leadColor = "sky";
+  const data = await Promise.all(
+  leads.map(async (lead) => {
+    let leadTemperature = "Cold";
+    let leadColor = "sky";
 
-      if (lead.expectedPurchaseDate) {
-        const expectedDate = new Date(lead.expectedPurchaseDate);
-        expectedDate.setHours(0, 0, 0, 0);
+    if (lead.expectedPurchaseDate) {
+      const expectedDate = new Date(lead.expectedPurchaseDate);
+      expectedDate.setHours(0, 0, 0, 0);
 
-        const diffDays = Math.ceil(
-          (expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-        );
+      const diffDays = Math.ceil(
+        (expectedDate.getTime() - today.getTime()) /
+          (1000 * 60 * 60 * 24)
+      );
 
-        if (diffDays <= 7) {
-          leadTemperature = "Hot";
-          leadColor = "red";
-        } else if (diffDays <= 15) {
-          leadTemperature = "Warm";
-          leadColor = "orange";
-        } else {
-          leadTemperature = "Cold";
-          leadColor = "sky";
-        }
+      if (diffDays <= 7) {
+        leadTemperature = "Hot";
+        leadColor = "red";
+      } else if (diffDays <= 15) {
+        leadTemperature = "Warm";
+        leadColor = "orange";
       }
+    }
 
-      return {
-        ...lead,
-        leadTemperature,
-        leadColor,
-      };
+    const cashReceipts = await prisma.cashReceipt.aggregate({
+      where: {
+        leadId: lead.id,
+      },
+      _sum: {
+        amount: true,
+      },
     });
 
+    const bankReceipts = await prisma.bankReceipt.aggregate({
+      where: {
+        leadId: lead.id,
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    const cashAmount = Number(cashReceipts._sum.amount || 0);
+    const bankAmount = Number(bankReceipts._sum.amount || 0);
+
+    const totalReceived = cashAmount + bankAmount;
+
+    const quotationAmount = Number(lead.quotationGrandTotal || 0);
+
+    const isBooked =
+      quotationAmount > 0 &&
+      totalReceived >= quotationAmount;
+
+    return {
+      ...lead,
+      leadTemperature,
+      leadColor,
+      totalReceived,
+      quotationAmount,
+      leadStatus: isBooked ? "Booked" : leadTemperature,
+    };
+  })
+);
     return res.json({
       success: true,
       data,
@@ -1312,7 +1343,18 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
     await page.setContent(html, {
       waitUntil: "domcontentloaded",
     });
-
+await page.evaluate(async () => {
+  const images = Array.from(document.images);
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.addEventListener("load", resolve);
+        img.addEventListener("error", resolve); // don't hang forever on broken image
+      });
+    })
+  );
+});
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -2068,6 +2110,70 @@ export const getBookingBalance = async (req: Request, res: Response) => {
       success: false,
 
       message: "Failed to fetch booking balance",
+    });
+  }
+};
+export const getLeadsForCashReceipt = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+
+    const whereClause: any = {};
+    if (user?.role?.toUpperCase() === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
+    if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+      whereClause.executiveId = Number(user.id);
+    }
+
+    const leads = await prisma.lead.findMany({
+      where: whereClause,
+      include: {
+        customer: true,
+        cashReceipts: { select: { amount: true } },
+        bankReceipts: { select: { amount: true } },
+        quotationHistories: {
+          orderBy: { revisionNo: "desc" },
+          take: 1,
+          select: { grandTotal: true },
+        },
+        order: {
+          select: { invoiceAmount: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // ==========================================
+    // SIRF WOH LEADS JINME ABHI PAYMENT PENDING HAI
+    // invoiceAmount - receivedAmount > 0
+    // ==========================================
+    const pendingLeads = leads.filter((lead) => {
+      const invoiceAmount = lead.order
+        ? Number(lead.order.invoiceAmount || 0)
+        : Number(
+            lead.quotationHistories?.[0]?.grandTotal ??
+              lead.quotationGrandTotal ??
+              0,
+          );
+
+      const receivedAmount =
+        lead.cashReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0) +
+        lead.bankReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+
+      const pendingAmount = invoiceAmount - receivedAmount;
+
+      return pendingAmount > 0;
+    });
+
+    return res.json({
+      success: true,
+      data: pendingLeads,
+    });
+  } catch (error) {
+    console.error("GET LEADS FOR CASH RECEIPT ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch leads",
     });
   }
 };

@@ -54,6 +54,18 @@ export const createWebsiteEnquiry = async (req: Request, res: Response) => {
       },
     });
 
+
+     await prisma.websiteVariant.update({
+      where: {
+        id: Number(websiteVariantId),
+      },
+      data: {
+        enquiryCount: {
+          increment: 1,
+        },
+      },
+    });
+
     return res.status(201).json({
       success: true,
       message: "Enquiry submitted successfully.",

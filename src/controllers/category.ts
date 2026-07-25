@@ -6,9 +6,12 @@ export const createCategory = async (
   res: Response
 ) => {
   try {
+    // Get categoryName from either field
+    const categoryName = req.body.categoryName || req.body.name;
+    
     const existingCategory = await prisma.category.findFirst({
       where: {
-        categoryName: req.body.categoryName,
+        categoryName: categoryName,
       },
     });
 
@@ -21,8 +24,9 @@ export const createCategory = async (
 
     const category = await prisma.category.create({
       data: {
-        categoryName: req.body.categoryName,
+        categoryName: categoryName,
         status: req.body.status || "ACTIVE",
+        image: req.file?.filename || null,
       },
     });
 
@@ -32,7 +36,6 @@ export const createCategory = async (
     });
   } catch (error) {
     console.error(error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to create category",
@@ -102,14 +105,24 @@ export const updateCategory = async (
   res: Response
 ) => {
   try {
+    // Get categoryName from either field
+    const categoryName = req.body.categoryName || req.body.name;
+    
+    const updateData: any = {
+      categoryName: categoryName,
+      status: req.body.status,
+    };
+
+    // Add image handling
+    if (req.file) {
+      updateData.image = req.file.filename;
+    }
+
     const category = await prisma.category.update({
       where: {
         id: Number(req.params.id),
       },
-      data: {
-        categoryName: req.body.categoryName,
-        status: req.body.status,
-      },
+      data: updateData,
     });
 
     return res.status(200).json({
@@ -118,7 +131,6 @@ export const updateCategory = async (
     });
   } catch (error) {
     console.error(error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to update category",

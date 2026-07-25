@@ -6,6 +6,11 @@ const router = Router();
 
 router.post("/", verifyToken, LeadController.createLead);
 router.get("/", verifyToken, LeadController.getLeads);
+router.get(
+  "/pending",
+  verifyToken,
+  LeadController.getLeadsForCashReceipt,
+);
 router.get("/:id", verifyToken, LeadController.getLeadById);
 
 router.put(
