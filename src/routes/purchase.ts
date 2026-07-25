@@ -13,6 +13,9 @@ import {
   saveTransport,
   getTransport,
   getTractorInventory,
+  getPendingPurchasesForCashPayment,
+  getModelWiseInventoryAnalysis,
+  getInventoryDetails
 } from "../controllers/purchase.js";
 
 import { verifyToken } from "../middleware/middleware.js";
@@ -30,7 +33,9 @@ router.post("/", verifyToken, createPurchase);
 
 // Get All Purchases
 router.get("/", verifyToken, getPurchases);
-
+router.get("/pending", verifyToken, getPendingPurchasesForCashPayment);
+router.get("/model-analysis", getModelWiseInventoryAnalysis);
+router.get("/inventory-details", getInventoryDetails);
 // Fixed routes must remain before /:id
 router.get("/tractor-inventory", verifyToken, getTractorInventory);
 

@@ -13,6 +13,8 @@ export const createPurchase = async (req: Request, res: Response) => {
 
 export const updatePurchase = PurchaseController.updatePurchase;
 export const getPurchases = PurchaseController.getPurchases;
+export const getPendingPurchasesForCashPayment =
+  PurchaseController.getPendingPurchasesForCashPayment;
 export const getPurchaseById = PurchaseController.getPurchaseById;
 export const deletePurchase = PurchaseController.deletePurchase;
 export const verifyPurchase = PurchaseController.verifyPurchase;

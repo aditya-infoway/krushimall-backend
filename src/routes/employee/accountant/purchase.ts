@@ -6,6 +6,11 @@ const router = Router();
 
 router.post("/", verifyToken, PurchaseController.createPurchase);
 router.get("/", verifyToken, PurchaseController.getPurchases);
+router.get(
+  "/pending",
+  verifyToken,
+  PurchaseController.getPendingPurchasesForCashPayment
+);
 router.get("/bill-no", verifyToken, PurchaseController.getPurchaseBillNo);
 router.get("/vehicle-sr-no", verifyToken, PurchaseController.getVehicleSerialNo);
 router.get("/inventory", verifyToken, PurchaseController.getTractorInventory);

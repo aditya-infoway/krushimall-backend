@@ -728,9 +728,23 @@ const logoUrl = getFileUrl(company?.logo);
 
     const page = await browser.newPage();
 
-    await page.setContent(html, {
-      waitUntil: "domcontentloaded",
-    });
+await page.setContent(html, {
+  waitUntil: "domcontentloaded",
+});
+
+// Extra safety: ensure all <img> tags are actually loaded (or failed) before PDF
+await page.evaluate(async () => {
+  const images = Array.from(document.images);
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.addEventListener("load", resolve);
+        img.addEventListener("error", resolve); // don't hang forever on broken image
+      });
+    })
+  );
+});
 
     const pdf = await page.pdf({
       format: "A4",

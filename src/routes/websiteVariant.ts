@@ -8,6 +8,8 @@ saveStep,
 submitWebsiteVariant,
 toggleWebsiteVariantStatus,
 deleteWebsiteVariant,
+getLatestWebsiteVariants,
+getPopularWebsiteVariants,
 } from "../controllers/websiteVariant.js";
 
 import { upload } from "../middleware/upload.js";
@@ -52,6 +54,10 @@ mediaUpload,
 createWebsiteVariant
 );
 
+router.get("/popular", getPopularWebsiteVariants);
+
+router.get("/latest", getLatestWebsiteVariants);
+
 // Get All
 router.get(
 "/",
@@ -65,6 +71,8 @@ router.get(
 
 getWebsiteVariantById
 );
+
+
 
 // Update Full Record
 router.put(
