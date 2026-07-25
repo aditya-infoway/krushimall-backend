@@ -13,15 +13,12 @@ import { verifyWebToken } from "../middleware/verifyWebToken.js";
 import { verifyVendorToken } from "../middleware/verifyVendorToken.js";
 
 
-console.log("vendor.ts loaded");
+
 
 
 const router = Router();
 
-router.use((req, res, next) => {
-  console.log("Vendor router reached:", req.method, req.originalUrl);
-  next();
-});
+
 
 // =========================
 // Public
