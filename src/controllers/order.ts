@@ -8,6 +8,7 @@ import { generateBankReceiptVoucher } from "../utils/generateBankReceiptVoucher.
 // HELPER FUNCTIONS
 // ==========================================
 import { generateDeliveryChallanHtml } from "../utils/generateDeliveryChallanHtml.js";
+import { generateAccessoriesInvoiceNo } from "../utils/generateAccessoriesInvoiceNo.js";
 const toNumber = (value: unknown): number => {
   if (value === "" || value === null || value === undefined) {
     return 0;
@@ -65,6 +66,7 @@ export const createOrder = async (req: Request, res: Response) => {
       payment = {},
       broker = {},
       delivery = {},
+      selectedAccessories = [],
     } = req.body;
 
     // ======================================
@@ -464,6 +466,17 @@ export const createOrder = async (req: Request, res: Response) => {
           bankAccount: true,
         },
       });
+      if (selectedAccessories.length > 0) {
+        await tx.orderAccessory.createMany({
+          data: selectedAccessories.map((item: any) => ({
+            orderId: createdOrder.id,
+            accessoryId: Number(item.accessoryId ?? item.id),
+            salesPrice: Number(item.price),
+            qty: Number(item.qty ?? 1),
+            status: "Pending",
+          })),
+        });
+      }
       if (allotment.chassisNo) {
         await tx.purchaseItem.update({
           where: {
@@ -638,7 +651,185 @@ export const createOrder = async (req: Request, res: Response) => {
 // GET ALL ORDERS
 // GET /api/orders
 // ==========================================
+export const saveAccessoriesAllotment = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const orderId = Number(req.params.id);
 
+    const { invoiceNo, invoiceDate } = req.body;
+
+    if (!invoiceNo || !invoiceDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice No and Invoice Date are required.",
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          orderAccessories: true,
+        },
+      });
+
+      if (!order) {
+        throw new Error("Order not found.");
+      }
+
+      const pendingAccessories = order.orderAccessories.filter(
+        (item) => item.status !== "Completed"
+      );
+
+      if (pendingAccessories.length > 0) {
+        throw new Error("Please allot all accessories first.");
+      }
+
+      if (order.invoiceNo) {
+        throw new Error("Invoice already generated.");
+      }
+
+      const existing = await tx.order.findFirst({
+        where: {
+          invoiceNo,
+        },
+      });
+
+      if (existing) {
+        throw new Error("Invoice No already exists.");
+      }
+
+      await tx.order.update({
+        where: {
+          id: orderId,
+        },
+        data: {
+          invoiceNo,
+          invoiceDate: new Date(invoiceDate),
+          accessoriesAllotStatus: "Completed",
+        },
+      });
+    });
+
+    return res.json({
+      success: true,
+      message: "Accessories allotment saved successfully.",
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+// Add this to your backend controller file
+
+// ==========================================
+// GET VEHICLE VERIFY ACCESSORIES
+// GET /api/orders/vehicle-verify-accessories
+// ==========================================
+
+export const getVehicleVerifyAccessories = async (req: Request, res: Response) => {
+  try {
+    // Get the latest order that has been verified/completed
+const orders = await prisma.order.findMany({
+  where: {
+    accessoriesAllotStatus: "Completed",
+    invoiceNo: {
+      not: null,
+    },
+  },
+  orderBy: {
+    invoiceDate: "desc",
+  },
+  include: {
+    lead: {
+      include: {
+        customer: true,
+        executive: true,
+        model: true,
+        showroomVariant: true,
+        colour: true,
+      },
+    },
+    orderAccessories: {
+      include: {
+        accessory: true,
+      },
+    },
+  },
+});
+
+  if (orders.length === 0) {
+  return res.status(404).json({
+    success: false,
+    message: "No verified vehicle order found",
+  });
+}
+
+const data = orders.map((order, index) => {
+  const allotted = order.orderAccessories.filter(
+    (item) => item.status === "Completed"
+  ).length;
+
+  const pending = order.orderAccessories.filter(
+    (item) => item.status !== "Completed"
+  ).length;
+
+  return {
+    srNo: index + 1,
+    id: order.id,
+    accountName: order.lead?.customer?.accountName || "-",
+    mobileNo: order.lead?.customer?.mobile || "-",
+    quotationNo: order.lead?.quotationNo || "-",
+    dmsEnquiryNo: order.lead?.dmsEnquiryNo || "-",
+    dmsEnquiryDate: order.lead?.dmsEnquiryDate
+      ? new Date(order.lead.dmsEnquiryDate).toLocaleDateString("en-GB")
+      : "-",
+    salesExecutive: order.lead?.executive?.employeeName || "-",
+    model: order.model || order.lead?.model?.modelName || "-",
+    variant:
+      order.variant || order.lead?.showroomVariant?.variantName || "-",
+    color: order.colour || order.lead?.colour?.colourName || "-",
+    chassisNo: order.chassisNo || "-",
+
+    invoiceNo: order.invoiceNo || "-",
+    invoiceDate: order.invoiceDate
+      ? new Date(order.invoiceDate).toLocaleDateString("en-GB")
+      : "-",
+
+    allotted,
+    pending,
+
+    accessories: order.orderAccessories.map((item) => ({
+      id: item.id,
+      itemId: item.accessoryId,
+      itemName: item.accessory?.itemName,
+      itemCode: item.accessory?.codeNo,
+      hsnCode: item.accessory?.hsnCode,
+      selectedStock: item.qty,
+      tax: item.accessory?.taxSlab,
+      salesPrice: item.salesPrice,
+      status: item.status,
+    })),
+  };
+});
+return res.json({
+  success: true,
+  data,
+});
+  } catch (error: any) {
+    console.error("GET VEHICLE VERIFY ACCESSORIES ERROR:", error);
+    
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch vehicle verify accessories",
+      error: error.message,
+    });
+  }
+};
 export const getOrders = async (req: Request, res: Response) => {
   try {
     const { companyId, financialYearId } = req.query;
@@ -770,7 +961,7 @@ export const getVehicleInchargeList = async (req: Request, res: Response) => {
 
       chassisNo: order.chassisNo || "-",
 
-    status: order.vehicleInchargeStatus,
+      status: order.vehicleInchargeStatus,
     }));
 
     return res.json({
@@ -792,10 +983,7 @@ export const getVehicleInchargeList = async (req: Request, res: Response) => {
 // GET /api/orders/accessories-allot
 // ==========================================
 
-export const getAccessoriesAllotList = async (
-  req: Request,
-  res: Response
-) => {
+export const getAccessoriesAllotList = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
 
@@ -812,114 +1000,102 @@ export const getAccessoriesAllotList = async (
         executiveId: Number(user.id),
       };
     }
-
     const orders = await prisma.order.findMany({
-  where: whereClause,
-  include: {
-    lead: {
+      where: whereClause,
       include: {
-        customer: true,
-        executive: true,
-        model: true,
-        colour: true,
-        showroomVariant: {
+        lead: {
           include: {
-            accessories: {
-              include: {
-                accessory: true,
-              },
-            },
+            customer: true,
+            executive: true,
+            model: true,
+            showroomVariant: true,
+            colour: true,
           },
         },
+        orderAccessories: true,
       },
-    },
-  },
-  orderBy: {
-    id: "desc",
-  },
-});
+      orderBy: {
+        id: "desc",
+      },
+    });
 
     const data = [];
 
     for (const order of orders) {
-      const quotation = await prisma.quotationHistory.findFirst({
-        where: {
-          leadId: order.leadId,
-        },
-        orderBy: {
-          revisionNo: "desc",
-        },
-      });
+      //       const quotation = await prisma.quotationHistory.findFirst({
+      //         where: {
+      //           leadId: order.leadId,
+      //         },
+      //         orderBy: {
+      //           revisionNo: "desc",
+      //         },
+      //       });
 
-   let accessories: any[] = [];
+      //    let accessories: any[] = [];
 
-if (
-  quotation &&
-  Array.isArray(quotation.selectedAccessories) &&
-  quotation.selectedAccessories.length > 0
-) {
-  accessories = quotation.selectedAccessories as any[];
-} else {
-  accessories =
-    (order.lead?.showroomVariant?.accessories || []).map((item: any) => ({
-      id: item.id,
-      accessoryId: item.accessoryId,
-      name: item.accessory?.itemName,
-      qty: item.qty,
-      price: item.price,
-      totalPrice: item.totalPrice,
-    }));
-}
+      // if (
+      //   quotation &&
+      //   Array.isArray(quotation.selectedAccessories) &&
+      //   quotation.selectedAccessories.length > 0
+      // ) {
+      //   accessories = quotation.selectedAccessories as any[];
+      // } else {
+      //   accessories =
+      //     (order.lead?.showroomVariant?.accessories || []).map((item: any) => ({
+      //       id: item.id,
+      //       accessoryId: item.accessoryId,
+      //       name: item.accessory?.itemName,
+      //       qty: item.qty,
+      //       price: item.price,
+      //       totalPrice: item.totalPrice,
+      //     }));
+      // }
 
-if (accessories.length === 0) {
-  continue;
-}
+      // if (accessories.length === 0) {
+      //   continue;
+      // }
+      const accessories = order.orderAccessories;
 
+      if (accessories.length === 0) {
+        continue;
+      }
+      const completedAccessories = accessories.filter(
+        (item) => item.status === "Completed",
+      ).length;
+
+      const status =
+        accessories.length > 0 && completedAccessories === accessories.length
+          ? "completed"
+          : "pending";
       data.push({
         id: order.id,
 
-        accountName:
-          order.lead?.customer?.accountName || "-",
+        accountName: order.lead?.customer?.accountName || "-",
 
-        mobileNo:
-          order.lead?.customer?.mobile || "-",
+        mobileNo: order.lead?.customer?.mobile || "-",
 
-        quotationNo:
-          order.lead?.quotationNo || "-",
+        quotationNo: order.lead?.quotationNo || "-",
 
-        dmsEnquiryNo:
-          order.lead?.dmsEnquiryNo || "-",
+        dmsEnquiryNo: order.lead?.dmsEnquiryNo || "-",
 
         dmsEnquiryDate: order.lead?.dmsEnquiryDate
-          ? new Date(
-              order.lead.dmsEnquiryDate
-            ).toLocaleDateString("en-GB")
+          ? new Date(order.lead.dmsEnquiryDate).toLocaleDateString("en-GB")
           : "-",
 
-        salesExecutive:
-          order.lead?.executive?.employeeName || "-",
+        salesExecutive: order.lead?.executive?.employeeName || "-",
 
-        model:
-          order.model ||
-          order.lead?.model?.modelName ||
-          "-",
+        model: order.model || order.lead?.model?.modelName || "-",
 
         variant:
-          order.variant ||
-          order.lead?.showroomVariant?.variantName ||
-          "-",
+          order.variant || order.lead?.showroomVariant?.variantName || "-",
 
-        color:
-          order.colour ||
-          order.lead?.colour?.colourName ||
-          "-",
+        color: order.colour || order.lead?.colour?.colourName || "-",
 
         chassisNo: order.chassisNo || "-",
 
         numberOfAccessories: accessories.length,
 
-        status:
-          order.accessoriesAllotStatus || "pending",
+        status,
       });
     }
 
@@ -939,7 +1115,7 @@ if (accessories.length === 0) {
 };
 export const getAccessoriesAllotDetails = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const orderId = Number(req.params.id);
@@ -952,16 +1128,14 @@ export const getAccessoriesAllotDetails = async (
             customer: true,
             executive: true,
             model: true,
+            showroomVariant: true,
             colour: true,
-            showroomVariant: {
-              include: {
-                accessories: {
-                  include: {
-                    accessory: true,
-                  },
-                },
-              },
-            },
+          },
+        },
+
+        orderAccessories: {
+          include: {
+            accessory: true,
           },
         },
       },
@@ -974,20 +1148,21 @@ export const getAccessoriesAllotDetails = async (
       });
     }
 
-    const accessories = (order.lead?.showroomVariant?.accessories || []).map(
-      (item: any) => ({
-        id: item.id,
-        itemId: item.accessoryId,
-        itemName: item.accessory?.itemName || "-",
-        itemCode: item.accessory?.codeNo || "-",
-        hsnCode: item.accessory?.hsnCode || "-",
-        qty: item.qty,
-        tax: item.taxPercent,
-        salesPrice: item.price,
-        totalPrice: item.totalPrice,
-        status: "Pending",
-      })
-    );
+    const accessories = order.orderAccessories.map((item) => ({
+      id: item.id,
+      itemId: item.accessoryId,
+      itemName: item.accessory?.itemName || "-",
+      itemCode: item.accessory?.codeNo || "-",
+      hsnCode: item.accessory?.hsnCode || "-",
+
+      selectedStock: item.qty,
+      tax: item.accessory?.taxSlab || 0,
+      salesPrice: Number(item.salesPrice),
+      totalPrice: Number(item.salesPrice) * Number(item.qty),
+
+      // Read status from database
+      status: item.status.toLowerCase(),
+    }));
 
     return res.json({
       success: true,
@@ -1000,10 +1175,11 @@ export const getAccessoriesAllotDetails = async (
         dmsEnquiryDate: order.lead?.dmsEnquiryDate,
         salesExecutive: order.lead?.executive?.employeeName,
         model: order.model || order.lead?.model?.modelName,
-        variant:
-          order.variant || order.lead?.showroomVariant?.variantName,
+        variant: order.variant || order.lead?.showroomVariant?.variantName,
         color: order.colour || order.lead?.colour?.colourName,
         chassisNo: order.chassisNo,
+        accessoriesAllotStatus: order.accessoriesAllotStatus,
+        invoiceNo: order.invoiceNo,
         accessories,
       },
     });
@@ -1014,6 +1190,105 @@ export const getAccessoriesAllotDetails = async (
       success: false,
       message: "Failed to fetch accessories details",
       error: error.message,
+    });
+  }
+};
+export const allotAccessoryStock = async (req: Request, res: Response) => {
+  try {
+    const allotmentId = Number(req.params.allotmentId);
+    const itemId = Number(req.params.itemId);
+    const purchaseHistoryId = Number(req.body.purchaseHistoryId);
+
+    await prisma.$transaction(async (tx) => {
+      // Find accessory in order
+      const orderAccessory = await tx.orderAccessory.findFirst({
+        where: {
+          orderId: allotmentId,
+          accessoryId: itemId,
+        },
+      });
+
+      if (!orderAccessory) {
+        throw new Error("Accessory not found in this order.");
+      }
+
+      // Already allotted
+      if (orderAccessory.status === "Completed") {
+        throw new Error("Accessory already allotted.");
+      }
+
+      // Selected purchase stock
+      const purchaseItem = await tx.accessoriesPurchaseItem.findUnique({
+        where: {
+          id: purchaseHistoryId,
+        },
+      });
+
+      if (!purchaseItem) {
+        throw new Error("Purchase stock not found.");
+      }
+
+      if (purchaseItem.accessoryId !== itemId) {
+        throw new Error("Invalid purchase stock selected.");
+      }
+
+      if ((purchaseItem.stock ?? 0) < orderAccessory.qty) {
+        throw new Error("Insufficient stock.");
+      }
+
+      // Reduce available stock
+      await tx.accessoriesPurchaseItem.update({
+        where: {
+          id: purchaseHistoryId,
+        },
+        data: {
+          stock: {
+            decrement: orderAccessory.qty,
+          },
+        },
+      });
+
+      // Mark completed and save purchase source
+      await tx.orderAccessory.update({
+        where: {
+          id: orderAccessory.id,
+        },
+        data: {
+          status: "Completed",
+          purchaseItemId: purchaseHistoryId,
+        },
+      });
+
+      // Check remaining pending accessories
+      const pending = await tx.orderAccessory.count({
+        where: {
+          orderId: allotmentId,
+          status: "Pending",
+        },
+      });
+
+      if (pending === 0) {
+        await tx.order.update({
+          where: {
+            id: allotmentId,
+          },
+          data: {
+            accessoriesAllotStatus: "Completed",
+          },
+        });
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: "Accessory allotted successfully.",
+    });
+  } catch (error: any) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to allot accessory.",
     });
   }
 };
@@ -1157,10 +1432,7 @@ export const getOrderByLeadId = async (req: Request, res: Response) => {
     });
   }
 };
-export const completeVehicleIncharge = async (
-  req: Request,
-  res: Response
-) => {
+export const completeVehicleIncharge = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
@@ -1185,11 +1457,11 @@ export const completeVehicleIncharge = async (
 export const printDeliveryChallan = async (req: Request, res: Response) => {
   try {
     const leadId = Number(req.params.leadId);
- 
+
     if (!Number.isInteger(leadId)) {
       return res.status(400).send("Invalid lead ID");
     }
- 
+
     const order = await prisma.order.findUnique({
       where: {
         leadId,
@@ -1207,14 +1479,14 @@ export const printDeliveryChallan = async (req: Request, res: Response) => {
         },
       },
     });
- 
+
     if (!order) {
       res.status(404);
       return res.send(
         "<h2 style='font-family:sans-serif;text-align:center;margin-top:60px;'>Order not created yet for this lead. Please create the order first.</h2>",
       );
     }
- 
+
     // Chassis ke against purchase item se Key No / Engine No nikalne ki koshish
     // (agar aapke PurchaseItem model me ye fields hain to bhar jayenge, warna blank rahenge).
     let keyNo = "";
@@ -1232,11 +1504,14 @@ export const printDeliveryChallan = async (req: Request, res: Response) => {
     }
 
     const html = generateDeliveryChallanHtml({
-      companyName: order.company?.companyName ,
+      companyName: order.company?.companyName,
       addressLine1: (order.company as any)?.addressLine1 ?? "",
-      mobileNumber: (order.company as any)?.mobileNumber ?? (order.company as any)?.mobileNumber ?? "",
+      mobileNumber:
+        (order.company as any)?.mobileNumber ??
+        (order.company as any)?.mobileNumber ??
+        "",
       logoUrl: getFileUrl(order.company?.logo),
- 
+
       customerName: order.lead?.customer?.accountName ?? "",
       model: order.model ?? order.lead?.model?.modelName ?? "",
       colour: order.colour ?? order.lead?.colour?.colourName ?? "",
@@ -1245,10 +1520,10 @@ export const printDeliveryChallan = async (req: Request, res: Response) => {
       engineNo,
       registrationNo: (order as any).registrationNo ?? "",
       mobileNo: order.lead?.customer?.mobile ?? "",
- 
+
       financeBankName: order.bankOfFinance ?? "",
       salesExecutive: order.lead?.executive?.employeeName ?? "",
- 
+
       checklist: {
         invoiceBill: order.invoiceBill,
         accessoriesInvoice: order.accessoriesInvoice,
@@ -1269,7 +1544,7 @@ export const printDeliveryChallan = async (req: Request, res: Response) => {
         other: order.other,
       },
     });
- 
+
     res.setHeader("Content-Type", "text/html");
     return res.send(html);
   } catch (error: any) {
