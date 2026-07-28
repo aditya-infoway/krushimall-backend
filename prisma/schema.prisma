@@ -91,7 +91,7 @@ model Category {
   id              Int              @id @default(autoincrement())
   categoryName    String           @unique
   status          String           @default("ACTIVE")
-    image           String?   
+  image           String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   brands          Brand[]
@@ -135,7 +135,7 @@ model Model {
   variants           Variant[]
   websiteVariants    WebsiteVariant[]
   quotationHistories QuotationHistory[]
-    testDrives  TestDrive[]
+  testDrives         TestDrive[]
 }
 
 model ModelYear {
@@ -191,9 +191,9 @@ model ShowroomVariant {
   leads              Lead[]
   tractors           Tractor[]
   quotationHistories QuotationHistory[]
-  testDrives  TestDrive[]
-  @@unique([modelId, variantId])
+  testDrives         TestDrive[]
 
+  @@unique([modelId, variantId])
 }
 
 model ShowroomVariantAccessory {
@@ -233,14 +233,14 @@ model Variant {
 }
 
 model WebsiteVariant {
-  id                        Int        @id @default(autoincrement())
-  currentStep               Int        @default(1)
-  status                    String     @default("DRAFT")
-  isCompleted               Boolean    @default(false)
-  createdAt                 DateTime   @default(now())
-  updatedAt                 DateTime   @updatedAt
-     vendorId Int?
-  vendor   WebVendor? @relation(fields: [vendorId], references: [id])
+  id                        Int              @id @default(autoincrement())
+  currentStep               Int              @default(1)
+  status                    String           @default("DRAFT")
+  isCompleted               Boolean          @default(false)
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+  vendorId                  Int?
+  vendor                    WebVendor?       @relation(fields: [vendorId], references: [id])
   createdById               Int?
   createdBy                 String?
   createdType               String?
@@ -260,13 +260,13 @@ model WebsiteVariant {
   highlight3                String?
   highlight4                String?
   highlight5                String?
-  redColor                  Boolean    @default(false)
-  blueColor                 Boolean    @default(false)
-  greenColor                Boolean    @default(false)
-  orangeColor               Boolean    @default(false)
-  blackColor                Boolean    @default(false)
-  whiteColor                Boolean    @default(false)
-  customColor               Boolean    @default(false)
+  redColor                  Boolean          @default(false)
+  blueColor                 Boolean          @default(false)
+  greenColor                Boolean          @default(false)
+  orangeColor               Boolean          @default(false)
+  blackColor                Boolean          @default(false)
+  whiteColor                Boolean          @default(false)
+  customColor               Boolean          @default(false)
   customColorName           String?
   customColorCode           String?
   availableStates           Json?
@@ -300,20 +300,20 @@ model WebsiteVariant {
   ptoRpm                    Int?
   ptoType                   String?
   ptoPosition               String?
-  creeperGears              Boolean    @default(false)
-  shuttleShift              Boolean    @default(false)
-  sideShiftGear             Boolean    @default(false)
-  powerShuttle              Boolean    @default(false)
-  hiLoGears                 Boolean    @default(false)
-  multiSpeedPto             Boolean    @default(false)
-  reversePto                Boolean    @default(false)
-  superReducer              Boolean    @default(false)
+  creeperGears              Boolean          @default(false)
+  shuttleShift              Boolean          @default(false)
+  sideShiftGear             Boolean          @default(false)
+  powerShuttle              Boolean          @default(false)
+  hiLoGears                 Boolean          @default(false)
+  multiSpeedPto             Boolean          @default(false)
+  reversePto                Boolean          @default(false)
+  superReducer              Boolean          @default(false)
   liftingCapacity           Int?
   liftingCapacityAt610mm    Int?
   hydraulicType             String?
-  addc                      Boolean    @default(false)
-  positionControl           Boolean    @default(false)
-  draftControl              Boolean    @default(false)
+  addc                      Boolean          @default(false)
+  positionControl           Boolean          @default(false)
+  draftControl              Boolean          @default(false)
   controlType               String?
   remoteValveType           String?
   numberOfRemoteValves      String?
@@ -321,14 +321,14 @@ model WebsiteVariant {
   linkageCategory           String?
   topLink                   String?
   draftSensitivity          String?
-  externalHydraulicCylinder Boolean    @default(false)
-  selfLevelling             Boolean    @default(false)
-  quickHitch                Boolean    @default(false)
-  downPositionControl       Boolean    @default(false)
-  loadSensing               Boolean    @default(false)
-  flowControl               Boolean    @default(false)
-  returnToDepth             Boolean    @default(false)
-  transportLock             Boolean    @default(false)
+  externalHydraulicCylinder Boolean          @default(false)
+  selfLevelling             Boolean          @default(false)
+  quickHitch                Boolean          @default(false)
+  downPositionControl       Boolean          @default(false)
+  loadSensing               Boolean          @default(false)
+  flowControl               Boolean          @default(false)
+  returnToDepth             Boolean          @default(false)
+  transportLock             Boolean          @default(false)
   exShowroomPrice           Float?
   onRoadPrice               Float?
   currency                  String?
@@ -372,17 +372,17 @@ model WebsiteVariant {
   insuranceCertificate      String?
   invoice                   String?
   others                    String?
-  agreed                    Boolean    @default(false)
+  agreed                    Boolean          @default(false)
   productName               String?
   launchYear                DateTime?
-  brand                     Brand?     @relation(fields: [brandId], references: [id])
-  category                  Category?  @relation(fields: [categoryId], references: [id])
-  model                     Model?     @relation(fields: [modelId], references: [id])
-  modelYear                 ModelYear? @relation(fields: [modelYearId], references: [id])
-  variant                   Variant?   @relation(fields: [variantId], references: [id])
-    enquiries WebsiteEnquiry[]
-    enquiryCount  Int @default(0)
-    wishlistedBy Wishlist[]   
+  brand                     Brand?           @relation(fields: [brandId], references: [id])
+  category                  Category?        @relation(fields: [categoryId], references: [id])
+  model                     Model?           @relation(fields: [modelId], references: [id])
+  modelYear                 ModelYear?       @relation(fields: [modelYearId], references: [id])
+  variant                   Variant?         @relation(fields: [variantId], references: [id])
+  enquiries                 WebsiteEnquiry[]
+  enquiryCount              Int              @default(0)
+  wishlistedBy              Wishlist[]
 }
 
 model Colour {
@@ -401,7 +401,7 @@ model Colour {
   leads              Lead[]
   tractors           Tractor[]
   quotationHistories QuotationHistory[]
-    testDrives  TestDrive[]
+  testDrives         TestDrive[]
 }
 
 model Account {
@@ -469,9 +469,10 @@ model Account {
   createdBy       String?
   createdById     Int?
   branchId        Int?
-  createdByBranch Branch? @relation("AccountBranch", fields: [branchId], references: [id])
-employee        Employee? @relation(fields: [createdById], references: [id])
-  finances Finance[]
+  createdByBranch Branch?   @relation("AccountBranch", fields: [branchId], references: [id])
+  employee        Employee? @relation(fields: [createdById], references: [id])
+  finances        Finance[]
+
   @@index([createdById])
 }
 
@@ -557,19 +558,19 @@ model Employee {
   createdType String?
   createdBy   String?
 
-  branchId        Int?
-  createdByBranch Branch? @relation("EmployeeBranch", fields: [branchId], references: [id])
-  orders          Order[]
-  accounts Account[]
-    purchases Purchase[]
-    accessoriesPurchases AccessoriesPurchase[]
-   cashPayments CashPayment[] @relation("CashPaymentEmployee")
-   bankPayments BankPayment[] @relation("BankPaymentEmployee")
-   cashReceipts CashReceipt[] @relation("CashReceiptEmployee")
-   bankReceipts BankReceipt[] @relation("BankReceiptEmployee")
-   contras Contra[] @relation("ContraEmployee")
-   accessoriesPurchaseItems AccessoriesPurchaseItem[] @relation("AccessoriesPurchaseItemEmployee")
-   testDrives TestDrive[] @relation("TestDriveEmployee")
+  branchId                 Int?
+  createdByBranch          Branch?                   @relation("EmployeeBranch", fields: [branchId], references: [id])
+  orders                   Order[]
+  accounts                 Account[]
+  purchases                Purchase[]
+  accessoriesPurchases     AccessoriesPurchase[]
+  cashPayments             CashPayment[]             @relation("CashPaymentEmployee")
+  bankPayments             BankPayment[]             @relation("BankPaymentEmployee")
+  cashReceipts             CashReceipt[]             @relation("CashReceiptEmployee")
+  bankReceipts             BankReceipt[]             @relation("BankReceiptEmployee")
+  contras                  Contra[]                  @relation("ContraEmployee")
+  accessoriesPurchaseItems AccessoriesPurchaseItem[] @relation("AccessoriesPurchaseItemEmployee")
+  testDrives               TestDrive[]               @relation("TestDriveEmployee")
 }
 
 model Tractor {
@@ -609,13 +610,13 @@ model ProfilePrefix {
 }
 
 model Purchase {
-  id              Int  @id @default(autoincrement())
-  companyId       Int?
-  financialYearId Int?
-  createdById     Int?
-  createdBy       String?
-  createdType     String?
-   employee Employee? @relation(fields: [createdById], references: [id])
+  id               Int            @id @default(autoincrement())
+  companyId        Int?
+  financialYearId  Int?
+  createdById      Int?
+  createdBy        String?
+  createdType      String?
+  employee         Employee?      @relation(fields: [createdById], references: [id])
   company          Company?       @relation(fields: [companyId], references: [id])
   financialYear    FinancialYear? @relation(fields: [financialYearId], references: [id])
   billNo           String         @unique
@@ -679,11 +680,11 @@ model PurchaseItem {
   fuelType     String?
   fuelCapacity String?
 
-  chassisNo String @unique
-  engineNo  String @unique
-  createdById Int?
-  createdBy   String?
-  createdType String?
+  chassisNo     String    @unique
+  engineNo      String    @unique
+  createdById   Int?
+  createdBy     String?
+  createdType   String?
   qty           Int
   ratePer       Float
   gstPercent    Float
@@ -801,7 +802,7 @@ model Lead {
   bankReceipts        BankReceipt[]
   quotationRevision   Int                @default(0)
   quotationHistories  QuotationHistory[]
-    testDrives  TestDrive[]
+  testDrives          TestDrive[]
 }
 
 model FollowUp {
@@ -843,6 +844,7 @@ model Accessory {
   updatedAt                  DateTime                   @updatedAt
   showroomVariantAccessories ShowroomVariantAccessory[]
   purchaseItems              AccessoriesPurchaseItem[]
+  orderAccessories           OrderAccessory[]
 }
 
 model AccessoriesPurchase {
@@ -896,14 +898,14 @@ model AccessoriesPurchase {
 
   grandTotal Float
 
-  verifyStatus String   @default("not_verify")
-   createdById Int?
-  createdBy   String?
-  createdType String?
+  verifyStatus String  @default("not_verify")
+  createdById  Int?
+  createdBy    String?
+  createdType  String?
 
-  employee Employee? @relation(fields: [createdById], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  employee  Employee? @relation(fields: [createdById], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   items AccessoriesPurchaseItem[]
 }
@@ -928,21 +930,21 @@ model AccessoriesPurchaseItem {
   modelName   String?
   variantName String?
 
-  qty          Int
-  stock        Int
-  purchaseRate Float
-  gstPercent   Float
-  gstAmount    Float
-  netAmount    Float
-  status       String   @default("Pending")
-   inwardById Int?
-  inwardBy String?
-  inwardType String?
-  inwardDate DateTime?
-
-  employee Employee? @relation("AccessoriesPurchaseItemEmployee", fields: [inwardById], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  qty              Int
+  stock            Int
+  purchaseRate     Float
+  gstPercent       Float
+  gstAmount        Float
+  netAmount        Float
+  status           String           @default("Pending")
+  inwardById       Int?
+  inwardBy         String?
+  inwardType       String?
+  inwardDate       DateTime?
+  orderAccessories OrderAccessory[]
+  employee         Employee?        @relation("AccessoriesPurchaseItemEmployee", fields: [inwardById], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 }
 
 model CashPayment {
@@ -976,10 +978,10 @@ model CashPayment {
   narration String?
 
   createdById Int?
-  createdBy String?
+  createdBy   String?
   createdType String?
 
-employee Employee? @relation("CashPaymentEmployee", fields: [createdById], references: [id])
+  employee Employee? @relation("CashPaymentEmployee", fields: [createdById], references: [id])
 
   branchId Int?
   branch   Branch? @relation("CashPaymentBranch", fields: [branchId], references: [id])
@@ -1029,9 +1031,9 @@ model BankPayment {
   createdBy   String?
   createdById Int?
 
-employee Employee? @relation("BankPaymentEmployee", fields: [createdById], references: [id])
-  branchId    Int?
-  branch      Branch? @relation("BankPaymentBranch", fields: [branchId], references: [id])
+  employee Employee? @relation("BankPaymentEmployee", fields: [createdById], references: [id])
+  branchId Int?
+  branch   Branch?   @relation("BankPaymentBranch", fields: [branchId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1066,9 +1068,9 @@ model Contra {
   createdBy   String?
   createdById Int?
 
-employee Employee? @relation("ContraEmployee", fields: [createdById], references: [id])
-  branchId    Int?
-  branch      Branch? @relation("ContraBranch", fields: [branchId], references: [id])
+  employee Employee? @relation("ContraEmployee", fields: [createdById], references: [id])
+  branchId Int?
+  branch   Branch?   @relation("ContraBranch", fields: [branchId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1111,12 +1113,12 @@ model CashReceipt {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdType String?
-createdBy   String?
-createdById Int?
+  createdBy   String?
+  createdById Int?
 
-employee Employee? @relation("CashReceiptEmployee", fields: [createdById], references: [id])
-  branchId    Int?
-  branch      Branch?  @relation("CashReceiptBranch", fields: [branchId], references: [id])
+  employee Employee? @relation("CashReceiptEmployee", fields: [createdById], references: [id])
+  branchId Int?
+  branch   Branch?   @relation("CashReceiptBranch", fields: [branchId], references: [id])
 }
 
 model BankReceipt {
@@ -1159,9 +1161,9 @@ model BankReceipt {
   createdBy   String?
   createdById Int?
 
-employee Employee? @relation("BankReceiptEmployee", fields: [createdById], references: [id])
-  branchId    Int?
-  branch      Branch? @relation("BankReceiptBranch", fields: [branchId], references: [id])
+  employee Employee? @relation("BankReceiptEmployee", fields: [createdById], references: [id])
+  branchId Int?
+  branch   Branch?   @relation("BankReceiptBranch", fields: [branchId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1406,17 +1408,17 @@ model Order {
   financeDoneBy Int?
   finance       Finance? @relation(fields: [financeDoneBy], references: [id])
 
-  bankOfFinance    String?
-  financeAmount    Float   @default(0)
-  emi              Float   @default(0)
-  tenureMonths     Int     @default(0)
-  processingCharge Float   @default(0)
-  loanRoi          Float   @default(0)
-  marginMoney      Float   @default(0)
-  paymentStatus    String  @default("pending")
-    vehicleInchargeStatus String @default("pending")
-    accessoriesAllotStatus String @default("pending")
-  assignBy         String?
+  bankOfFinance          String?
+  financeAmount          Float   @default(0)
+  emi                    Float   @default(0)
+  tenureMonths           Int     @default(0)
+  processingCharge       Float   @default(0)
+  loanRoi                Float   @default(0)
+  marginMoney            Float   @default(0)
+  paymentStatus          String  @default("pending")
+  vehicleInchargeStatus  String  @default("pending")
+  accessoriesAllotStatus String  @default("pending")
+  assignBy               String?
 
   // Cash Payment
   cashAmount Float @default(0)
@@ -1482,13 +1484,14 @@ model Order {
   mirrorSet          Boolean @default(false)
   other              Boolean @default(false)
 
-  createdBy   String?
-  createdById Int?
-  createdType String?
-
+  createdBy        String?
+  createdById      Int?
+  createdType      String?
+  orderAccessories OrderAccessory[]
   // Optional relation
-  employee Employee? @relation(fields: [createdById], references: [id])
-
+  employee         Employee?        @relation(fields: [createdById], references: [id])
+invoiceNo   String? @unique
+invoiceDate DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1499,6 +1502,29 @@ model Order {
   @@index([bankAccountId])
   @@index([financeDoneBy])
 }
+
+model OrderAccessory {
+  id Int @id @default(autoincrement())
+
+  orderId Int
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  accessoryId    Int
+  accessory      Accessory                @relation(fields: [accessoryId], references: [id])
+  purchaseItemId Int?
+  purchaseItem   AccessoriesPurchaseItem? @relation(fields: [purchaseItemId], references: [id])
+  qty            Float                    @default(1)
+
+  salesPrice Float @default(0)
+
+  status String @default("Pending")
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([accessoryId])
+}
+
 model Department {
   id    Int    @id @default(autoincrement())
   name  String
@@ -1506,15 +1532,12 @@ model Department {
 }
 
 model Role {
-  id            Int        @id @default(autoincrement())
-  roleName      String
-  departmentId  Int
+  id           Int    @id @default(autoincrement())
+  roleName     String
+  departmentId Int
 
   department Department @relation(fields: [departmentId], references: [id])
 }
-
-
-
 
 model WebUser {
   id       Int    @id @default(autoincrement())
@@ -1540,10 +1563,9 @@ model WebUser {
   updatedAt DateTime @updatedAt
 
   // Vendor data (optional - only exists if user becomes vendor)
-  vendor WebVendor?
-  wishlist  Wishlist[] 
+  vendor   WebVendor?
+  wishlist Wishlist[]
 }
-
 
 model WebVendor {
   id     Int     @id @default(autoincrement())
@@ -1569,88 +1591,83 @@ model WebVendor {
   vendorPassword String
 
   // Vendor status
-  isVerified Boolean   @default(false)
-  verifiedAt DateTime?
-   websiteVariants WebsiteVariant[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isVerified      Boolean          @default(false)
+  verifiedAt      DateTime?
+  websiteVariants WebsiteVariant[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
-
-
 
 model WebsiteEnquiry {
   id Int @id @default(autoincrement())
 
   websiteVariantId Int
-  websiteVariant WebsiteVariant @relation(fields: [websiteVariantId], references: [id])
+  websiteVariant   WebsiteVariant @relation(fields: [websiteVariantId], references: [id])
 
-  fullName String
-  email String
+  fullName     String
+  email        String
   mobileNumber String
 
   interestedIn String?
-  message String?
+  message      String?
 
   status String @default("PENDING")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-   followUps WebsiteEnquiryFollowup[]
+  followUps WebsiteEnquiryFollowup[]
 }
 
-
 model WebsiteEnquiryFollowup {
-  id                Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  enquiryId         Int
-  enquiry           WebsiteEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  enquiryId Int
+  enquiry   WebsiteEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
 
   nextScheduledDate DateTime?
   callTime          String?
   callResponse      String
   discussion        String?
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([enquiryId])
 }
 
 model TestDrive {
-  id                        Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  leadId                    Int
-  modelId                   Int
-  showroomVariantId         Int
-  colourId                  Int
+  leadId            Int
+  modelId           Int
+  showroomVariantId Int
+  colourId          Int
 
-  testDriveDate             DateTime
-  testDriveFromTime         String
-  testDriveToTime           String
-  duration                  String
+  testDriveDate     DateTime
+  testDriveFromTime String
+  testDriveToTime   String
+  duration          String
 
   vehicleSpeedometerRunning String
   licenceNo                 String
 
-  feedback                  String
-  remarks                   String?
-  placeOfTestDrive          String
+  feedback         String
+  remarks          String?
+  placeOfTestDrive String
 
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-createdById Int?
-createdBy String?
-createdType String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById Int?
+  createdBy   String?
+  createdType String?
 
-employee Employee? @relation("TestDriveEmployee", fields: [createdById], references: [id])
-  lead             Lead             @relation(fields: [leadId], references: [id])
-  model            Model            @relation(fields: [modelId], references: [id])
-  showroomVariant  ShowroomVariant  @relation(fields: [showroomVariantId], references: [id])
-  colour           Colour           @relation(fields: [colourId], references: [id])
+  employee        Employee?       @relation("TestDriveEmployee", fields: [createdById], references: [id])
+  lead            Lead            @relation(fields: [leadId], references: [id])
+  model           Model           @relation(fields: [modelId], references: [id])
+  showroomVariant ShowroomVariant @relation(fields: [showroomVariantId], references: [id])
+  colour          Colour          @relation(fields: [colourId], references: [id])
 }
-
-
 
 model Wishlist {
   id        Int      @id @default(autoincrement())
@@ -1658,25 +1675,20 @@ model Wishlist {
   variantId Int
   createdAt DateTime @default(now())
 
-  webUser   WebUser        @relation(fields: [webUserId], references: [id], onDelete: Cascade)
-  variant   WebsiteVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  webUser WebUser        @relation(fields: [webUserId], references: [id], onDelete: Cascade)
+  variant WebsiteVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   @@unique([webUserId, variantId])
   @@index([webUserId])
 }
 
-
-
 model NotificationToken {
-  id         Int      @id @default(autoincrement())
-  userId     Int?
-  vendorId   Int?
+  id       Int  @id @default(autoincrement())
+  userId   Int?
+  vendorId Int?
 
-  token      String   @unique
+  token String @unique
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
-
-
-

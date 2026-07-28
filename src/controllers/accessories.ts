@@ -73,33 +73,23 @@ export const getAccessories = async (req: Request, res: Response) => {
         });
 
         // Total verified inward purchase qty
-        const inward = await prisma.accessoriesPurchaseItem.aggregate({
-          _sum: {
-            qty: true,
-          },
-          where: {
-            accessoryId: item.id,
-            status: "Inward",
-            purchase: {
-              verifyStatus: "verify",
-            },
-          },
-        });
+       const inward = await prisma.accessoriesPurchaseItem.aggregate({
+  _sum: {
+    stock: true,
+  },
+  where: {
+    accessoryId: item.id,
+    status: "Inward",
+    purchase: {
+      verifyStatus: "verify",
+    },
+  },
+});
 
-        const purchaseQty = Number(inward._sum.qty || 0);
+const availableStock = Number(inward._sum.stock || 0);
 
-        // Future stock movements
-        const saleQty = 0;
-        const transferOutQty = 0;
-        const transferInQty = 0;
-
-        const currentStock =
-          Number(item.opStock || 0) +
-          purchaseQty +
-          transferInQty -
-          saleQty -
-          transferOutQty;
-
+const currentStock =
+  Number(item.opStock || 0) + availableStock;
         return {
           ...item,
           currentStock,
@@ -198,7 +188,70 @@ export const getAccessoriesHistory = async (req: Request, res: Response) => {
         createdBy: purchase.purchase.createdBy,
       });
     }
+const invoices = await prisma.order.findMany({
+  where: {
+    accessoriesAllotStatus: "Completed",
+    invoiceNo: {
+      not: null,
+    },
+    orderAccessories: {
+      some: {
+        accessoryId,
+        status: "Completed",
+      },
+    },
+  },
+  include: {
+    lead: {
+      include: {
+        customer: true,
+      },
+    },
+    orderAccessories: {
+      where: {
+        accessoryId,
+        status: "Completed",
+      },
+    },
+  },
+  orderBy: {
+    invoiceDate: "asc",
+  },
+});
 
+for (const invoice of invoices) {
+  const qty = invoice.orderAccessories.reduce(
+    (sum, item) => sum + Number(item.qty),
+    0
+  );
+
+  // const amount = invoice.orderAccessories.reduce(
+  //   (sum, item) =>
+  //     sum + Number(item.salesPrice || 0) * Number(item.qty),
+  //   0
+  // );
+
+  balance -= qty;
+
+  history.push({
+    date: invoice.invoiceDate || invoice.createdAt,
+    type: "Accessories Invoice",
+
+    partyName:
+      invoice.lead?.customer?.accountName || "-",
+
+    reference: invoice.invoiceNo || "-",
+
+    qtyIn: 0,
+    qtyOut: qty,
+
+    // billAmount: amount || "-",
+
+    balance,
+
+    createdBy: invoice.createdBy,
+  });
+}
    return res.json({
   success: true,
   itemName: accessory.itemName,

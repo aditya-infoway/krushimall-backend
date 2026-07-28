@@ -499,34 +499,27 @@ export const getLeadById = async (req: Request, res: Response) => {
     // =========================
 
     const latestQuotation = await prisma.quotationHistory.findFirst({
-      where: {
-        leadId: id,
-      },
+  where: {
+    leadId: id,
+  },
+  orderBy: {
+    revisionNo: "desc",
+  },
+});
 
-      orderBy: {
-        revisionNo: "desc",
-      },
-    });
+return res.status(200).json({
+  success: true,
+  data: {
+    ...lead,
+    quotationGrandTotal:
+      latestQuotation?.grandTotal ??
+      lead.quotationGrandTotal ??
+      0,
 
-    // =========================
-    // RESPONSE
-    // =========================
-    // Quotation revision hui hai -> uska grandTotal use karo
-    // Revision nahi hui -> Lead create hote waqt jo
-    // quotationGrandTotal (exShowroom+insurance+RTO) save
-    // hua tha wahi use karo — 0 par mat girao
-    // =========================
-
-    return res.status(200).json({
-      success: true,
-
-      data: {
-        ...lead,
-
-        quotationGrandTotal:
-          latestQuotation?.grandTotal ?? lead.quotationGrandTotal ?? 0,
-      },
-    });
+    selectedAccessories:
+      latestQuotation?.selectedAccessories ?? [],
+  },
+});
   } catch (error) {
     console.error("GET LEAD BY ID ERROR:", error);
 

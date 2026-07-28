@@ -11,7 +11,11 @@ import {
   printDeliveryChallan,
   getVehicleInchargeList,
   completeVehicleIncharge,
-  getAccessoriesAllotList
+  getAccessoriesAllotList,
+    getAccessoriesAllotDetails,
+      allotAccessoryStock,
+        saveAccessoriesAllotment,
+        getVehicleVerifyAccessories
 } from "../controllers/order.js";
 
 import {
@@ -43,6 +47,24 @@ router.get(
   verifyToken,
   getAccessoriesAllotList
 );
+
+router.get(
+  "/accessories-allot/:id",
+  verifyToken,
+  getAccessoriesAllotDetails
+);
+router.patch(
+  "/accessories-allot/:allotmentId/item/:itemId/allot",
+  verifyToken,
+  allotAccessoryStock
+);
+router.post(
+  "/accessories-allot/:id/save",
+  verifyToken,
+  saveAccessoriesAllotment
+);
+// In your routes file
+
 // Get by lead ID
 // Keep this ABOVE "/:id"
 router.patch(
@@ -55,7 +77,11 @@ router.get(
   verifyToken,
   getOrderByLeadId,
 );
-
+router.get(
+  "/vehicle-verify-accessories",
+  verifyToken,
+  getVehicleVerifyAccessories
+);
 // Get by order ID
 router.get(
   "/:id",
