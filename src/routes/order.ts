@@ -15,7 +15,8 @@ import {
     getAccessoriesAllotDetails,
       allotAccessoryStock,
         saveAccessoriesAllotment,
-        getVehicleVerifyAccessories
+        getVehicleVerifyAccessories,
+        verifyAccessoryItem
 } from "../controllers/order.js";
 
 import {
@@ -64,7 +65,11 @@ router.post(
   saveAccessoriesAllotment
 );
 // In your routes file
-
+router.patch(
+  "/vehicle-verify-accessories/:orderId/item/:itemId",
+  verifyToken,
+  verifyAccessoryItem
+);
 // Get by lead ID
 // Keep this ABOVE "/:id"
 router.patch(

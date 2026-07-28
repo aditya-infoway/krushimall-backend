@@ -571,6 +571,7 @@ model Employee {
   contras                  Contra[]                  @relation("ContraEmployee")
   accessoriesPurchaseItems AccessoriesPurchaseItem[] @relation("AccessoriesPurchaseItemEmployee")
   testDrives               TestDrive[]               @relation("TestDriveEmployee")
+   accessories Accessory[]
 }
 
 model Tractor {
@@ -840,6 +841,11 @@ model Accessory {
   opStock                    Int                        @default(0)
   showroomVariants           Json?
   status                     String                     @default("ACTIVE")
+    createdById      Int?
+  createdBy        String?
+  createdType      String?
+
+   employee Employee? @relation(fields: [createdById], references: [id])
   createdAt                  DateTime                   @default(now())
   updatedAt                  DateTime                   @updatedAt
   showroomVariantAccessories ShowroomVariantAccessory[]
@@ -1518,7 +1524,7 @@ model OrderAccessory {
   salesPrice Float @default(0)
 
   status String @default("Pending")
-
+    verifyStatus String @default("Pending")
   createdAt DateTime @default(now())
 
   @@index([orderId])

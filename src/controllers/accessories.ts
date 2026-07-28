@@ -3,6 +3,11 @@ import prisma from "../lib/prisma.js";
 
 export const createAccessory = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+
+    const role = user?.role?.toUpperCase();
+    const name = user?.employeeName || user?.name;
+
     const accessory = await prisma.accessory.create({
       data: {
         type: req.body.type,
@@ -18,15 +23,26 @@ export const createAccessory = async (req: Request, res: Response) => {
           ? Number(req.body.purchasePrice)
           : null,
 
-        salesPrice: req.body.salesPrice ? Number(req.body.salesPrice) : null,
+        salesPrice: req.body.salesPrice
+          ? Number(req.body.salesPrice)
+          : null,
 
-        mrp: req.body.mrp ? Number(req.body.mrp) : null,
+        mrp: req.body.mrp
+          ? Number(req.body.mrp)
+          : null,
 
-        opStock: req.body.opStock ? Number(req.body.opStock) : 0,
+        opStock: req.body.opStock
+          ? Number(req.body.opStock)
+          : 0,
+
         barCode: req.body.barCode,
         showroomVariants: req.body.showroomVariants || [],
 
         status: req.body.status || "ACTIVE",
+
+        createdById: Number(user.id),
+        createdBy: name,
+        createdType: role,
       },
     });
 
@@ -46,11 +62,19 @@ export const createAccessory = async (req: Request, res: Response) => {
 
 export const getAccessories = async (req: Request, res: Response) => {
   try {
-    const accessories = await prisma.accessory.findMany({
-      orderBy: {
-        createdAt: "desc",
+  const accessories = await prisma.accessory.findMany({
+  orderBy: {
+    createdAt: "desc",
+  },
+  include: {
+    employee: {
+      select: {
+        id: true,
+        employeeName: true,
       },
-    });
+    },
+  },
+});
 
     const data = await Promise.all(
       accessories.map(async (item) => {
@@ -73,27 +97,27 @@ export const getAccessories = async (req: Request, res: Response) => {
         });
 
         // Total verified inward purchase qty
-       const inward = await prisma.accessoriesPurchaseItem.aggregate({
-  _sum: {
-    stock: true,
-  },
-  where: {
-    accessoryId: item.id,
-    status: "Inward",
-    purchase: {
-      verifyStatus: "verify",
-    },
-  },
-});
+        const inward = await prisma.accessoriesPurchaseItem.aggregate({
+          _sum: {
+            stock: true,
+          },
+          where: {
+            accessoryId: item.id,
+            status: "Inward",
+            purchase: {
+              verifyStatus: "verify",
+            },
+          },
+        });
 
-const availableStock = Number(inward._sum.stock || 0);
+        const availableStock = Number(inward._sum.stock || 0);
 
-const currentStock =
-  Number(item.opStock || 0) + availableStock;
+        const currentStock = Number(item.opStock || 0) + availableStock;
         return {
           ...item,
           currentStock,
           showroomVariantDetails: variants,
+          createdBy: item.employee?.employeeName || item.createdBy,
         };
       }),
     );
@@ -140,7 +164,8 @@ export const getAccessoriesHistory = async (req: Request, res: Response) => {
       qtyIn: balance,
       qtyOut: 0,
       balance,
-      createdBy: "System",
+       createdBy: accessory.createdBy,
+  createdType: accessory.createdType,
     });
 
     // Purchase History
@@ -188,77 +213,76 @@ export const getAccessoriesHistory = async (req: Request, res: Response) => {
         createdBy: purchase.purchase.createdBy,
       });
     }
-const invoices = await prisma.order.findMany({
-  where: {
-    accessoriesAllotStatus: "Completed",
-    invoiceNo: {
-      not: null,
-    },
-    orderAccessories: {
-      some: {
-        accessoryId,
-        status: "Completed",
-      },
-    },
-  },
-  include: {
-    lead: {
-      include: {
-        customer: true,
-      },
-    },
-    orderAccessories: {
+    const invoices = await prisma.order.findMany({
       where: {
-        accessoryId,
-        status: "Completed",
+        accessoriesAllotStatus: "Completed",
+        invoiceNo: {
+          not: null,
+        },
+        orderAccessories: {
+          some: {
+            accessoryId,
+            status: "Completed",
+          },
+        },
       },
-    },
-  },
-  orderBy: {
-    invoiceDate: "asc",
-  },
-});
+      include: {
+        lead: {
+          include: {
+            customer: true,
+          },
+        },
+        orderAccessories: {
+          where: {
+            accessoryId,
+            status: "Completed",
+          },
+        },
+      },
+      orderBy: {
+        invoiceDate: "asc",
+      },
+    });
 
-for (const invoice of invoices) {
-  const qty = invoice.orderAccessories.reduce(
-    (sum, item) => sum + Number(item.qty),
-    0
-  );
+    for (const invoice of invoices) {
+      const qty = invoice.orderAccessories.reduce(
+        (sum, item) => sum + Number(item.qty),
+        0,
+      );
 
-  // const amount = invoice.orderAccessories.reduce(
-  //   (sum, item) =>
-  //     sum + Number(item.salesPrice || 0) * Number(item.qty),
-  //   0
-  // );
+      // const amount = invoice.orderAccessories.reduce(
+      //   (sum, item) =>
+      //     sum + Number(item.salesPrice || 0) * Number(item.qty),
+      //   0
+      // );
 
-  balance -= qty;
+      balance -= qty;
 
-  history.push({
-    date: invoice.invoiceDate || invoice.createdAt,
-    type: "Accessories Invoice",
+      history.push({
+        date: invoice.invoiceDate || invoice.createdAt,
+        type: "Accessories Invoice",
 
-    partyName:
-      invoice.lead?.customer?.accountName || "-",
+        partyName: invoice.lead?.customer?.accountName || "-",
 
-    reference: invoice.invoiceNo || "-",
+        reference: invoice.invoiceNo || "-",
 
-    qtyIn: 0,
-    qtyOut: qty,
+        qtyIn: 0,
+        qtyOut: qty,
 
-    // billAmount: amount || "-",
+        // billAmount: amount || "-",
 
-    balance,
+        balance,
 
-    createdBy: invoice.createdBy,
-  });
-}
-   return res.json({
-  success: true,
-  itemName: accessory.itemName,
-  codeNo: accessory.codeNo,
-  group: accessory.group,
-  history,
-});
+        createdBy: invoice.createdBy,
+      });
+    }
+    return res.json({
+      success: true,
+      itemName: accessory.itemName,
+      codeNo: accessory.codeNo,
+      group: accessory.group,
+      history,
+    });
   } catch (error) {
     console.log(error);
 
