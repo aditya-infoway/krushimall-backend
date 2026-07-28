@@ -518,6 +518,8 @@ return res.status(200).json({
 
     selectedAccessories:
       latestQuotation?.selectedAccessories ?? [],
+
+    hasQuotationHistory: !!latestQuotation,
   },
 });
   } catch (error) {

@@ -679,13 +679,13 @@ export const saveAccessoriesAllotment = async (
         throw new Error("Order not found.");
       }
 
-      const pendingAccessories = order.orderAccessories.filter(
-        (item) => item.status !== "Completed"
-      );
+      // const pendingAccessories = order.orderAccessories.filter(
+      //   (item) => item.status !== "Completed"
+      // );
 
-      if (pendingAccessories.length > 0) {
-        throw new Error("Please allot all accessories first.");
-      }
+      // if (pendingAccessories.length > 0) {
+      //   throw new Error("Please allot all accessories first.");
+      // }
 
       if (order.invoiceNo) {
         throw new Error("Invoice already generated.");
@@ -731,102 +731,191 @@ export const saveAccessoriesAllotment = async (
 // GET /api/orders/vehicle-verify-accessories
 // ==========================================
 
-export const getVehicleVerifyAccessories = async (req: Request, res: Response) => {
+// ==========================================
+// GET VEHICLE VERIFY ACCESSORIES
+// GET /api/orders/vehicle-verify-accessories
+// ==========================================
+
+export const getVehicleVerifyAccessories = async (
+  req: Request,
+  res: Response
+) => {
   try {
-    // Get the latest order that has been verified/completed
-const orders = await prisma.order.findMany({
-  where: {
-    accessoriesAllotStatus: "Completed",
-    invoiceNo: {
-      not: null,
-    },
-  },
-  orderBy: {
-    invoiceDate: "desc",
-  },
-  include: {
-    lead: {
-      include: {
-        customer: true,
-        executive: true,
-        model: true,
-        showroomVariant: true,
-        colour: true,
+    const orders = await prisma.order.findMany({
+      where: {
+        accessoriesAllotStatus: "Completed",
+        invoiceNo: {
+          not: null,
+        },
       },
-    },
-    orderAccessories: {
-      include: {
-        accessory: true,
+      orderBy: {
+        invoiceDate: "desc",
       },
-    },
-  },
-});
+      include: {
+        lead: {
+          include: {
+            customer: true,
+            executive: true,
+            model: true,
+            showroomVariant: true,
+            colour: true,
+          },
+        },
+        orderAccessories: {
+          include: {
+            accessory: true,
+          },
+        },
+      },
+    });
 
-  if (orders.length === 0) {
-  return res.status(404).json({
-    success: false,
-    message: "No verified vehicle order found",
-  });
-}
+    if (orders.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No verified vehicle order found",
+      });
+    }
 
-const data = orders.map((order, index) => {
-  const allotted = order.orderAccessories.filter(
-    (item) => item.status === "Completed"
-  ).length;
+    const data = orders.map((order, index) => {
+      // Accessories Allot Stage
+      const completedAccessories = order.orderAccessories.filter(
+        (item) => item.status === "Completed"
+      );
 
-  const pending = order.orderAccessories.filter(
-    (item) => item.status !== "Completed"
-  ).length;
+      const pendingAccessories = order.orderAccessories.filter(
+        (item) => item.status === "Pending"
+      );
 
-  return {
-    srNo: index + 1,
-    id: order.id,
-    accountName: order.lead?.customer?.accountName || "-",
-    mobileNo: order.lead?.customer?.mobile || "-",
-    quotationNo: order.lead?.quotationNo || "-",
-    dmsEnquiryNo: order.lead?.dmsEnquiryNo || "-",
-    dmsEnquiryDate: order.lead?.dmsEnquiryDate
-      ? new Date(order.lead.dmsEnquiryDate).toLocaleDateString("en-GB")
-      : "-",
-    salesExecutive: order.lead?.executive?.employeeName || "-",
-    model: order.model || order.lead?.model?.modelName || "-",
-    variant:
-      order.variant || order.lead?.showroomVariant?.variantName || "-",
-    color: order.colour || order.lead?.colour?.colourName || "-",
-    chassisNo: order.chassisNo || "-",
+      return {
+        srNo: index + 1,
+        id: order.id,
 
-    invoiceNo: order.invoiceNo || "-",
-    invoiceDate: order.invoiceDate
-      ? new Date(order.invoiceDate).toLocaleDateString("en-GB")
-      : "-",
+        accountName: order.lead?.customer?.accountName || "-",
+        mobileNo: order.lead?.customer?.mobile || "-",
+        quotationNo: order.lead?.quotationNo || "-",
+        dmsEnquiryNo: order.lead?.dmsEnquiryNo || "-",
 
-    allotted,
-    pending,
+        dmsEnquiryDate: order.lead?.dmsEnquiryDate
+          ? new Date(order.lead.dmsEnquiryDate).toLocaleDateString("en-GB")
+          : "-",
 
-    accessories: order.orderAccessories.map((item) => ({
-      id: item.id,
-      itemId: item.accessoryId,
-      itemName: item.accessory?.itemName,
-      itemCode: item.accessory?.codeNo,
-      hsnCode: item.accessory?.hsnCode,
-      selectedStock: item.qty,
-      tax: item.accessory?.taxSlab,
-      salesPrice: item.salesPrice,
-      status: item.status,
-    })),
-  };
-});
-return res.json({
-  success: true,
-  data,
-});
+        salesExecutive: order.lead?.executive?.employeeName || "-",
+
+        model: order.model || order.lead?.model?.modelName || "-",
+
+        variant:
+          order.variant ||
+          order.lead?.showroomVariant?.variantName ||
+          "-",
+
+        color:
+          order.colour ||
+          order.lead?.colour?.colourName ||
+          "-",
+
+        chassisNo: order.chassisNo || "-",
+
+        invoiceNo: order.invoiceNo || "-",
+
+        invoiceDate: order.invoiceDate
+          ? new Date(order.invoiceDate).toLocaleDateString("en-GB")
+          : "-",
+
+        // Counts for table
+        allotted: completedAccessories.length,
+        pending: pendingAccessories.length,
+
+        // ➕ Allotted Modal
+        allottedAccessories: completedAccessories.map((item) => ({
+          id: item.id,
+          itemId: item.accessoryId,
+          itemName: item.accessory?.itemName || "-",
+          itemCode: item.accessory?.codeNo || "-",
+          hsnCode: item.accessory?.hsnCode || "-",
+          selectedStock: item.qty,
+          tax: item.accessory?.taxSlab,
+          salesPrice: item.salesPrice,
+          status: item.status.toLowerCase(),
+          verifyStatus: item.verifyStatus.toLowerCase(),
+        })),
+
+        // 👁 Pending Modal
+        pendingAccessories: pendingAccessories.map((item) => ({
+          id: item.id,
+          itemId: item.accessoryId,
+          itemName: item.accessory?.itemName || "-",
+          itemCode: item.accessory?.codeNo || "-",
+          hsnCode: item.accessory?.hsnCode || "-",
+          selectedStock: item.qty,
+          tax: item.accessory?.taxSlab,
+          salesPrice: item.salesPrice,
+          status: item.status.toLowerCase(),
+          verifyStatus: item.verifyStatus.toLowerCase(),
+        })),
+      };
+    });
+
+    return res.json({
+      success: true,
+      data,
+    });
   } catch (error: any) {
     console.error("GET VEHICLE VERIFY ACCESSORIES ERROR:", error);
-    
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch vehicle verify accessories",
       error: error.message,
+    });
+  }
+};
+// ==========================================
+// VERIFY SINGLE ACCESSORY ITEM (checkbox click)
+// PATCH /api/orders/vehicle-verify-accessories/:orderId/item/:itemId
+// itemId yahan OrderAccessory.id hai
+// ==========================================
+
+export const verifyAccessoryItem = async (req: Request, res: Response) => {
+  try {
+    const orderId = Number(req.params.orderId);
+    const itemId = Number(req.params.itemId);
+
+    const orderAccessory = await prisma.orderAccessory.findFirst({
+      where: {
+        id: itemId,
+        orderId,
+      },
+    });
+
+    if (!orderAccessory) {
+      return res.status(404).json({
+        success: false,
+        message: "Accessory item not found for this order.",
+      });
+    }
+
+    if (orderAccessory.verifyStatus === "Completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Item already verified.",
+      });
+    }
+
+    await prisma.orderAccessory.update({
+      where: { id: itemId },
+      data: { verifyStatus: "Completed" },
+    });
+
+    return res.json({
+      success: true,
+      message: "Item verified successfully.",
+    });
+  } catch (error: any) {
+    console.error("VERIFY ACCESSORY ITEM ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to verify accessory item.",
     });
   }
 };
