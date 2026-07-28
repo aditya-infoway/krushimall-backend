@@ -327,7 +327,7 @@ createdType: role,
             drCr: "Dr",
           },
         });
-      }
+      } 
     }
     // ─────────────────────────────────────
     // BANK ACCESSORIES PURCHASE
@@ -474,6 +474,68 @@ export const getAccessoriesPurchases = async (req: Request, res: Response) => {
 
     return res.status(500).json({
       success: false,
+    });
+  }
+};
+// accessoriesPurchase.controller.ts me add karein
+
+export const getAccessoryPurchaseHistory = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const accessoryId = Number(req.params.accessoryId);
+
+    if (!Number.isInteger(accessoryId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid accessory ID",
+      });
+    }
+
+    // Sirf INWARD status wale items chahiye — kyunki wahi actual stock hai
+    const items = await prisma.accessoriesPurchaseItem.findMany({
+      where: {
+        accessoryId: accessoryId,
+        status: "Inward",
+      },
+      include: {
+        purchase: {
+          select: {
+            id: true,
+            billNo: true,
+            purchaseBillNo: true,
+            purchaseDate: true,
+            verifyStatus: true,
+          },
+        },
+      },
+      orderBy: {
+        inwardDate: "desc",
+      },
+    });
+
+    const data = items.map((item) => ({
+      id: item.id,
+      purchaseId: item.purchase?.id,
+      purchaseBillNo: item.purchase?.purchaseBillNo || item.purchase?.billNo || "-",
+      billNo: item.purchase?.billNo || "-",
+      inwardDate: item.inwardDate,
+      stock: item.stock ?? item.qty,
+      qty: item.qty,
+      status: item.status,
+    }));
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.error("GET ACCESSORY PURCHASE HISTORY ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch accessory purchase history",
+      error: error?.message,
     });
   }
 };

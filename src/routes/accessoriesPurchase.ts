@@ -9,7 +9,8 @@ import {
   getAccessoriesPurchaseBillNo,
   updateAccessoriesPurchase,
   updateAccessoriesPurchaseItemStatus,
-  getAccessoriesInventory
+  getAccessoriesInventory,
+  getAccessoryPurchaseHistory
 } from "../controllers/accessoriesPurchase.js";
 
 import { verifyToken } from "../middleware/middleware.js";
@@ -40,7 +41,7 @@ router.get(
   verifyToken,
   getAccessoriesPurchases,
 );
-
+router.get("/history/:accessoryId",verifyToken, getAccessoryPurchaseHistory);
 // Verify
 router.put(
   "/verify/:id",
