@@ -11,7 +11,7 @@ import { WebAuthedRequest } from "../type/webAuthRequest.js";
 export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
   try {
     
-    const userId = req.vendor?.userId;
+     const userId = req.user?.id;
     const {
       vendorType,
       vehicleType,
