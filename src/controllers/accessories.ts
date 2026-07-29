@@ -23,17 +23,11 @@ export const createAccessory = async (req: Request, res: Response) => {
           ? Number(req.body.purchasePrice)
           : null,
 
-        salesPrice: req.body.salesPrice
-          ? Number(req.body.salesPrice)
-          : null,
+        salesPrice: req.body.salesPrice ? Number(req.body.salesPrice) : null,
 
-        mrp: req.body.mrp
-          ? Number(req.body.mrp)
-          : null,
+        mrp: req.body.mrp ? Number(req.body.mrp) : null,
 
-        opStock: req.body.opStock
-          ? Number(req.body.opStock)
-          : 0,
+        opStock: req.body.opStock ? Number(req.body.opStock) : 0,
 
         barCode: req.body.barCode,
         showroomVariants: req.body.showroomVariants || [],
@@ -62,19 +56,19 @@ export const createAccessory = async (req: Request, res: Response) => {
 
 export const getAccessories = async (req: Request, res: Response) => {
   try {
-  const accessories = await prisma.accessory.findMany({
-  orderBy: {
-    createdAt: "desc",
-  },
-  include: {
-    employee: {
-      select: {
-        id: true,
-        employeeName: true,
+    const accessories = await prisma.accessory.findMany({
+      orderBy: {
+        createdAt: "desc",
       },
-    },
-  },
-});
+      include: {
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
+      },
+    });
 
     const data = await Promise.all(
       accessories.map(async (item) => {
@@ -164,8 +158,8 @@ export const getAccessoriesHistory = async (req: Request, res: Response) => {
       qtyIn: balance,
       qtyOut: 0,
       balance,
-       createdBy: accessory.createdBy,
-  createdType: accessory.createdType,
+      createdBy: accessory.createdBy,
+      createdType: accessory.createdType,
     });
 
     // Purchase History
