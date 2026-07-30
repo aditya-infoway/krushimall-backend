@@ -99,6 +99,7 @@ model Category {
   modelYears      ModelYear[]
   variants        Variant[]
   websiteVariants WebsiteVariant[]
+  usedWebsiteVariants UsedWebsiteVariant[]
 }
 
 model Brand {
@@ -114,6 +115,7 @@ model Brand {
   modelYears      ModelYear[]
   variants        Variant[]
   websiteVariants WebsiteVariant[]
+  usedWebsiteVariants UsedWebsiteVariant[]
 }
 
 model Model {
@@ -136,6 +138,7 @@ model Model {
   websiteVariants    WebsiteVariant[]
   quotationHistories QuotationHistory[]
   testDrives         TestDrive[]
+  usedWebsiteVariants UsedWebsiteVariant[]
 }
 
 model ModelYear {
@@ -153,6 +156,7 @@ model ModelYear {
   model           Model            @relation(fields: [modelId], references: [id])
   variants        Variant[]
   websiteVariants WebsiteVariant[]
+  usedWebsiteVariants UsedWebsiteVariant[]
 }
 
 model ShowroomVariant {
@@ -230,6 +234,7 @@ model Variant {
   modelYear        ModelYear         @relation(fields: [modelYearId], references: [id])
   websiteVariants  WebsiteVariant[]
   showroomVariants ShowroomVariant[]
+  usedWebsiteVariants UsedWebsiteVariant[]
 }
 
 model WebsiteVariant {
@@ -1602,6 +1607,7 @@ model WebVendor {
   websiteVariants WebsiteVariant[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  usedWebsiteVariants UsedWebsiteVariant[]
 }
 
 model WebsiteEnquiry {
@@ -1697,4 +1703,264 @@ model NotificationToken {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+model UsedWebsiteVariant {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  currentStep Int      @default(1)
+  status      String   @default("DRAFT")
+  isCompleted Boolean  @default(false)
+
+  vendorId    Int?
+  vendor       WebVendor? @relation(fields: [vendorId], references: [id])
+
+  createdById Int?
+  createdBy   String?
+  createdType String?
+  productName String?
+  // ==========================
+  // Product Classification
+  // ==========================
+  categoryId    Int?
+  brandId       Int?
+  modelId       Int?
+  modelYearId   Int?
+  variantId     Int?
+  variantCode   String?
+
+  // Store selected names
+  brand         String?
+  model         String?
+  variant       String?
+
+  // ==========================
+  // Tractor Details
+  // ==========================
+  hp                     Int?
+  manufacturingYear      Int?
+  purchaseYear           Int?
+  rcRegistrationNumber   String?
+  engineNumber           String?
+  chassisNumber          String?
+  tractorCategory        String?
+  fuelType               String?
+  driveType              String?
+description            String?  
+  // ==========================
+  // Available Colors
+  // ==========================
+  redColor               Boolean @default(false)
+  blueColor              Boolean @default(false)
+  greenColor             Boolean @default(false)
+  orangeColor            Boolean @default(false)
+  blackColor             Boolean @default(false)
+  whiteColor             Boolean @default(false)
+  customColor            Boolean @default(false)
+  customColorName        String?
+  customColorCode        String?
+// ==========================
+// Highlights
+// ==========================
+highlight1 String?
+highlight2 String?
+highlight3 String?
+highlight4 String?
+highlight5 String?
+  // ==========================
+  // Location
+  // ==========================
+ availablecountry                String?
+  availableStates        Json?
+  availableDistricts     Json?
+
+  locationState          String?
+  locationDistrict       String?
+  locationTaluka         String?
+  locationVillage        String?
+
+  // ==========================
+  // Ownership
+  // ==========================
+  ownership              String?
+  ownerType              String?
+  firstOwner             String?
+  secondOwner            String?
+  thirdOwner             String?
+  sellerType             String?
+  ownershipProofAvailable Boolean @default(false)
+
+  // ==========================
+  // Usage
+  // ==========================
+  hoursMeterReading      Int?
+  approxWorkingHours     Int?
+  acresWorked            Float?
+  purpose                String?
+
+  // ==========================
+  // Additional
+  // ==========================
+  availableDealers       Json?
+  stockStatus            String?
+
+  // Relations
+  category   Category?  @relation(fields: [categoryId], references: [id])
+  brandRef   Brand?     @relation(fields: [brandId], references: [id])
+  modelRef   Model?     @relation(fields: [modelId], references: [id])
+  modelYear  ModelYear? @relation(fields: [modelYearId], references: [id])
+  variantRef Variant?   @relation(fields: [variantId], references: [id])
+    // ==========================
+  // Engine Details
+  // ==========================
+  
+
+  // ==========================
+  // Vehicle Inspection
+  // ==========================
+  overallCondition    String?
+  engineSelfStart     String?
+  engineColdStart     String?
+  engineSmoke         String?
+  engineSound         String?
+  engineOilLeakage    String?
+
+  clutchCondition     String?
+  gearboxCondition    String?
+
+  steeringType        String?
+  steeringCondition   String?
+
+  brakesCondition     String?
+  batteryCondition    String?
+
+  // ==========================
+  // Lights
+  // ==========================
+  lightsHeadLight     Boolean @default(false)
+  lightsIndicator     Boolean @default(false)
+  lightsTailLight     Boolean @default(false)
+  lightsHorn          Boolean @default(false)
+  // ==========================
+// Tyre Details
+// ==========================
+frontTyreBrand            String?
+frontTyreRemainingPercent Float?
+frontTyreCondition        String?
+
+rearTyreBrand             String?
+rearTyreRemainingPercent  Float?
+rearTyreCondition         String?
+
+// ==========================
+// Hydraulic Inspection
+// ==========================
+hydraulicLiftWorking      String?
+hydraulicCondition        String?
+
+// ==========================
+// PTO
+// ==========================
+ptoStatus                 String?
+
+// ==========================
+// Attachments
+// ==========================
+rotavator                 Boolean @default(false)
+cultivator                Boolean @default(false)
+trailer                   Boolean @default(false)
+trolley                   Boolean @default(false)
+mbPlough                  Boolean @default(false)
+seedDrill                 Boolean @default(false)
+sprayer                   Boolean @default(false)
+dozer                     Boolean @default(false)
+loader                    Boolean @default(false)
+  // ==========================
+  // Transmission & Service
+  // ==========================
+  lastServiceDate      DateTime?
+
+  // Service History
+  engineOverhauled     String?
+  gearboxRepaired      String?
+  clutchChanged        String?
+  tyresChanged         String?
+  batteryChanged       String?
+
+  // Accident Details
+  accident             String?
+  floodDamage          String?
+
+  // Insurance
+  insurance            String?
+  insuranceExpiryDate  DateTime?
+
+  // Finance
+  finance              String?
+  financeCompany       String?
+  outstandingAmount    Float?
+    // ==========================
+  // Price Details
+  // ==========================
+ expectedPrice Float?
+  financeAvailable   String?
+  exchangeOffer      String?
+  negotiable         String?
+
+  // ==========================
+  // Location Details
+  // ==========================
+  country            String?
+  state              String?
+  district           String?
+  taluka             String?
+  city               String?
+  pincode            String?
+  landmark           String?
+  fullAddress        String?
+
+  // ==========================
+  // Map Location
+  // ==========================
+  latitude           Float?
+  longitude          Float?
+    // ==========================
+  // Media - Images
+  // ==========================
+  frontView          String?
+  leftView           String?
+  rightView          String?
+  rearView           String?
+  engineView         String?
+  dashboardView      String?
+  tyreView           String?
+  hydraulicView      String?
+  ptoView            String?
+
+  // Image of Chassis Number
+  chassisNumberImage String?
+
+  // RC Book Image
+  rcBook             String?
+
+  // Additional Images
+  additionalImage1   String?
+  additionalImage2   String?
+  additionalImage3   String?
+  additionalImage4   String?
+  additionalImage5   String?
+
+  // ==========================
+  // Documents
+  // ==========================
+  brochure               String?
+  warrantyCard           String?
+  insuranceCertificate   String?
+  invoice                String?
+  others                 String?
+  // ==========================
+// Preview & Submit
+// ==========================
+agreed Boolean @default(false)
 }
