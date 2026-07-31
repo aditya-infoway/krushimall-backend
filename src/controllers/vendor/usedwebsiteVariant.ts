@@ -407,3 +407,70 @@ export const deleteUsedWebsiteVariant = async (
     });
   }
 };
+export const getLatestUsedWebsiteVariants = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const variants = await prisma.usedWebsiteVariant.findMany({
+      where: {
+        status: "ACTIVE",
+      },
+      include: {
+        brandRef: true,
+        modelRef: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 8,
+    });
+
+    res.json({
+      success: true,
+      data: variants,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch latest used tractors",
+    });
+  }
+};
+export const getPopularUsedWebsiteVariants = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const variants = await prisma.usedWebsiteVariant.findMany({
+      where: {
+        status: "ACTIVE",
+      },
+      include: {
+        brandRef: true,
+        modelRef: true,
+      },
+      orderBy: [
+        {
+          enquiryCount: "desc",
+        },
+        {
+          createdAt: "desc",
+        },
+      ],
+      take: 8,
+    });
+
+    res.json({
+      success: true,
+      data: variants,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch popular used tractors",
+    });
+  }
+};

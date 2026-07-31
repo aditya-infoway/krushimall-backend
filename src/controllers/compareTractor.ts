@@ -107,10 +107,9 @@ export const getCompareVariants = async (req: Request, res: Response) => {
   }
 };
 
-
 export const getCompareVariantDetails = async (req: Request, res: Response) => {
   try {
-    const id = Number(req.params.variantId); 
+    const id = Number(req.params.variantId);
 
     const tractor = await prisma.websiteVariant.findUnique({
       where: { id },
@@ -137,47 +136,78 @@ export const getCompareVariantDetails = async (req: Request, res: Response) => {
   }
 };
 
+// =========================
+// Shared helper for trending tractors (new + used)
+// =========================
+const getTrendingFromModel = async (
+  model: any,
+  options: {
+    priceField: string;
+    enquiryField: "count" | "field"; // "count" = _count relation, "field" = direct column like enquiryCount
+    brandRelation?: string;
+    modelRelation?: string;
+  }
+) => {
+  const selectClause: Record<string, any> = {
+    id: true,
+    productName: true,
+    frontView: true,
+    [options.priceField]: true,
+  };
 
-// existing compare controller
+  if (options.brandRelation) {
+    selectClause[options.brandRelation] = { select: { brandName: true } };
+  }
+  if (options.modelRelation) {
+    selectClause[options.modelRelation] = { select: { modelName: true } };
+  }
+
+  if (options.enquiryField === "count") {
+    selectClause._count = { select: { enquiries: true } };
+  } else {
+    selectClause.enquiryCount = true;
+  }
+
+  let tractors = await model.findMany({
+    where: {
+      status: "ACTIVE",
+      AND: [
+        { frontView: { not: null } },
+        { frontView: { not: "" } },
+        { productName: { not: null } },
+        { productName: { not: "" } },
+      ],
+    },
+    select: selectClause,
+  });
+
+  const getEnquiryCount = (t: any) =>
+    options.enquiryField === "count" ? t._count?.enquiries || 0 : t.enquiryCount || 0;
+
+  const hasEnquiry = tractors.some((t: any) => getEnquiryCount(t) > 0);
+
+  if (hasEnquiry) {
+    tractors = tractors
+      .sort((a: any, b: any) => getEnquiryCount(b) - getEnquiryCount(a))
+      .slice(0, 4);
+  } else {
+    tractors = tractors.sort(() => Math.random() - 0.5).slice(0, 4);
+  }
+
+  return tractors;
+};
+
+// =========================
+// Get Trending NEW Tractors
+// =========================
 export const getTrendingTractors = async (req: Request, res: Response) => {
   try {
-    let tractors = await prisma.websiteVariant.findMany({
-      where: {
-        status: "ACTIVE",
-        AND: [
-          { frontView: { not: null } },
-          { frontView: { not: "" } },
-          { productName: { not: null } },
-          { productName: { not: "" } },
-        ],
-      },
-      select: {
-        id: true,
-        variantId: true,
-        productName: true,
-        frontView: true,
-        horsePower: true,
-        exShowroomPrice: true,
-        brand: { select: { brandName: true } },
-        model: { select: { modelName: true } },
-
-        _count: {
-          select: {
-            enquiries: true,
-          },
-        },
-      },
+    const tractors = await getTrendingFromModel(prisma.websiteVariant, {
+      priceField: "exShowroomPrice",
+      enquiryField: "count",
+      brandRelation: "brand",
+      modelRelation: "model",
     });
-
-    const hasEnquiry = tractors.some((tractor) => tractor._count.enquiries > 0);
-
-    if (hasEnquiry) {
-      tractors = tractors
-        .sort((a, b) => b._count.enquiries - a._count.enquiries)
-        .slice(0, 4);
-    } else {
-      tractors = tractors.sort(() => Math.random() - 0.5).slice(0, 4);
-    }
 
     return res.status(200).json({
       success: true,
@@ -189,6 +219,102 @@ export const getTrendingTractors = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch trending tractors",
+    });
+  }
+};
+
+// =========================
+// Get Trending USED Tractors
+// =========================
+export const getTrendingUsedTractors = async (req: Request, res: Response) => {
+  try {
+    const tractors = await getTrendingFromModel(prisma.usedWebsiteVariant, {
+      priceField: "expectedPrice",
+      enquiryField: "field", // usedWebsiteVariant has direct enquiryCount column
+      brandRelation: "brandRef",
+      modelRelation: "modelRef",
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: tractors,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch trending used tractors",
+    });
+  }
+};
+// =========================
+// Get USED Variant Details (by usedWebsiteVariant id)
+// =========================
+export const getCompareUsedVariantDetails = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.variantId);
+
+    const tractor = await prisma.usedWebsiteVariant.findUnique({
+      where: { id },
+    });
+
+    if (!tractor) {
+      return res.status(404).json({
+        success: false,
+        message: "Used tractor not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: tractor,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch used comparison details",
+    });
+  }
+};
+
+// =========================
+// Get USED Variants By Model (for dropdown)
+// =========================
+export const getCompareUsedVariants = async (req: Request, res: Response) => {
+  try {
+    const modelId = Number(req.params.modelId);
+
+    const variants = await prisma.usedWebsiteVariant.findMany({
+      where: {
+        modelId,
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+        productName: true,
+        frontView: true,
+        variantRef: {
+          select: { variantName: true },
+        },
+      },
+      orderBy: {
+        productName: "asc",
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: variants,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch used variants",
     });
   }
 };

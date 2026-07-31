@@ -188,6 +188,7 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
       success: true,
       vendor: {
         id: vendor.id,
+        avatar: vendor.avatar,
         vendorType: vendor.vendorType,
         vehicleType: vendor.vehicleType,
         name: vendor.name,
@@ -264,10 +265,15 @@ export const updateVendor = async (req: WebAuthedRequest, res: Response) => {
       });
     }
 
-    const vendor = await prisma.webVendor.update({
-      where: { userId },
-      data: filteredData,
-    });
+  const avatar = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+const vendor = await prisma.webVendor.update({
+  where: { userId },
+  data: {
+    ...filteredData,
+    ...(avatar && { avatar }),
+  },
+});
 
     return res.json({
       success: true,
