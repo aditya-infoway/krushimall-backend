@@ -11,7 +11,7 @@ import {
   getCurrentUser,
   updateProfile
 } from "../controllers/webauth.js";
-
+import { upload } from "../middleware/upload.js";
 const router = Router();
 
 // Public routes
@@ -23,6 +23,11 @@ router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 // Protected routes
 router.get("/me",  verifyWebToken, getCurrentUser);
-router.put("/profile", verifyWebToken,  updateProfile);
+router.put(
+  "/profile",
+  verifyWebToken,
+  upload.single("avatar"),
+  updateProfile
+);
 
 export default router;

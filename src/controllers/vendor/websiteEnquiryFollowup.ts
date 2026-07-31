@@ -2,7 +2,10 @@ import { Request, Response } from "express";
 import prisma from "../../lib/prisma.js";
 import { VendorAuthedRequest } from "../../middleware/verifyVendorToken.js";
 
-export const createFollowup = async (req: VendorAuthedRequest, res: Response) => {
+export const createFollowup = async (
+  req: VendorAuthedRequest,
+  res: Response,
+) => {
   try {
     const vendorId = req.vendor?.vendorId;
 
@@ -23,14 +26,33 @@ export const createFollowup = async (req: VendorAuthedRequest, res: Response) =>
       });
     }
 
-    const enquiry = await prisma.websiteEnquiry.findFirst({
-      where: {
-        id: Number(enquiryId),
-        websiteVariant: {
-          vendorId,
-        },
-      },
-    });
+  const enquiry = await prisma.websiteEnquiry.findUnique({
+  where: {
+    id: Number(enquiryId),
+  },
+  include: {
+    websiteVariant: true,
+    usedWebsiteVariant: true,
+  },
+});
+
+if (!enquiry) {
+  return res.status(404).json({
+    success: false,
+    message: "Enquiry not found.",
+  });
+}
+
+const isVendorOwner =
+  enquiry.websiteVariant?.vendorId === vendorId ||
+  enquiry.usedWebsiteVariant?.vendorId === vendorId;
+
+if (!isVendorOwner) {
+  return res.status(403).json({
+    success: false,
+    message: "Unauthorized.",
+  });
+}
 
     if (!enquiry) {
       return res.status(404).json({
@@ -39,7 +61,7 @@ export const createFollowup = async (req: VendorAuthedRequest, res: Response) =>
       });
     }
 
-   const followup = await prisma.websiteEnquiryFollowup.create({
+    const followup = await prisma.websiteEnquiryFollowup.create({
       data: {
         enquiryId: enquiry.id,
         nextScheduledDate: nextScheduledDate
@@ -66,11 +88,13 @@ export const createFollowup = async (req: VendorAuthedRequest, res: Response) =>
   }
 };
 
-
 /**
  * Get All Follow-ups of an Enquiry
  */
-export const getFollowupsByEnquiry = async (req: VendorAuthedRequest, res: Response) => {
+export const getFollowupsByEnquiry = async (
+  req: VendorAuthedRequest,
+  res: Response,
+) => {
   try {
     const vendorId = req.vendor?.vendorId;
 
@@ -82,13 +106,21 @@ export const getFollowupsByEnquiry = async (req: VendorAuthedRequest, res: Respo
     }
 
     const enquiryId = Number(req.params.enquiryId);
-
     const enquiry = await prisma.websiteEnquiry.findFirst({
       where: {
         id: enquiryId,
-        websiteVariant: {
-          vendorId,
-        },
+        OR: [
+          {
+            websiteVariant: {
+              vendorId,
+            },
+          },
+          {
+            usedWebsiteVariant: {
+              vendorId,
+            },
+          },
+        ],
       },
     });
 
@@ -217,16 +249,30 @@ export const getTodayFollowups = async (
         },
 
         enquiry: {
-          websiteVariant: {
-            vendorId: vendorId,
-          },
+          OR: [
+            {
+              websiteVariant: {
+                vendorId,
+              },
+            },
+            {
+              usedWebsiteVariant: {
+                vendorId,
+              },
+            },
+          ],
         },
       },
-
       include: {
         enquiry: {
           include: {
             websiteVariant: {
+              select: {
+                id: true,
+                productName: true,
+              },
+            },
+            usedWebsiteVariant: {
               select: {
                 id: true,
                 productName: true,

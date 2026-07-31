@@ -12,7 +12,7 @@ import {
 import { verifyWebToken } from "../middleware/verifyWebToken.js";
 import { verifyVendorToken } from "../middleware/verifyVendorToken.js";
 
-
+import { upload } from "../middleware/upload.js";
 
 
 
@@ -39,7 +39,12 @@ router.post("/become", verifyWebToken, becomeVendor);
 
 router.get("/me", verifyVendorToken, getVendorData);
 
-router.put("/update", verifyVendorToken, updateVendor);
+router.put(
+  "/update",
+  verifyVendorToken,
+  upload.single("avatar"),
+  updateVendor
+);
 
 router.put("/update-password", verifyVendorToken, updateVendorPassword);
 

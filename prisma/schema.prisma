@@ -1552,6 +1552,7 @@ model Role {
 
 model WebUser {
   id       Int    @id @default(autoincrement())
+  avatar String?
   name     String
   email    String @unique
   phone    String @unique
@@ -1600,7 +1601,7 @@ model WebVendor {
 
   // Step 3: Only Password (no business fields in your component)
   vendorPassword String
-
+  avatar String?
   // Vendor status
   isVerified      Boolean          @default(false)
   verifiedAt      DateTime?
@@ -1613,8 +1614,11 @@ model WebVendor {
 model WebsiteEnquiry {
   id Int @id @default(autoincrement())
 
-  websiteVariantId Int
-  websiteVariant   WebsiteVariant @relation(fields: [websiteVariantId], references: [id])
+  websiteVariantId Int?
+  websiteVariant WebsiteVariant? @relation(fields: [websiteVariantId], references: [id])
+
+  usedWebsiteVariantId Int?
+  usedWebsiteVariant UsedWebsiteVariant? @relation(fields: [usedWebsiteVariantId], references: [id])
 
   fullName     String
   email        String
@@ -1959,8 +1963,10 @@ loader                    Boolean @default(false)
   insuranceCertificate   String?
   invoice                String?
   others                 String?
+    enquiryCount              Int              @default(0)
   // ==========================
 // Preview & Submit
 // ==========================
 agreed Boolean @default(false)
+  enquiries WebsiteEnquiry[]
 }

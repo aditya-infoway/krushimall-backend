@@ -49,7 +49,8 @@ router.get(
   verifyVendorToken,
   UsedWebsiteVariantController.getUsedWebsiteVariants
 );
-
+router.get("/latest",UsedWebsiteVariantController.getLatestUsedWebsiteVariants);
+router.get("/popular",UsedWebsiteVariantController.getPopularUsedWebsiteVariants);
 // Get By Id
 router.get(
   "/:id",
