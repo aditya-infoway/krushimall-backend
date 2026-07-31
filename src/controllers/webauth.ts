@@ -16,41 +16,38 @@ const generateOTP = (): string => {
 // Register new user
 export const register = async (req: Request, res: Response) => {
   try {
-  const {
-  name,
-  email,
-  phone,
-  country,
-  state,
-  district,
-  city,
-  address,
-  pincode,
-  password,
-} = req.body;
+    const {
+      name,
+      email,
+      phone,
+      country,
+      state,
+      district,
+      city,
+      address,
+      pincode,
+      password,
+    } = req.body;
 
     // Validate input
     if (!name || !email || !phone || !password) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required"
+        message: "All fields are required",
       });
     }
 
     // Check if user already exists
     const existingUser = await prisma.webUser.findFirst({
       where: {
-        OR: [
-          { email },
-          { phone }
-        ]
-      }
+        OR: [{ email }, { phone }],
+      },
     });
 
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: "User already exists with this email or phone"
+        message: "User already exists with this email or phone",
       });
     }
 
@@ -62,25 +59,25 @@ export const register = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
-   const user = await prisma.webUser.create({
-  data: {
-    name,
-    email,
-    phone,
-    password: hashedPassword,
+    const user = await prisma.webUser.create({
+      data: {
+        name,
+        email,
+        phone,
+        password: hashedPassword,
 
-    country,
-    state,
-    district,
-    city,
-    address,
-    pincode,
+        country,
+        state,
+        district,
+        city,
+        address,
+        pincode,
 
-    otp,
-    otpExpiry,
-    isVerified: false,
-  },
-});
+        otp,
+        otpExpiry,
+        isVerified: false,
+      },
+    });
 
     // In production, send OTP via email/SMS
     console.log(`📧 OTP for ${email}: ${otp}`);
@@ -94,15 +91,14 @@ export const register = async (req: Request, res: Response) => {
         email: user.email,
         phone: user.phone,
         // In development, return OTP for testing
-        ...(process.env.NODE_ENV === "development" && { otp })
-      }
+        ...(process.env.NODE_ENV === "development" && { otp }),
+      },
     });
-
   } catch (error) {
     console.error("Registration error:", error);
     return res.status(500).json({
       success: false,
-      message: "Something went wrong during registration"
+      message: "Something went wrong during registration",
     });
   }
 };
@@ -110,30 +106,33 @@ export const register = async (req: Request, res: Response) => {
 // Verify OTP
 export const verifyOTP = async (req: Request, res: Response) => {
   try {
-       const { email, otp } = req.body;
+    const { email, otp } = req.body;
     console.log("🔍 Received:", JSON.stringify({ email, otp }));
-
-    
 
     if (!email || !otp) {
       return res.status(400).json({
         success: false,
-        message: "Email and OTP are required"
+        message: "Email and OTP are required",
       });
     }
 
-   const user = await prisma.webUser.findUnique({
+    const user = await prisma.webUser.findUnique({
       where: { email },
       include: {
-        vendor: true
-      }
+        vendor: true,
+      },
     });
-    console.log("🔍 Stored OTP:", JSON.stringify(user?.otp), "| Expiry:", user?.otpExpiry);
+    console.log(
+      "🔍 Stored OTP:",
+      JSON.stringify(user?.otp),
+      "| Expiry:",
+      user?.otpExpiry,
+    );
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
@@ -141,7 +140,7 @@ export const verifyOTP = async (req: Request, res: Response) => {
     if (user.isVerified) {
       return res.status(400).json({
         success: false,
-        message: "User already verified"
+        message: "User already verified",
       });
     }
 
@@ -149,7 +148,7 @@ export const verifyOTP = async (req: Request, res: Response) => {
     if (user.otp !== otp) {
       return res.status(400).json({
         success: false,
-        message: "Invalid OTP"
+        message: "Invalid OTP",
       });
     }
 
@@ -157,7 +156,7 @@ export const verifyOTP = async (req: Request, res: Response) => {
     if (user.otpExpiry && new Date() > user.otpExpiry) {
       return res.status(400).json({
         success: false,
-        message: "OTP has expired. Please request a new one."
+        message: "OTP has expired. Please request a new one.",
       });
     }
 
@@ -167,8 +166,8 @@ export const verifyOTP = async (req: Request, res: Response) => {
       data: {
         isVerified: true,
         otp: null,
-        otpExpiry: null
-      }
+        otpExpiry: null,
+      },
     });
 
     // Generate JWT token
@@ -177,10 +176,10 @@ export const verifyOTP = async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        type: "web"
+        type: "web",
       },
       process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     return res.json({
@@ -194,15 +193,14 @@ export const verifyOTP = async (req: Request, res: Response) => {
         phone: user.phone,
         isVerified: true,
         isVendor: user.vendor !== null,
-        vendor: user.vendor
-      }
+        vendor: user.vendor,
+      },
     });
-
   } catch (error) {
     console.error("OTP verification error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to verify OTP"
+      message: "Failed to verify OTP",
     });
   }
 };
@@ -215,18 +213,18 @@ export const resendOTP = async (req: Request, res: Response) => {
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: "Email is required"
+        message: "Email is required",
       });
     }
 
     const user = await prisma.webUser.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
@@ -234,7 +232,7 @@ export const resendOTP = async (req: Request, res: Response) => {
     if (user.isVerified) {
       return res.status(400).json({
         success: false,
-        message: "User already verified"
+        message: "User already verified",
       });
     }
 
@@ -246,8 +244,8 @@ export const resendOTP = async (req: Request, res: Response) => {
       where: { id: user.id },
       data: {
         otp,
-        otpExpiry
-      }
+        otpExpiry,
+      },
     });
 
     console.log(`📧 New OTP for ${email}: ${otp}`);
@@ -255,14 +253,13 @@ export const resendOTP = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       message: "OTP resent successfully",
-      ...(process.env.NODE_ENV === "development" && { otp })
+      ...(process.env.NODE_ENV === "development" && { otp }),
     });
-
   } catch (error) {
     console.error("Resend OTP error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to resend OTP"
+      message: "Failed to resend OTP",
     });
   }
 };
@@ -277,7 +274,7 @@ export const login = async (req: Request, res: Response) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required"
+        message: "Email and password are required",
       });
     }
 
@@ -285,17 +282,17 @@ export const login = async (req: Request, res: Response) => {
     const user = await prisma.webUser.findUnique({
       where: { email },
       include: {
-        vendor: true
-      }
+        vendor: true,
+      },
     });
 
-  if (!user) {
-  return res.status(404).json({
-    success: false,
-    code: "USER_NOT_FOUND",
-    message: "No account found with this email."
-  });
-}
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        code: "USER_NOT_FOUND",
+        message: "No account found with this email.",
+      });
+    }
 
     // Check if email is verified
     if (!user.isVerified) {
@@ -303,19 +300,19 @@ export const login = async (req: Request, res: Response) => {
         success: false,
         message: "Please verify your email first. Check your OTP.",
         requiresVerification: true,
-        email: user.email
+        email: user.email,
       });
     }
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
-   if (!isValidPassword) {
-  return res.status(401).json({
-    success: false,
-    code: "INVALID_PASSWORD",
-    message: "Incorrect password."
-  });
-}
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        code: "INVALID_PASSWORD",
+        message: "Incorrect password.",
+      });
+    }
 
     // Determine token expiry
     const expiresIn = rememberMe ? "30d" : "7d";
@@ -326,10 +323,10 @@ export const login = async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        type: "web"
+        type: "web",
       },
       process.env.JWT_SECRET!,
-      { expiresIn }
+      { expiresIn },
     );
 
     // Check if user is a vendor
@@ -346,15 +343,14 @@ export const login = async (req: Request, res: Response) => {
         phone: user.phone,
         isVerified: user.isVerified,
         isVendor: isVendor,
-        vendor: user.vendor
-      }
+        vendor: user.vendor,
+      },
     });
-
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({
       success: false,
-      message: "Something went wrong during login"
+      message: "Something went wrong during login",
     });
   }
 };
@@ -369,18 +365,18 @@ export const forgotPassword = async (req: Request, res: Response) => {
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: "Email is required"
+        message: "Email is required",
       });
     }
 
     const user = await prisma.webUser.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
@@ -389,10 +385,10 @@ export const forgotPassword = async (req: Request, res: Response) => {
       {
         id: user.id,
         email: user.email,
-        type: "reset"
+        type: "reset",
       },
       process.env.JWT_SECRET!,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" },
     );
 
     // In production, send email with reset link
@@ -402,14 +398,13 @@ export const forgotPassword = async (req: Request, res: Response) => {
     return res.json({
       success: true,
       message: "Password reset link sent to your email",
-      ...(process.env.NODE_ENV === "development" && { resetLink })
+      ...(process.env.NODE_ENV === "development" && { resetLink }),
     });
-
   } catch (error) {
     console.error("Forgot password error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to process reset request"
+      message: "Failed to process reset request",
     });
   }
 };
@@ -422,14 +417,14 @@ export const resetPassword = async (req: Request, res: Response) => {
     if (!token || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: "Token and new password are required"
+        message: "Token and new password are required",
       });
     }
 
     if (newPassword.length < 6) {
       return res.status(400).json({
         success: false,
-        message: "Password must be at least 6 characters"
+        message: "Password must be at least 6 characters",
       });
     }
 
@@ -445,19 +440,19 @@ export const resetPassword = async (req: Request, res: Response) => {
       if (error instanceof jwt.TokenExpiredError) {
         return res.status(400).json({
           success: false,
-          message: "Reset token has expired. Please request a new one."
+          message: "Reset token has expired. Please request a new one.",
         });
       }
       return res.status(400).json({
         success: false,
-        message: "Invalid reset token"
+        message: "Invalid reset token",
       });
     }
 
     if (decoded.type !== "reset") {
       return res.status(400).json({
         success: false,
-        message: "Invalid token type"
+        message: "Invalid token type",
       });
     }
 
@@ -467,19 +462,18 @@ export const resetPassword = async (req: Request, res: Response) => {
     // Update password
     await prisma.webUser.update({
       where: { id: decoded.id },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword },
     });
 
     return res.json({
       success: true,
-      message: "Password reset successfully"
+      message: "Password reset successfully",
     });
-
   } catch (error) {
     console.error("Reset password error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to reset password"
+      message: "Failed to reset password",
     });
   }
 };
@@ -487,31 +481,28 @@ export const resetPassword = async (req: Request, res: Response) => {
 // ==================== GET USER ====================
 
 // Get current user with vendor data
-export const getCurrentUser = async (
-  req: WebAuthedRequest,
-  res: Response
-) => {
+export const getCurrentUser = async (req: WebAuthedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
     const user = await prisma.webUser.findUnique({
       where: { id: userId },
       include: {
-        vendor: true
-      }
+        vendor: true,
+      },
     });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
@@ -522,6 +513,7 @@ export const getCurrentUser = async (
         name: user.name,
         email: user.email,
         phone: user.phone,
+        avatar: user.avatar,
         isVerified: user.isVerified,
         isVendor: user.vendor !== null,
         vendor: user.vendor,
@@ -531,34 +523,33 @@ export const getCurrentUser = async (
         district: user.district,
         city: user.city,
         address: user.address,
-        pincode: user.pincode
-      }
+        pincode: user.pincode,
+      },
     });
-
   } catch (error) {
     console.error("Get current user error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to get user data"
+      message: "Failed to get user data",
     });
   }
 };
 
 // Update user profile
-export const updateProfile = async (
-  req: WebAuthedRequest,
-  res: Response
-) => {
+export const updateProfile = async (req: WebAuthedRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { name, phone, country, state, district, city, address, pincode } = req.body;
+    const { name, phone, country, state, district, city, address, pincode } =
+      req.body;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
+
+    const avatar = req.file ? `/uploads/${req.file.filename}` : undefined;
 
     const updatedUser = await prisma.webUser.update({
       where: { id: userId },
@@ -570,11 +561,13 @@ export const updateProfile = async (
         district,
         city,
         address,
-        pincode
+        pincode,
+
+        ...(avatar && { avatar }),
       },
       include: {
-        vendor: true
-      }
+        vendor: true,
+      },
     });
 
     return res.json({
@@ -585,6 +578,7 @@ export const updateProfile = async (
         name: updatedUser.name,
         email: updatedUser.email,
         phone: updatedUser.phone,
+        avatar: updatedUser.avatar,
         isVerified: updatedUser.isVerified,
         isVendor: updatedUser.vendor !== null,
         vendor: updatedUser.vendor,
@@ -593,15 +587,14 @@ export const updateProfile = async (
         district: updatedUser.district,
         city: updatedUser.city,
         address: updatedUser.address,
-        pincode: updatedUser.pincode
-      }
+        pincode: updatedUser.pincode,
+      },
     });
-
   } catch (error) {
     console.error("Update profile error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to update profile"
+      message: "Failed to update profile",
     });
   }
 };

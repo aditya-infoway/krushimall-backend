@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma.js";
 
-
-
 function computeFollowupStage(
   latestFollowup?: { nextScheduledDate: Date | null } | null,
 ): "PENDING" | "ATTEND" | "DELAY" {
@@ -23,6 +21,7 @@ export const createWebsiteEnquiry = async (req: Request, res: Response) => {
   try {
     const {
       websiteVariantId,
+      usedWebsiteVariantId,
       fullName,
       email,
       mobileNumber,
@@ -30,22 +29,42 @@ export const createWebsiteEnquiry = async (req: Request, res: Response) => {
       message,
     } = req.body;
 
-    const variant = await prisma.websiteVariant.findUnique({
-      where: {
-        id: Number(websiteVariantId),
-      },
-    });
-
-    if (!variant) {
-      return res.status(404).json({
-        success: false,
-        message: "Website Variant not found.",
+    // Validate Variant
+    if (interestedIn === "new") {
+      const variant = await prisma.websiteVariant.findUnique({
+        where: { id: Number(websiteVariantId) },
       });
+
+      if (!variant) {
+        return res.status(404).json({
+          success: false,
+          message: "Website Variant not found.",
+        });
+      }
     }
 
+    if (interestedIn === "used") {
+      const variant = await prisma.usedWebsiteVariant.findUnique({
+        where: { id: Number(usedWebsiteVariantId) },
+      });
+
+      if (!variant) {
+        return res.status(404).json({
+          success: false,
+          message: "Used Website Variant not found.",
+        });
+      }
+    }
+
+    // Create Enquiry
     const enquiry = await prisma.websiteEnquiry.create({
       data: {
-        websiteVariantId: Number(websiteVariantId),
+        websiteVariantId:
+          interestedIn === "new" ? Number(websiteVariantId) : null,
+
+        usedWebsiteVariantId:
+          interestedIn === "used" ? Number(usedWebsiteVariantId) : null,
+
         fullName,
         email,
         mobileNumber,
@@ -54,17 +73,28 @@ export const createWebsiteEnquiry = async (req: Request, res: Response) => {
       },
     });
 
-
-     await prisma.websiteVariant.update({
-      where: {
-        id: Number(websiteVariantId),
-      },
-      data: {
-        enquiryCount: {
-          increment: 1,
+    // Increase enquiry count
+    if (interestedIn === "new") {
+      await prisma.websiteVariant.update({
+        where: { id: Number(websiteVariantId) },
+        data: {
+          enquiryCount: {
+            increment: 1,
+          },
         },
-      },
-    });
+      });
+    }
+
+    if (interestedIn === "used") {
+      await prisma.usedWebsiteVariant.update({
+        where: { id: Number(usedWebsiteVariantId) },
+        data: {
+          enquiryCount: {
+            increment: 1,
+          },
+        },
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -81,21 +111,28 @@ export const createWebsiteEnquiry = async (req: Request, res: Response) => {
   }
 };
 
-export const getWebsiteEnquiries = async (
-  req: Request,
-  res: Response
-) => {
+export const getWebsiteEnquiries = async (req: Request, res: Response) => {
   try {
     const vendor = (req as any).vendor;
 
     const enquiries = await prisma.websiteEnquiry.findMany({
       where: {
-        websiteVariant: {
-          vendorId: vendor.vendorId,
-        },
+        OR: [
+          {
+            websiteVariant: {
+              vendorId: vendor.vendorId,
+            },
+          },
+          {
+            usedWebsiteVariant: {
+              vendorId: vendor.vendorId,
+            },
+          },
+        ],
       },
       include: {
         websiteVariant: true,
+        usedWebsiteVariant: true,
         followUps: {
           orderBy: { createdAt: "desc" },
           take: 1,
@@ -106,7 +143,7 @@ export const getWebsiteEnquiries = async (
       },
     });
 
-   const withStage = enquiries.map((e) => ({
+    const withStage = enquiries.map((e) => ({
       ...e,
       followupStage: computeFollowupStage(e.followUps[0]),
     }));
@@ -121,24 +158,29 @@ export const getWebsiteEnquiries = async (
   }
 };
 
-
-
-export const getWebsiteEnquiry = async (
-  req: Request,
-  res: Response
-) => {
+export const getWebsiteEnquiry = async (req: Request, res: Response) => {
   try {
     const vendor = (req as any).vendor;
 
     const enquiry = await prisma.websiteEnquiry.findFirst({
       where: {
         id: Number(req.params.id),
-        websiteVariant: {
-          vendorId: vendor.vendorId,
-        },
+        OR: [
+          {
+            websiteVariant: {
+              vendorId: vendor.vendorId,
+            },
+          },
+          {
+            usedWebsiteVariant: {
+              vendorId: vendor.vendorId,
+            },
+          },
+        ],
       },
       include: {
         websiteVariant: true,
+        usedWebsiteVariant: true,
       },
     });
 
@@ -158,20 +200,25 @@ export const getWebsiteEnquiry = async (
   }
 };
 
-
-export const updateStatus = async (
-  req: Request,
-  res: Response
-) => {
+export const updateStatus = async (req: Request, res: Response) => {
   try {
     const vendor = (req as any).vendor;
 
     const enquiry = await prisma.websiteEnquiry.findFirst({
       where: {
         id: Number(req.params.id),
-        websiteVariant: {
-          vendorId: vendor.vendorId,
-        },
+        OR: [
+          {
+            websiteVariant: {
+              vendorId: vendor.vendorId,
+            },
+          },
+          {
+            usedWebsiteVariant: {
+              vendorId: vendor.vendorId,
+            },
+          },
+        ],
       },
     });
 
