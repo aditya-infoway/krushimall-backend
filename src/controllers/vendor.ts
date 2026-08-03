@@ -5,13 +5,18 @@ import prisma from "../lib/prisma.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { WebAuthedRequest } from "../type/webAuthRequest.js";
+import { sendOTPEmail } from "../utils/sendEmail.js";
+
+// Generate OTP (same pattern as webAuth.ts)
+const generateOTP = (): string => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
 // ==================== BECOME VENDOR ====================
 
 export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
   try {
-    
-     const userId = req.user?.id;
+  const userId = req.user?.id;
     const {
       vendorType,
       vehicleType,
@@ -84,6 +89,10 @@ export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
 
     const hashedVendorPassword = await bcrypt.hash(vendorPassword, 10);
 
+    // Generate OTP for vendor email/phone verification
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     const vendor = await prisma.$transaction(async (tx) => {
       const newVendor = await tx.webVendor.create({
         data: {
@@ -101,6 +110,8 @@ export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
           pincode,
           vendorPassword: hashedVendorPassword,
           isVerified: false,
+          otp,
+          otpExpiry,
         },
       });
 
@@ -112,9 +123,12 @@ export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
       return newVendor;
     });
 
+    // Send OTP to vendor email
+    await sendOTPEmail(email, otp);
+
     return res.json({
       success: true,
-      message: "Successfully registered as a vendor!",
+      message: "Vendor account created! Please verify OTP sent to your email/phone.",
       vendor: {
         id: vendor.id,
         vendorType: vendor.vendorType,
@@ -129,6 +143,8 @@ export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
         address: vendor.address,
         pincode: vendor.pincode,
         isVerified: vendor.isVerified,
+        // In development, return OTP for testing
+        ...(process.env.NODE_ENV === "development" && { otp }),
       },
     });
   } catch (error) {
@@ -140,11 +156,154 @@ export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
   }
 };
 
+// ==================== VERIFY VENDOR OTP ====================
+
+export const verifyVendorOTP = async (req: WebAuthedRequest, res: Response) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+    }
+
+    const vendor = await prisma.webVendor.findFirst({
+      where: { email },
+      include: { user: true },
+    });
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    if (vendor.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor already verified",
+      });
+    }
+
+    if (vendor.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    if (vendor.otpExpiry && new Date() > vendor.otpExpiry) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new one.",
+      });
+    }
+
+    const updatedVendor = await prisma.webVendor.update({
+      where: { id: vendor.id },
+      data: {
+        isVerified: true,
+        verifiedAt: new Date(),
+        otp: null,
+        otpExpiry: null,
+      },
+    });
+
+    const token = jwt.sign(
+      {
+        vendorId: updatedVendor.id,
+        userId: updatedVendor.userId,
+        email: updatedVendor.email,
+        role: "vendor",
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: "1d" },
+    );
+
+    return res.json({
+      success: true,
+      message: "Vendor OTP verified successfully",
+      token,
+      vendor: {
+        id: updatedVendor.id,
+        userId: updatedVendor.userId,
+        vendorType: updatedVendor.vendorType,
+        vehicleType: updatedVendor.vehicleType,
+        isVerified: updatedVendor.isVerified,
+        name: updatedVendor.name,
+        email: updatedVendor.email,
+        number: updatedVendor.number,
+      },
+    });
+  } catch (error) {
+    console.error("Vendor OTP verification error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to verify vendor OTP",
+    });
+  }
+};
+
+// ==================== RESEND VENDOR OTP ====================
+
+export const resendVendorOTP = async (req: WebAuthedRequest, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const vendor = await prisma.webVendor.findFirst({ where: { email } });
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    if (vendor.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Vendor already verified",
+      });
+    }
+
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    await prisma.webVendor.update({
+      where: { id: vendor.id },
+      data: { otp, otpExpiry },
+    });
+
+    await sendOTPEmail(email, otp);
+
+    return res.json({
+      success: true,
+      message: "Vendor OTP resent successfully",
+      ...(process.env.NODE_ENV === "development" && { otp }),
+    });
+  } catch (error) {
+    console.error("Resend vendor OTP error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to resend vendor OTP",
+    });
+  }
+};
+
 // ==================== GET VENDOR DATA ====================
 
 export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
   try {
-    
     const userId = req.vendor?.userId;
 
     if (!userId) {
@@ -153,8 +312,6 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
         message: "Authentication required",
       });
     }
-
-   
 
     const vendor = await prisma.webVendor.findUnique({
       where: { userId },
@@ -174,8 +331,6 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
         },
       },
     });
-
-  
 
     if (!vendor) {
       return res.status(404).json({
@@ -220,7 +375,6 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
 
 export const updateVendor = async (req: WebAuthedRequest, res: Response) => {
   try {
-    
     const userId = req.vendor?.userId;
     const updateData = req.body;
 
@@ -265,15 +419,15 @@ export const updateVendor = async (req: WebAuthedRequest, res: Response) => {
       });
     }
 
-  const avatar = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const avatar = req.file ? `/uploads/${req.file.filename}` : undefined;
 
-const vendor = await prisma.webVendor.update({
-  where: { userId },
-  data: {
-    ...filteredData,
-    ...(avatar && { avatar }),
-  },
-});
+    const vendor = await prisma.webVendor.update({
+      where: { userId },
+      data: {
+        ...filteredData,
+        ...(avatar && { avatar }),
+      },
+    });
 
     return res.json({
       success: true,
@@ -296,7 +450,6 @@ export const updateVendorPassword = async (
   res: Response,
 ) => {
   try {
-    
     const userId = req.vendor?.userId;
     const { currentPassword, newPassword } = req.body;
 
@@ -469,6 +622,16 @@ export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         message: "Vendor not found",
+      });
+    }
+
+    // Block login until vendor has verified their OTP
+    if (!vendor.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: "Please verify your vendor account first. Check your OTP.",
+        requiresVerification: true,
+        email: vendor.email,
       });
     }
 

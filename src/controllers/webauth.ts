@@ -5,7 +5,7 @@ import prisma from "../lib/prisma.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { WebAuthedRequest } from "../type/webAuthRequest.js";
-
+import { sendOTPEmail } from "../utils/sendEmail.js";
 // Generate OTP
 const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -80,8 +80,8 @@ export const register = async (req: Request, res: Response) => {
     });
 
     // In production, send OTP via email/SMS
-    console.log(`📧 OTP for ${email}: ${otp}`);
-    console.log(`📱 OTP for ${phone}: ${otp}`);
+  // Send OTP to email
+await sendOTPEmail(email, otp);
 
     return res.status(201).json({
       success: true,
