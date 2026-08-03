@@ -1584,14 +1584,12 @@ model WebVendor {
   userId Int     @unique
   user   WebUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Step 1: Vendor Type & Personal Details
-  vendorType  String // "vehicle", "spare-parts", "service"
-  vehicleType String? // "new", "used" (only for vehicle vendors)
-  name        String // Full name from step 1
-  number      String // Phone number from step 1
-  email       String // Email from step 1
+  vendorType  String
+  vehicleType String?
+  name        String
+  number      String
+  email       String
 
-  // Step 2: Address Details
   country  String
   state    String
   district String
@@ -1599,15 +1597,22 @@ model WebVendor {
   address  String
   pincode  String
 
-  // Step 3: Only Password (no business fields in your component)
   vendorPassword String
+
+  // ADD THESE
+  otp        String?
+  otpExpiry  DateTime?
+
   avatar String?
-  // Vendor status
-  isVerified      Boolean          @default(false)
-  verifiedAt      DateTime?
+
+  isVerified Boolean @default(false)
+  verifiedAt DateTime?
+
   websiteVariants WebsiteVariant[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   usedWebsiteVariants UsedWebsiteVariant[]
 }
 

@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
   becomeVendor,
+  verifyVendorOTP,
+  resendVendorOTP,
   getVendorData,
   updateVendor,
   updateVendorPassword,
@@ -25,6 +27,12 @@ const router = Router();
 // =========================
 
 router.post("/login", vendorLogin);
+
+// OTP verification happens before the vendor is logged in, so these
+// stay public — identified by email+otp, same as /webauth/verify-otp
+// and /webauth/resend-otp.
+router.post("/verify-otp", verifyVendorOTP);
+router.post("/resend-otp", resendVendorOTP);
 
 // =========================
 // Website User
