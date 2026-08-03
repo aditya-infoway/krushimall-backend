@@ -2,6 +2,9 @@ import { Router } from "express";
 import * as UsedWebsiteVariantController from "../../controllers/vendor/usedwebsiteVariant.js";
 import { verifyVendorToken } from "../../middleware/verifyVendorToken.js";
 import { upload } from "../../middleware/upload.js";
+import { getBestValueUsedWebsiteVariants } from "../../controllers/vendor/usedwebsiteVariant.js";
+import { getPublicUsedWebsiteVariantById } from "../../controllers/vendor/usedwebsiteVariant.js";
+
 
 const router = Router();
 ;
@@ -49,9 +52,21 @@ router.get(
   verifyVendorToken,
   UsedWebsiteVariantController.getUsedWebsiteVariants
 );
-router.get("/latest",UsedWebsiteVariantController.getLatestUsedWebsiteVariants);
-router.get("/popular",UsedWebsiteVariantController.getPopularUsedWebsiteVariants);
-// Get By Id
+router.get("/latest", UsedWebsiteVariantController.getLatestUsedWebsiteVariants);
+router.get("/popular", UsedWebsiteVariantController.getPopularUsedWebsiteVariants);
+router.get(
+  "/best-value",
+  getBestValueUsedWebsiteVariants
+);
+router.get(
+  "/public",
+  UsedWebsiteVariantController.getPublicUsedWebsiteVariants
+);
+// Public — storefront detail page. No auth, ACTIVE listings only.
+// Two segments ("/public/:id"), so no clash with the vendor-only "/:id" below.
+router.get("/public/:id", getPublicUsedWebsiteVariantById);
+
+// Get By Id (vendor dashboard — vendor's OWN listings only, any status)
 router.get(
   "/:id",
   verifyVendorToken,
