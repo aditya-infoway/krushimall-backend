@@ -160,7 +160,7 @@ export const getPublicUsedWebsiteVariantById = async (
   res: Response
 ) => {
   try {
-    const variant = await prisma.usedWebsiteVariant.findFirst({
+    const current = await prisma.usedWebsiteVariant.findFirst({
       where: {
         id: Number(req.params.id),
         status: "ACTIVE",
@@ -174,19 +174,87 @@ export const getPublicUsedWebsiteVariantById = async (
       },
     });
 
-    if (!variant) {
+    if (!current) {
       return res.status(404).json({
         success: false,
-        message: "Used tractor not found or not available",
+        message: "Used tractor not found",
       });
     }
 
+    // ==========================
+    // Similar Products
+    // Same Brand + Same Category
+    // ==========================
+    const similarProducts = await prisma.usedWebsiteVariant.findMany({
+      where: {
+        id: {
+          not: current.id,
+        },
+        status: "ACTIVE",
+        brandId: current.brandId,
+        categoryId: current.categoryId,
+      },
+      include: {
+        brandRef: true,
+        modelRef: true,
+      },
+      take: 4,
+    });
+
+    // Fill remaining from same category
+    if (similarProducts.length < 4) {
+      const extraProducts = await prisma.usedWebsiteVariant.findMany({
+        where: {
+          id: {
+            notIn: [
+              current.id,
+              ...similarProducts.map((item) => item.id),
+            ],
+          },
+          status: "ACTIVE",
+          categoryId: current.categoryId,
+        },
+        include: {
+          brandRef: true,
+          modelRef: true,
+        },
+        take: 4 - similarProducts.length,
+      });
+
+      similarProducts.push(...extraProducts);
+    }
+
+    // ==========================
+    // Related Products
+    // Same Category
+    // ==========================
+    const relatedProducts = await prisma.usedWebsiteVariant.findMany({
+      where: {
+        id: {
+          not: current.id,
+        },
+        status: "ACTIVE",
+        categoryId: current.categoryId,
+      },
+      include: {
+        brandRef: true,
+        modelRef: true,
+      },
+      take: 8,
+    });
+
     return res.status(200).json({
       success: true,
-      data: variant,
+      data: {
+        ...current,
+        similarProducts,
+        relatedProducts,
+      },
     });
+
   } catch (error) {
     console.error(error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch used tractor",
@@ -608,6 +676,7 @@ export const getPublicUsedWebsiteVariantById = async (
         status: "ACTIVE",
       },
       include: {
+           category: true, 
         brandRef: true,
         modelRef: true,
         variantRef: true,
