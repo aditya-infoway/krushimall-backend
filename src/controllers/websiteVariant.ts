@@ -85,9 +85,11 @@ export const getWebsiteVariants = async (req: Request, res: Response) => {
 
 export const getWebsiteVariantById = async (req: Request, res: Response) => {
   try {
-    const variant = await prisma.websiteVariant.findUnique({
+    const id = Number(req.params.id);
+
+    const current = await prisma.websiteVariant.findUnique({
       where: {
-        id: Number(req.params.id),
+        id,
       },
       include: {
         brand: true,
@@ -98,12 +100,96 @@ export const getWebsiteVariantById = async (req: Request, res: Response) => {
       },
     });
 
+    if (!current) {
+      return res.status(404).json({
+        success: false,
+        message: "Website Variant not found",
+      });
+    }
+
+    // ===========================
+    // Similar Products
+    // Same Brand + Same Category
+    // ===========================
+
+    const similarProducts = await prisma.websiteVariant.findMany({
+      where: {
+        id: {
+          not: current.id,
+        },
+        status: "ACTIVE",
+        categoryId: current.categoryId,
+        brandId: current.brandId,
+      },
+      include: {
+        brand: true,
+        model: true,
+      },
+      take: 4,
+    });
+
+    // Fill remaining from same category if less than 4
+
+    if (similarProducts.length < 4) {
+      const extraProducts = await prisma.websiteVariant.findMany({
+        where: {
+          id: {
+            notIn: [
+              current.id,
+              ...similarProducts.map((item) => item.id),
+            ],
+          },
+          status: "ACTIVE",
+          categoryId: current.categoryId,
+        },
+        include: {
+          brand: true,
+          model: true,
+        },
+        take: 4 - similarProducts.length,
+      });
+
+      similarProducts.push(...extraProducts);
+    }
+
+    // ===========================
+    // Related Products
+    // Same Category
+    // ===========================
+
+    const relatedProducts = await prisma.websiteVariant.findMany({
+      where: {
+        id: {
+          not: current.id,
+        },
+        status: "ACTIVE",
+        categoryId: current.categoryId,
+      },
+      include: {
+        brand: true,
+        model: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 8,
+    });
+
     return res.status(200).json({
       success: true,
-      data: variant,
+      data: {
+        ...current,
+        similarProducts,
+        relatedProducts,
+      },
     });
   } catch (error) {
     console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch Website Variant",
+    });
   }
 };
 
