@@ -52,10 +52,21 @@ export const createWebsiteVariant = async (req: Request, res: Response) => {
 
 export const getWebsiteVariants = async (req: Request, res: Response) => {
   try {
-    const { status } = req.query;
+    const { status, isUpcoming } = req.query;
+
+    const where: any = {};
+
+    if (status) {
+      where.status = status;
+    }
+
+    // Only filter if the query parameter is provided
+    if (isUpcoming !== undefined) {
+      where.isUpcoming = isUpcoming === "true";
+    }
 
     const variants = await prisma.websiteVariant.findMany({
-      where: status ? { status: status as string } : undefined,
+      where,
       include: {
         category: true,
         brand: true,
@@ -74,7 +85,6 @@ export const getWebsiteVariants = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error(error);
-    
 
     return res.status(500).json({
       success: false,
@@ -383,6 +393,7 @@ export const getLatestWebsiteVariants = async (req: Request, res: Response) => {
     const variants = await prisma.websiteVariant.findMany({
       where: {
         status: "ACTIVE",
+          isUpcoming: false,
         AND: [
           { frontView: { not: null } },
           { frontView: { not: "" } },
@@ -433,6 +444,7 @@ export const getPopularWebsiteVariants = async (
     const variants = await prisma.websiteVariant.findMany({
       where: {
         status: "ACTIVE",
+          isUpcoming: false,
         AND: [
           { frontView: { not: null } },
           { frontView: { not: "" } },
@@ -488,6 +500,61 @@ export const getPopularWebsiteVariants = async (
     return res.status(500).json({
       success: false,
       message: "Failed to fetch popular tractors",
+    });
+  }
+};
+export const getUpcomingWebsiteVariants = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const variants = await prisma.websiteVariant.findMany({
+      where: {
+        status: "ACTIVE",
+        isUpcoming: true,
+        AND: [
+          { frontView: { not: null } },
+          { frontView: { not: "" } },
+          { productName: { not: null } },
+          { productName: { not: "" } },
+        ],
+      },
+      select: {
+        id: true,
+        productName: true,
+        frontView: true,
+        exShowroomPrice: true,
+        horsePower: true,
+        fuelType: true,
+        state: true,
+        city: true,
+        brand: {
+          select: {
+            brandName: true,
+          },
+        },
+        model: {
+          select: {
+            modelName: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 8,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: variants,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch upcoming tractors",
     });
   }
 };
