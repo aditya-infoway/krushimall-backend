@@ -10,6 +10,7 @@ toggleWebsiteVariantStatus,
 deleteWebsiteVariant,
 getLatestWebsiteVariants,
 getPopularWebsiteVariants,
+getUpcomingWebsiteVariants
 } from "../controllers/websiteVariant.js";
 
 import { upload } from "../middleware/upload.js";
@@ -57,7 +58,7 @@ createWebsiteVariant
 router.get("/popular", getPopularWebsiteVariants);
 
 router.get("/latest", getLatestWebsiteVariants);
-
+router.get("/upcoming", getUpcomingWebsiteVariants);
 // Get All
 router.get(
 "/",

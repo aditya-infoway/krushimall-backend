@@ -386,6 +386,7 @@ model WebsiteVariant {
   modelYear                 ModelYear?       @relation(fields: [modelYearId], references: [id])
   variant                   Variant?         @relation(fields: [variantId], references: [id])
   enquiries                 WebsiteEnquiry[]
+    isUpcoming  Boolean  @default(false)
   enquiryCount              Int              @default(0)
   wishlistedBy              Wishlist[]
 }
