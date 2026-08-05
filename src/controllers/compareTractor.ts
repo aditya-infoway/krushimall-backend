@@ -146,6 +146,7 @@ const getTrendingFromModel = async (
     enquiryField: "count" | "field"; // "count" = _count relation, "field" = direct column like enquiryCount
     brandRelation?: string;
     modelRelation?: string;
+     hasUpcoming?: boolean;
   }
 ) => {
   const selectClause: Record<string, any> = {
@@ -168,18 +169,24 @@ const getTrendingFromModel = async (
     selectClause.enquiryCount = true;
   }
 
-  let tractors = await model.findMany({
-    where: {
-      status: "ACTIVE",
-      AND: [
-        { frontView: { not: null } },
-        { frontView: { not: "" } },
-        { productName: { not: null } },
-        { productName: { not: "" } },
-      ],
-    },
-    select: selectClause,
-  });
+ const where: any = {
+  status: "ACTIVE",
+  AND: [
+    { frontView: { not: null } },
+    { frontView: { not: "" } },
+    { productName: { not: null } },
+    { productName: { not: "" } },
+  ],
+};
+
+if (options.hasUpcoming) {
+  where.isUpcoming = false;
+}
+
+let tractors = await model.findMany({
+  where,
+  select: selectClause,
+});
 
   const getEnquiryCount = (t: any) =>
     options.enquiryField === "count" ? t._count?.enquiries || 0 : t.enquiryCount || 0;
