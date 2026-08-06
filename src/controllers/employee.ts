@@ -5,20 +5,13 @@ import prisma from "../lib/prisma.js";
 export const createEmployee = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const role = user?.role?.toUpperCase();
-
-    if (role === "BRANCH" && !user?.branchId) {
-      return res.status(400).json({
-        success: false,
-        message: "Branch ID missing from token — cannot create employee",
-      });
-    }
+    const loginRole = user?.role?.toUpperCase();
 
     const {
       department,
-      branch,
+      branchId: bodyBranchId,
       role: employeeRole,
-        teamLeadId, // renamed to avoid clashing with the auth `role` above
+      teamLeadId,
       employeeName,
       mobileNumber,
       alternateNumber,
@@ -27,11 +20,12 @@ export const createEmployee = async (req: Request, res: Response) => {
       status,
     } = req.body;
 
+    // Check duplicate
     const existingEmployee = await prisma.employee.findFirst({
       where: {
         OR: [
-          { email: req.body.email },
-          { mobileNumber: req.body.mobileNumber },
+          { email },
+          { mobileNumber },
         ],
       },
     });
@@ -40,9 +34,49 @@ export const createEmployee = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message:
-          existingEmployee.email === req.body.email
+          existingEmployee.email === email
             ? "Email already exists"
             : "Mobile number already exists",
+      });
+    }
+
+    // Decide which branch to use
+    let finalBranchId: number;
+
+    if (loginRole === "BRANCH") {
+      if (!user.branchId) {
+        return res.status(400).json({
+          success: false,
+          message: "Branch ID missing from token",
+        });
+      }
+
+      finalBranchId = Number(user.branchId);
+    } else {
+      if (!bodyBranchId) {
+        return res.status(400).json({
+          success: false,
+          message: "Please select a branch",
+        });
+      }
+
+      finalBranchId = Number(bodyBranchId);
+    }
+
+    // Get branch details
+    const selectedBranch = await prisma.branch.findUnique({
+      where: {
+        id: finalBranchId,
+      },
+      select: {
+        branchName: true,
+      },
+    });
+
+    if (!selectedBranch) {
+      return res.status(404).json({
+        success: false,
+        message: "Branch not found",
       });
     }
 
@@ -51,23 +85,22 @@ export const createEmployee = async (req: Request, res: Response) => {
     const employee = await prisma.employee.create({
       data: {
         department,
-        branch,
+        branch: selectedBranch.branchName,
+        branchId: finalBranchId,
         role: employeeRole,
-           teamLeadId: teamLeadId ? Number(teamLeadId) : null,
+        teamLeadId: teamLeadId ? Number(teamLeadId) : null,
         employeeName,
         mobileNumber,
         alternateNumber,
         email,
         password: hashedPassword,
         status,
-
-        createdType: role,
-        createdBy: user?.name,
-        branchId: role === "BRANCH" ? Number(user.branchId) : null,
+        createdType: loginRole,
+        createdBy: user.employeeName || user.name,
       },
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: employee,
       message: "Employee created successfully",
@@ -75,13 +108,12 @@ export const createEmployee = async (req: Request, res: Response) => {
   } catch (error) {
     console.log(error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to create employee",
     });
   }
 };
-
 export const getEmployees = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -100,7 +132,7 @@ export const getEmployees = async (req: Request, res: Response) => {
         department: true,
         branch: true,
         role: true,
-         teamLeadId: true, 
+        teamLeadId: true,
         employeeName: true,
         mobileNumber: true,
         alternateNumber: true,
@@ -148,7 +180,7 @@ export const getEmployeeById = async (req: Request, res: Response) => {
         department: true,
         branch: true,
         role: true,
-          teamLeadId: true,
+        teamLeadId: true,
         employeeName: true,
         mobileNumber: true,
         alternateNumber: true,
@@ -184,6 +216,8 @@ export const getEmployeeById = async (req: Request, res: Response) => {
 export const updateEmployee = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
+    const user = (req as any).user;
+    const loginRole = user?.role?.toUpperCase();
 
     const existingEmployee = await prisma.employee.findFirst({
       where: {
@@ -209,13 +243,39 @@ export const updateEmployee = async (req: Request, res: Response) => {
       });
     }
 
+    // Decide branch
+    let finalBranchId: number;
+
+    if (loginRole === "BRANCH") {
+      finalBranchId = Number(user.branchId);
+    } else {
+      finalBranchId = Number(req.body.branchId);
+    }
+
+    const selectedBranch = await prisma.branch.findUnique({
+      where: {
+        id: finalBranchId,
+      },
+      select: {
+        branchName: true,
+      },
+    });
+
+    if (!selectedBranch) {
+      return res.status(404).json({
+        success: false,
+        message: "Branch not found",
+      });
+    }
+
     const updateData: any = {
       department: req.body.department,
-      branch: req.body.branch,
+      branch: selectedBranch.branchName,
+      branchId: finalBranchId,
       role: req.body.role,
-       teamLeadId: req.body.teamLeadId
-    ? Number(req.body.teamLeadId)
-    : null,
+      teamLeadId: req.body.teamLeadId
+        ? Number(req.body.teamLeadId)
+        : null,
       employeeName: req.body.employeeName,
       mobileNumber: req.body.mobileNumber,
       alternateNumber: req.body.alternateNumber,
@@ -223,7 +283,6 @@ export const updateEmployee = async (req: Request, res: Response) => {
       status: req.body.status,
     };
 
-    // Update password only if provided
     if (req.body.password) {
       updateData.password = await bcrypt.hash(req.body.password, 10);
     }
@@ -325,10 +384,7 @@ export const getDepartments = async (req: Request, res: Response) => {
   }
 };
 
-export const getRolesByDepartment = async (
-  req: Request,
-  res: Response
-) => {
+export const getRolesByDepartment = async (req: Request, res: Response) => {
   try {
     const departmentId = Number(req.params.departmentId);
 
@@ -423,11 +479,13 @@ export const employeeLogin = async (req: Request, res: Response) => {
         id: employee.id,
         role: employee.role,
         employeeName: employee.employeeName,
+         branchId: employee.branchId,    
+    department: employee.department,
       },
       process.env.JWT_SECRET!,
       {
         expiresIn: "7d",
-      }
+      },
     );
 
     return res.json({

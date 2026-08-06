@@ -157,7 +157,7 @@ const name = user?.employeeName || user?.name || "Admin";
           createdById: Number(user.id),
 createdBy: name,
 createdType: role,
-          branchId: role === "BRANCH" ? Number(user.branchId) : null,
+          branchId: user?.branchId ? Number(user.branchId) : null,
         },
       });
 

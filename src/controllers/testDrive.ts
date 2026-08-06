@@ -6,7 +6,7 @@ export const createTestDrive = async (req: Request, res: Response) => {
     const {
       leadId,
       modelId,
-       showroomVariantId,
+      showroomVariantId,
       colourId,
       testDriveDate,
       testDriveFromTime,
@@ -18,9 +18,12 @@ export const createTestDrive = async (req: Request, res: Response) => {
       remarks,
       placeOfTestDrive,
     } = req.body;
-const user = (req as any).user;
-const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
-const name = user?.employeeName || user?.name || "Admin";
+
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+    const name = user?.employeeName || user?.name || "Admin";
+    const branchId = user?.branchId ? Number(user.branchId) : null;
+
     const testDrive = await prisma.testDrive.create({
       data: {
         leadId: Number(leadId),
@@ -38,17 +41,19 @@ const name = user?.employeeName || user?.name || "Admin";
         feedback,
         remarks,
         placeOfTestDrive,
-     createdById: Number(user.id),
-    createdBy: name,
-    createdType: role,
-  },
-  include: {
-    lead: true,
-    model: true,
-    showroomVariant: true,
-    colour: true,
-    employee: true,
-  },
+
+        createdById: Number(user.id),
+        createdBy: name,
+        createdType: role,
+       branchId: user?.branchId ? Number(user.branchId) : null,   // ✅ NEW
+      },
+      include: {
+        lead: true,
+        model: true,
+        showroomVariant: true,
+        colour: true,
+        // employee: true,   ❌ REMOVE — relation ab exist nahi karti
+      },
     });
 
     return res.status(201).json({
@@ -65,21 +70,25 @@ const name = user?.employeeName || user?.name || "Admin";
   }
 };
 
-export const getTestDrives = async (_req: Request, res: Response) => {
+export const getTestDrives = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+
+    const whereClause: any = {};
+
+    if (user?.branchId) {
+      whereClause.branchId = Number(user.branchId);
+    }
+
     const testDrives = await prisma.testDrive.findMany({
-     include: {
-  lead: true,
-  model: true,
-  showroomVariant: true,
-  colour: true,
-  employee: {
-    select: {
-      id: true,
-      employeeName: true,
-    },
-  },
-},
+      where: whereClause,
+      include: {
+        lead: true,
+        model: true,
+        showroomVariant: true,
+        colour: true,
+        branch: true,
+      },
       orderBy: {
         createdAt: "desc",
       },
@@ -91,6 +100,7 @@ export const getTestDrives = async (_req: Request, res: Response) => {
     });
   } catch (error) {
     console.log(error);
+
     res.status(500).json({
       success: false,
       message: "Failed to fetch Test Drives",
@@ -101,22 +111,26 @@ export const getTestDrives = async (_req: Request, res: Response) => {
 export const getTestDriveById = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
+const user = (req as any).user;
 
-    const testDrive = await prisma.testDrive.findUnique({
-      where: { id },
-      include: {
-        lead: true,
-        model: true,
-        showroomVariant: true,
-        colour: true,
-         employee: {
-    select: {
-      id: true,
-      employeeName: true,
-    },
+const whereClause: any = {
+  id,
+};
+
+if (user?.branchId) {
+  whereClause.branchId = Number(user.branchId);
+}
+
+const testDrive = await prisma.testDrive.findFirst({
+  where: whereClause,
+  include: {
+    lead: true,
+    model: true,
+    showroomVariant: true,
+    colour: true,
+    branch: true,
   },
-      },
-    });
+});
 
     if (!testDrive) {
       return res.status(404).json({
@@ -213,16 +227,27 @@ export const deleteTestDrive = async (req: Request, res: Response) => {
     });
   }
 };
-export const getTestDriveHistory = async (_req: Request, res: Response) => {
+export const getTestDriveHistory = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+
     const history = await prisma.testDrive.groupBy({
       by: ["leadId"],
+
+      where: user?.branchId
+        ? {
+            branchId: Number(user.branchId),
+          }
+        : undefined,
+
       _count: {
         id: true,
       },
+
       _max: {
         createdAt: true,
       },
+
       orderBy: {
         _max: {
           createdAt: "desc",
@@ -230,31 +255,31 @@ export const getTestDriveHistory = async (_req: Request, res: Response) => {
       },
     });
 
-   const result = await Promise.all(
-  history.map(async (item) => {
-    const lead = await prisma.lead.findUnique({
-      where: {
-        id: item.leadId,
-      },
-      include: {
-        customer: {
-          select: {
-            accountName: true,
-            mobile: true,
+    const result = await Promise.all(
+      history.map(async (item) => {
+        const lead = await prisma.lead.findUnique({
+          where: {
+            id: item.leadId,
           },
-        },
-      },
-    });
+          include: {
+            customer: {
+              select: {
+                accountName: true,
+                mobile: true,
+              },
+            },
+          },
+        });
 
-    return {
-      id: lead?.id,
-      customerName: lead?.customer?.accountName,
-      mobile: lead?.customer?.mobile,
-      testDriveCount: item._count.id,
-      updatedAt: item._max.createdAt,
-    };
-  })
-);
+        return {
+          id: lead?.id,
+          customerName: lead?.customer?.accountName,
+          mobile: lead?.customer?.mobile,
+          testDriveCount: item._count.id,
+          updatedAt: item._max.createdAt,
+        };
+      })
+    );
 
     return res.json({
       success: true,
@@ -289,12 +314,7 @@ export const getTestDriveHistoryByLead = async (
   model: true,
   showroomVariant: true,
   colour: true,
-  employee: {
-    select: {
-      id: true,
-      employeeName: true,
-    },
-  },
+  branch: true,
 },
       orderBy: {
         createdAt: "desc",

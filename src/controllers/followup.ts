@@ -82,27 +82,31 @@ export const createFollowUp = async (req: Request, res: Response) => {
 
     const user = (req as any).user;
 
+    // Lead ka branchId nikalo — sabse reliable source, kyunki Branch role ke alawa
+    // Admin/Sales Executive bhi followup create kar sakte hain
+    const lead = await prisma.lead.findUnique({
+      where: { id: Number(leadId) },
+      select: { branchId: true },
+    });
+
+    if (!lead) {
+      return res.status(404).json({ success: false, message: "Lead not found" });
+    }
+
     const count = await prisma.followUp.count({ where: { leadId: Number(leadId) } });
 
     const followup = await prisma.followUp.create({
       data: {
         leadId: Number(leadId),
+        branchId: lead.branchId,   // ✅ Lead se copy — snapshot ke liye
         expectedPurchaseDate: expectedPurchaseDate ? new Date(expectedPurchaseDate) : null,
         nextScheduledDate: nextScheduledDate ? new Date(nextScheduledDate) : null,
         callTime,
         callResponse,
         discussion,
         followupCount: count + 1,
-       createdType:
-  req.body.createdType ||
-  user?.role ||
-  null,
-
-createdBy:
-  req.body.createdBy ||
-  user?.employeeName ||
-  user?.name ||
-  null,
+        createdType: req.body.createdType || user?.role || null,
+        createdBy: req.body.createdBy || user?.employeeName || user?.name || null,
       },
     });
 

@@ -54,6 +54,7 @@ export const createOrder = async (req: Request, res: Response) => {
     const name = user?.employeeName || user?.name || "Admin";
 
     const userId = Number(user?.id) || null;
+    const branchId = user?.branchId ? Number(user.branchId) : null;
     const {
       companyId,
       financialYearId,
@@ -256,7 +257,7 @@ export const createOrder = async (req: Request, res: Response) => {
           financialYearId: Number(financialYearId),
 
           leadId: Number(leadId),
-
+          branchId: role === "BRANCH" ? branchId : null,
           // =================================
           // VEHICLE CHARGES
           // =================================
@@ -651,10 +652,7 @@ export const createOrder = async (req: Request, res: Response) => {
 // GET ALL ORDERS
 // GET /api/orders
 // ==========================================
-export const saveAccessoriesAllotment = async (
-  req: Request,
-  res: Response
-) => {
+export const saveAccessoriesAllotment = async (req: Request, res: Response) => {
   try {
     const orderId = Number(req.params.id);
 
@@ -738,7 +736,7 @@ export const saveAccessoriesAllotment = async (
 
 export const getVehicleVerifyAccessories = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const orders = await prisma.order.findMany({
@@ -779,11 +777,11 @@ export const getVehicleVerifyAccessories = async (
     const data = orders.map((order, index) => {
       // Accessories Allot Stage
       const completedAccessories = order.orderAccessories.filter(
-        (item) => item.status === "Completed"
+        (item) => item.status === "Completed",
       );
 
       const pendingAccessories = order.orderAccessories.filter(
-        (item) => item.status === "Pending"
+        (item) => item.status === "Pending",
       );
 
       return {
@@ -804,14 +802,9 @@ export const getVehicleVerifyAccessories = async (
         model: order.model || order.lead?.model?.modelName || "-",
 
         variant:
-          order.variant ||
-          order.lead?.showroomVariant?.variantName ||
-          "-",
+          order.variant || order.lead?.showroomVariant?.variantName || "-",
 
-        color:
-          order.colour ||
-          order.lead?.colour?.colourName ||
-          "-",
+        color: order.colour || order.lead?.colour?.colourName || "-",
 
         chassisNo: order.chassisNo || "-",
 
@@ -959,6 +952,7 @@ export const getOrders = async (req: Request, res: Response) => {
             employeeName: true,
           },
         },
+        branch: true,
         cashAccount: true,
 
         bankAccount: true,
@@ -999,9 +993,9 @@ export const getVehicleInchargeList = async (req: Request, res: Response) => {
     const whereClause: any = {};
 
     // Branch/Sales Executive ka data unke hisaab se filter (agar lead se linked ho)
-    if (user?.role?.toUpperCase() === "BRANCH") {
-      whereClause.lead = { branchId: Number(user.branchId) };
-    }
+  if (user?.role?.toUpperCase() === "BRANCH") {
+    whereClause.branchId = Number(user.branchId);
+}
     if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
       whereClause.lead = { executiveId: Number(user.id) };
     }
@@ -1078,11 +1072,9 @@ export const getAccessoriesAllotList = async (req: Request, res: Response) => {
 
     const whereClause: any = {};
 
-    if (user?.role?.toUpperCase() === "BRANCH") {
-      whereClause.lead = {
-        branchId: Number(user.branchId),
-      };
-    }
+  if (user?.role?.toUpperCase() === "BRANCH") {
+    whereClause.branchId = Number(user.branchId);
+}
 
     if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
       whereClause.lead = {
@@ -1422,7 +1414,7 @@ export const getOrderById = async (req: Request, res: Response) => {
             account: true,
           },
         },
-
+        branch: true,
         cashAccount: true,
 
         bankAccount: true,
@@ -1489,7 +1481,7 @@ export const getOrderByLeadId = async (req: Request, res: Response) => {
             account: true,
           },
         },
-
+          branch: true,
         cashAccount: true,
 
         bankAccount: true,
