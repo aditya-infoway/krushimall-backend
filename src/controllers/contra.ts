@@ -111,7 +111,7 @@ export const createContra = async (req: Request, res: Response) => {
          createdById: Number(user.id),
 createdBy: name,
 createdType: role,
-branchId: role === "BRANCH" ? Number(user.branchId) : null,
+branchId: user?.branchId ? Number(user.branchId) : null,
         },
       });
 

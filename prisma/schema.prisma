@@ -566,7 +566,7 @@ model Employee {
 
   branchId                 Int?
   createdByBranch          Branch?                   @relation("EmployeeBranch", fields: [branchId], references: [id])
-  orders                   Order[]
+ 
   accounts                 Account[]
   purchases                Purchase[]
   accessoriesPurchases     AccessoriesPurchase[]
@@ -576,7 +576,7 @@ model Employee {
   bankReceipts             BankReceipt[]             @relation("BankReceiptEmployee")
   contras                  Contra[]                  @relation("ContraEmployee")
   accessoriesPurchaseItems AccessoriesPurchaseItem[] @relation("AccessoriesPurchaseItemEmployee")
-  testDrives               TestDrive[]               @relation("TestDriveEmployee")
+ 
    accessories Accessory[]
 }
 
@@ -826,8 +826,10 @@ model FollowUp {
 
   createdType String?
   createdBy   String?
-
+  branchId    Int?    
   lead Lead @relation(fields: [leadId], references: [id])
+  branch Branch? @relation("FollowUpBranch", fields: [branchId], references: [id])
+    @@index([branchId]) 
 }
 
 model Accessory {
@@ -1236,7 +1238,10 @@ model Branch {
   bankPayments BankPayment[] @relation("BankPaymentBranch")
   bankReceipts BankReceipt[] @relation("BankReceiptBranch")
   contras      Contra[]      @relation("ContraBranch")
+    followUps FollowUp[] @relation("FollowUpBranch")  
 
+     testDrives TestDrive[] @relation("TestDriveBranch")
+  orders Order[]
   @@index([companyId])
   @@index([financialYearId])
   @@index([managerId])
@@ -1389,10 +1394,11 @@ model Order {
   financialYearId Int
   financialYear   FinancialYear @relation(fields: [financialYearId], references: [id])
 
-  // Lead Relation
+  // Lead Relation  
   leadId Int  @unique
   lead   Lead @relation(fields: [leadId], references: [id])
-
+  branchId Int?
+  branch Branch? @relation(fields: [branchId], references: [id])
   // Vehicle Charges
   exShowroomPrice       Float @default(0)
   insurance             Float @default(0)
@@ -1501,7 +1507,7 @@ model Order {
   createdType      String?
   orderAccessories OrderAccessory[]
   // Optional relation
-  employee         Employee?        @relation(fields: [createdById], references: [id])
+  
 invoiceNo   String? @unique
 invoiceDate DateTime?
   createdAt DateTime @default(now())
@@ -1684,11 +1690,16 @@ model TestDrive {
   createdBy   String?
   createdType String?
 
-  employee        Employee?       @relation("TestDriveEmployee", fields: [createdById], references: [id])
+  branchId Int?              // ✅ NEW
+
+  // employee Employee? @relation("TestDriveEmployee", fields: [createdById], references: [id])  ❌ REMOVE
   lead            Lead            @relation(fields: [leadId], references: [id])
   model           Model           @relation(fields: [modelId], references: [id])
   showroomVariant ShowroomVariant @relation(fields: [showroomVariantId], references: [id])
   colour          Colour          @relation(fields: [colourId], references: [id])
+  branch          Branch?         @relation("TestDriveBranch", fields: [branchId], references: [id])  // ✅ NEW
+
+  @@index([branchId])
 }
 
 model Wishlist {
