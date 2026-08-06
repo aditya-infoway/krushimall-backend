@@ -3,34 +3,58 @@ import prisma from "../lib/prisma.js";
 export const createAccount = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-   const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
-
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+ 
     if (role === "BRANCH" && !user?.branchId) {
       return res.status(400).json({
         success: false,
         message: "Branch ID missing from token — cannot create account",
       });
     }
-
+ 
+    // ⚠️ CONFIRMED: schema.prisma mein Account.createdById FK sirf Employee.id
+    // ko point karta hai. Admin/Branch table ka id Employee table mein exist
+    // nahi karta, isliye unke case mein FK todega agar force set kiya.
+    //
+    // Fix: jo bhi ID set karni ho (body se ya user.id se), pehle DB mein
+    // verify karo ki wo Employee row actually exist karti hai. Nahi karti
+    // to null bhejo — createdBy (name) aur createdType (role) string fields
+    // already poori tracking info rakhte hain, unpe FK constraint nahi hai.
+    const rawCreatedById = req.body.createdById
+      ? Number(req.body.createdById)
+      : Number(user?.id);
+ 
+    let createdById: number | null = null;
+ 
+    if (rawCreatedById && !Number.isNaN(rawCreatedById)) {
+      const employeeExists = await prisma.employee.findUnique({
+        where: { id: rawCreatedById },
+        select: { id: true },
+      });
+      if (employeeExists) {
+        createdById = rawCreatedById;
+      }
+    }
+ 
     const payload = {
       ...req.body,
-
+ 
       openingBalance: Number(req.body.openingBalance || 0),
       closingBalance: Number(req.body.openingBalance || 0),
-
+ 
       birthday: req.body.birthday ? new Date(req.body.birthday) : null,
       anniversary: req.body.anniversary ? new Date(req.body.anniversary) : null,
-
+ 
       createdType: req.body.createdType || role,
       createdBy: req.body.createdBy || user?.employeeName || user?.name,
-     createdById: Number(req.body.createdById || user.id),
-      branchId: role === "BRANCH" ? Number(user.branchId) : null,
+      createdById,
+      branchId: user?.branchId ? Number(user.branchId) : null,
     };
-
+ 
     const account = await prisma.account.create({
       data: payload,
     });
-
+ 
     res.status(201).json({
       success: true,
       data: account,
@@ -38,13 +62,14 @@ export const createAccount = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.log("Create Account Error:", error);
-
+ 
     res.status(500).json({
       success: false,
       message: "Failed to create account",
     });
   }
 };
+ 
 
 // export const getAccounts = async (req: Request, res: Response) => {
 //   try {

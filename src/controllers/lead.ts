@@ -65,7 +65,7 @@ export const createLead = async (req: Request, res: Response) => {
       quotationGrandTotal: initialQuotationGrandTotal,
       createdType: role,
       createdBy: req.body.createdBy || user?.employeeName || user?.name,
-      branchId: role === "BRANCH" ? Number(user.branchId) : null,
+   branchId: user?.branchId ? Number(user.branchId) : null,
       executiveId: req.body.executiveId ? Number(req.body.executiveId) : null,
       companyId: Number(req.body.companyId),
       financialYearId: Number(req.body.financialYearId),
@@ -1631,12 +1631,9 @@ export const getQuotationHistoryList = async (req: Request, res: Response) => {
     };
 
     // Branch user can see only own branch leads
-    if (user?.role?.toUpperCase() === "BRANCH") {
-      whereClause.branchId = Number(user.branchId);
-    }
-    if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
-      whereClause.executiveId = Number(user.id);
-    }
+   if (user?.branchId) {
+  whereClause.branchId = Number(user.branchId);
+}
     const leads = await prisma.lead.findMany({
       where: whereClause,
 
