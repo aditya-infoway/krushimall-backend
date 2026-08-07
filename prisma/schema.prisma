@@ -259,6 +259,7 @@ model WebsiteVariant {
   skuCode                   String?
   country                   String?
   tractorStatus             String?
+  driveType                 String?
   shortDescription          String?
   highlight1                String?
   highlight2                String?
