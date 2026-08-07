@@ -22,7 +22,29 @@ export const createTestDrive = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
     const name = user?.employeeName || user?.name || "Admin";
-    const branchId = user?.branchId ? Number(user.branchId) : null;
+
+    // Get Lead Branch
+    const lead = await prisma.lead.findUnique({
+      where: {
+        id: Number(leadId),
+      },
+      select: {
+        branchId: true,
+      },
+    });
+
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
+
+    // Branch users -> own branch
+    // Admin -> Lead's branch
+    const finalBranchId = user?.branchId
+      ? Number(user.branchId)
+      : lead.branchId;
 
     const testDrive = await prisma.testDrive.create({
       data: {
@@ -45,14 +67,15 @@ export const createTestDrive = async (req: Request, res: Response) => {
         createdById: Number(user.id),
         createdBy: name,
         createdType: role,
-       branchId: user?.branchId ? Number(user.branchId) : null,   // ✅ NEW
+
+        branchId: finalBranchId,
       },
       include: {
         lead: true,
         model: true,
         showroomVariant: true,
         colour: true,
-        // employee: true,   ❌ REMOVE — relation ab exist nahi karti
+        branch: true,
       },
     });
 
@@ -63,6 +86,7 @@ export const createTestDrive = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error(error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to create Test Drive",
