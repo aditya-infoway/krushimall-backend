@@ -143,7 +143,7 @@ export const createPurchase = async (req: Request, res: Response) => {
         });
       }
     }
-    const billNo = await generateBillNo("PURCHASE", "purchase");
+   const billNo = await generateBillNo("PURCHASE", "purchase", Number(companyId), Number(financialYearId));
   const user = (req as any).user;
 const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
 const name = user?.employeeName || user?.name || "Admin";
@@ -797,19 +797,19 @@ export const deletePurchase = async (req: Request, res: Response) => {
 };
 export const getPurchaseBillNo = async (req: Request, res: Response) => {
   try {
-    const billNo = await generateBillNo("PURCHASE", "purchase");
+    const { companyId, financialYearId } = req.query;
 
-    return res.status(200).json({
-      success: true,
-      billNo,
-    });
+    const billNo = await generateBillNo(
+      "PURCHASE",
+      "purchase",
+      Number(companyId),
+      Number(financialYearId)
+    );
+
+    return res.status(200).json({ success: true, billNo });
   } catch (error) {
     console.log(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to generate bill no",
-    });
+    return res.status(500).json({ success: false, message: "Failed to generate bill no" });
   }
 };
 export const submitPurchaseItemInward = async (req: Request, res: Response) => {
