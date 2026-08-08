@@ -153,7 +153,7 @@ export const createAccessoriesPurchase = async (
         });
       }
     }
-    const billNo = await generateAccessoriesPurchaseBillNo();
+  const billNo = await generateAccessoriesPurchaseBillNo(Number(companyId), Number(financialYearId));
 const user = (req as any).user;
 const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
 const name = user?.employeeName || user?.name || "Admin";
@@ -777,17 +777,16 @@ export const deleteAccessoriesPurchase = async (
     });
   }
 };
-export const getAccessoriesPurchaseBillNo = async (
-  req: Request,
-  res: Response,
-) => {
+export const getAccessoriesPurchaseBillNo = async (req: Request, res: Response) => {
   try {
-    const billNo = await generateAccessoriesPurchaseBillNo();
+    const { companyId, financialYearId } = req.query;
 
-    return res.json({
-      success: true,
-      billNo,
-    });
+    const billNo = await generateAccessoriesPurchaseBillNo(
+      Number(companyId),
+      Number(financialYearId)
+    );
+
+    return res.json({ success: true, billNo });
   } catch (error) {
     return res.status(500).json({
       success: false,

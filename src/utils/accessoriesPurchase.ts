@@ -1,52 +1,52 @@
 import prisma from "../lib/prisma.js";
 
-export const generateAccessoriesPurchaseBillNo =
-  async (): Promise<string> => {
-    const prefixMaster =
-      await prisma.profilePrefix.findFirst({
-        where: {
-          prefixFor: "ACCESSORIES_PURCHASE",
+export const generateAccessoriesPurchaseBillNo = async (
+  companyId: number,
+  financialYearId: number
+): Promise<string> => {
+  const prefixMaster = await prisma.profilePrefix.findFirst({
+    where: {
+      prefixFor: "ACCESSORIES_PURCHASE",
+    },
+  });
+
+  if (!prefixMaster) {
+    throw new Error("Accessories Purchase Prefix not found");
+  }
+
+  // CHANGED: session se aaya financialYearId use karo, DB se "latest" guess mat karo
+  const currentFY = await prisma.financialYear.findUnique({
+    where: { id: financialYearId },
+  });
+
+  if (!currentFY) {
+    throw new Error("Financial Year not found");
+  }
+
+  const [startYear, endYear] = currentFY.financialYear.split("-");
+  const financialYear = `${startYear.slice(-2)}-${endYear.slice(-2)}`;
+
+  // CHANGED: transaction wrap - race condition me duplicate billNo se bachne ke liye
+  return await prisma.$transaction(async (tx) => {
+    const lastBill = await tx.accessoriesPurchase.findFirst({
+      where: {
+        companyId, // CHANGED: company-wise scoped
+        financialYearId,
+        billNo: {
+          startsWith: `${prefixMaster.prefix}/${financialYear}/`,
         },
-      });
-
-    if (!prefixMaster) {
-      throw new Error("Accessories Purchase Prefix not found");
-    }
-
-    const currentFY =
-      await prisma.financialYear.findFirst({
-        orderBy: { id: "desc" },
-      });
-
-    if (!currentFY) {
-      throw new Error("Financial Year not found");
-    }
-
-    const [startYear, endYear] =
-      currentFY.financialYear.split("-");
-
-    const financialYear = `${startYear.slice(-2)}-${endYear.slice(-2)}`;
-
-    const lastBill =
-      await prisma.accessoriesPurchase.findFirst({
-        where: {
-          billNo: {
-            startsWith: `${prefixMaster.prefix}/${financialYear}/`,
-          },
-        },
-        orderBy: {
-          id: "desc",
-        },
-      });
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
 
     let nextNumber = 1;
 
     if (lastBill?.billNo) {
-      nextNumber =
-        Number(lastBill.billNo.split("/")[2]) + 1;
+      nextNumber = Number(lastBill.billNo.split("/")[2]) + 1;
     }
 
-    return `${prefixMaster.prefix}/${financialYear}/${String(
-      nextNumber
-    ).padStart(3, "0")}`;
-  };
+    return `${prefixMaster.prefix}/${financialYear}/${String(nextNumber).padStart(3, "0")}`;
+  });
+};

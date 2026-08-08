@@ -88,74 +88,74 @@ model FinancialYear {
 }
 
 model Category {
-  id              Int              @id @default(autoincrement())
-  categoryName    String           @unique
-  status          String           @default("ACTIVE")
-  image           String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  brands          Brand[]
-  models          Model[]
-  modelYears      ModelYear[]
-  variants        Variant[]
-  websiteVariants WebsiteVariant[]
+  id                  Int                  @id @default(autoincrement())
+  categoryName        String               @unique
+  status              String               @default("ACTIVE")
+  image               String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  brands              Brand[]
+  models              Model[]
+  modelYears          ModelYear[]
+  variants            Variant[]
+  websiteVariants     WebsiteVariant[]
   usedWebsiteVariants UsedWebsiteVariant[]
 }
 
 model Brand {
-  id              Int              @id @default(autoincrement())
-  categoryId      Int
-  brandName       String
-  image           String?
-  status          String           @default("ACTIVE")
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  category        Category         @relation(fields: [categoryId], references: [id])
-  models          Model[]
-  modelYears      ModelYear[]
-  variants        Variant[]
-  websiteVariants WebsiteVariant[]
+  id                  Int                  @id @default(autoincrement())
+  categoryId          Int
+  brandName           String
+  image               String?
+  status              String               @default("ACTIVE")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  category            Category             @relation(fields: [categoryId], references: [id])
+  models              Model[]
+  modelYears          ModelYear[]
+  variants            Variant[]
+  websiteVariants     WebsiteVariant[]
   usedWebsiteVariants UsedWebsiteVariant[]
 }
 
 model Model {
-  id                 Int                @id @default(autoincrement())
-  categoryId         Int
-  brandId            Int
-  modelName          String
-  image              String?
-  status             String             @default("ACTIVE")
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  colours            Colour[]
-  leads              Lead[]
-  brand              Brand              @relation(fields: [brandId], references: [id])
-  category           Category           @relation(fields: [categoryId], references: [id])
-  modelYears         ModelYear[]
-  showroomVariants   ShowroomVariant[]
-  tractors           Tractor[]
-  variants           Variant[]
-  websiteVariants    WebsiteVariant[]
-  quotationHistories QuotationHistory[]
-  testDrives         TestDrive[]
+  id                  Int                  @id @default(autoincrement())
+  categoryId          Int
+  brandId             Int
+  modelName           String
+  image               String?
+  status              String               @default("ACTIVE")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  colours             Colour[]
+  leads               Lead[]
+  brand               Brand                @relation(fields: [brandId], references: [id])
+  category            Category             @relation(fields: [categoryId], references: [id])
+  modelYears          ModelYear[]
+  showroomVariants    ShowroomVariant[]
+  tractors            Tractor[]
+  variants            Variant[]
+  websiteVariants     WebsiteVariant[]
+  quotationHistories  QuotationHistory[]
+  testDrives          TestDrive[]
   usedWebsiteVariants UsedWebsiteVariant[]
 }
 
 model ModelYear {
-  id              Int              @id @default(autoincrement())
-  categoryId      Int
-  brandId         Int
-  modelId         Int
-  modelYear       String
-  image           String?
-  status          String           @default("ACTIVE")
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  brand           Brand            @relation(fields: [brandId], references: [id])
-  category        Category         @relation(fields: [categoryId], references: [id])
-  model           Model            @relation(fields: [modelId], references: [id])
-  variants        Variant[]
-  websiteVariants WebsiteVariant[]
+  id                  Int                  @id @default(autoincrement())
+  categoryId          Int
+  brandId             Int
+  modelId             Int
+  modelYear           String
+  image               String?
+  status              String               @default("ACTIVE")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  brand               Brand                @relation(fields: [brandId], references: [id])
+  category            Category             @relation(fields: [categoryId], references: [id])
+  model               Model                @relation(fields: [modelId], references: [id])
+  variants            Variant[]
+  websiteVariants     WebsiteVariant[]
   usedWebsiteVariants UsedWebsiteVariant[]
 }
 
@@ -228,12 +228,12 @@ model Variant {
   colours     Colour[]
   leads       Lead[]
 
-  brand            Brand             @relation(fields: [brandId], references: [id])
-  category         Category          @relation(fields: [categoryId], references: [id])
-  model            Model             @relation(fields: [modelId], references: [id])
-  modelYear        ModelYear         @relation(fields: [modelYearId], references: [id])
-  websiteVariants  WebsiteVariant[]
-  showroomVariants ShowroomVariant[]
+  brand               Brand                @relation(fields: [brandId], references: [id])
+  category            Category             @relation(fields: [categoryId], references: [id])
+  model               Model                @relation(fields: [modelId], references: [id])
+  modelYear           ModelYear            @relation(fields: [modelYearId], references: [id])
+  websiteVariants     WebsiteVariant[]
+  showroomVariants    ShowroomVariant[]
   usedWebsiteVariants UsedWebsiteVariant[]
 }
 
@@ -387,7 +387,7 @@ model WebsiteVariant {
   modelYear                 ModelYear?       @relation(fields: [modelYearId], references: [id])
   variant                   Variant?         @relation(fields: [variantId], references: [id])
   enquiries                 WebsiteEnquiry[]
-    isUpcoming  Boolean  @default(false)
+  isUpcoming                Boolean          @default(false)
   enquiryCount              Int              @default(0)
   wishlistedBy              Wishlist[]
 }
@@ -472,15 +472,22 @@ model Account {
   orderBankAccounts     Order[]                @relation("OrderBankAccount")
   vehicleStockTransfers VehicleStockTransfer[]
 
-  createdType     String?
-  createdBy       String?
-  createdById     Int?
-  branchId        Int?
-  createdByBranch Branch?   @relation("AccountBranch", fields: [branchId], references: [id])
-  employee        Employee? @relation(fields: [createdById], references: [id])
-  finances        Finance[]
+  createdType String?
+  createdBy   String?
+  createdById Int?
+  branchId    Int?
+
+  createdByBranch Branch? @relation("AccountBranch", fields: [branchId], references: [id])
+
+  teamLeadId Int?
+  teamLead   Employee? @relation("AccountTeamLead", fields: [teamLeadId], references: [id])
+
+  employee Employee? @relation("AccountCreatedBy", fields: [createdById], references: [id])
+
+  finances Finance[]
 
   @@index([createdById])
+  @@index([teamLeadId])
 }
 
 model EnquiryType {
@@ -560,15 +567,22 @@ model Employee {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  leads Lead[]
-
   createdType String?
   createdBy   String?
 
-  branchId                 Int?
-  createdByBranch          Branch?                   @relation("EmployeeBranch", fields: [branchId], references: [id])
- 
-  accounts                 Account[]
+  branchId        Int?
+  createdByBranch Branch? @relation("EmployeeBranch", fields: [branchId], references: [id])
+  leads           Lead[]  @relation("LeadExecutive")
+
+  // Leads assigned to this Team Lead
+  teamLeadLeads Lead[]    @relation("LeadTeamLead")
+  teamLead      Employee? @relation("EmployeeTeamLead", fields: [teamLeadId], references: [id])
+
+  teamMembers Employee[] @relation("EmployeeTeamLead")
+
+  accounts Account[] @relation("AccountCreatedBy")
+
+  teamLeadAccounts         Account[]                 @relation("AccountTeamLead")
   purchases                Purchase[]
   accessoriesPurchases     AccessoriesPurchase[]
   cashPayments             CashPayment[]             @relation("CashPaymentEmployee")
@@ -577,8 +591,8 @@ model Employee {
   bankReceipts             BankReceipt[]             @relation("BankReceiptEmployee")
   contras                  Contra[]                  @relation("ContraEmployee")
   accessoriesPurchaseItems AccessoriesPurchaseItem[] @relation("AccessoriesPurchaseItemEmployee")
- 
-   accessories Accessory[]
+
+  accessories Accessory[]
 }
 
 model Tractor {
@@ -785,11 +799,12 @@ model Lead {
   companyId         Int?
   financialYearId   Int?
 
-  createdType String?
-  createdBy   String?
-  branchId    Int?
-
+  createdType         String?
+  createdBy           String?
+  branchId            Int?
+  teamLeadId          Int?
   branch              Branch?            @relation(fields: [branchId], references: [id])
+  teamLead            Employee?          @relation("LeadTeamLead", fields: [teamLeadId], references: [id])
   quotationGrandTotal Float              @default(0)
   company             Company?           @relation(fields: [companyId], references: [id])
   financialYear       FinancialYear?     @relation(fields: [financialYearId], references: [id])
@@ -799,7 +814,7 @@ model Lead {
   enquirySourceMaster EnquirySource?     @relation(fields: [enquirySourceId], references: [id])
   enquiryStatus       EnquiryStatus?     @relation(fields: [enquiryStatusId], references: [id])
   enquiryTypeMaster   EnquiryType?       @relation(fields: [enquiryTypeId], references: [id])
-  executive           Employee?          @relation(fields: [executiveId], references: [id])
+  executive           Employee?          @relation("LeadExecutive", fields: [executiveId], references: [id])
   model               Model?             @relation(fields: [modelId], references: [id])
   profession          Profession?        @relation(fields: [professionId], references: [id])
   showroomVariant     ShowroomVariant?   @relation(fields: [showroomVariantId], references: [id])
@@ -811,6 +826,8 @@ model Lead {
   quotationRevision   Int                @default(0)
   quotationHistories  QuotationHistory[]
   testDrives          TestDrive[]
+
+  @@index([teamLeadId])
 }
 
 model FollowUp {
@@ -827,34 +844,35 @@ model FollowUp {
 
   createdType String?
   createdBy   String?
-  branchId    Int?    
-  lead Lead @relation(fields: [leadId], references: [id])
-  branch Branch? @relation("FollowUpBranch", fields: [branchId], references: [id])
-    @@index([branchId]) 
+  branchId    Int?
+  lead        Lead    @relation(fields: [leadId], references: [id])
+  branch      Branch? @relation("FollowUpBranch", fields: [branchId], references: [id])
+
+  @@index([branchId])
 }
 
 model Accessory {
-  id                         Int                        @id @default(autoincrement())
-  type                       String
-  itemName                   String
-  codeNo                     String                     @unique
-  shortName                  String?
-  hsnCode                    String?
-  unit                       String?
-  taxSlab                    String?
-  group                      String?
-  purchasePrice              Float?
-  salesPrice                 Float?
-  mrp                        Float?
-  barCode                    String?
-  opStock                    Int                        @default(0)
-  showroomVariants           Json?
-  status                     String                     @default("ACTIVE")
-    createdById      Int?
+  id               Int     @id @default(autoincrement())
+  type             String
+  itemName         String
+  codeNo           String  @unique
+  shortName        String?
+  hsnCode          String?
+  unit             String?
+  taxSlab          String?
+  group            String?
+  purchasePrice    Float?
+  salesPrice       Float?
+  mrp              Float?
+  barCode          String?
+  opStock          Int     @default(0)
+  showroomVariants Json?
+  status           String  @default("ACTIVE")
+  createdById      Int?
   createdBy        String?
   createdType      String?
 
-   employee Employee? @relation(fields: [createdById], references: [id])
+  employee                   Employee?                  @relation(fields: [createdById], references: [id])
   createdAt                  DateTime                   @default(now())
   updatedAt                  DateTime                   @updatedAt
   showroomVariantAccessories ShowroomVariantAccessory[]
@@ -1239,10 +1257,11 @@ model Branch {
   bankPayments BankPayment[] @relation("BankPaymentBranch")
   bankReceipts BankReceipt[] @relation("BankReceiptBranch")
   contras      Contra[]      @relation("ContraBranch")
-    followUps FollowUp[] @relation("FollowUpBranch")  
+  followUps    FollowUp[]    @relation("FollowUpBranch")
 
-     testDrives TestDrive[] @relation("TestDriveBranch")
-  orders Order[]
+  testDrives TestDrive[] @relation("TestDriveBranch")
+  orders     Order[]
+
   @@index([companyId])
   @@index([financialYearId])
   @@index([managerId])
@@ -1373,6 +1392,12 @@ model QuotationHistory {
 
   updatedBy String?
 
+  // ✅ NEW — same tracking pattern as TestDrive/Lead
+  createdById Int?
+  createdType String?
+  branchId    Int?
+  teamLeadId  Int?
+
   createdAt DateTime @default(now())
 
   lead            Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
@@ -1382,6 +1407,8 @@ model QuotationHistory {
 
   @@unique([leadId, revisionNo])
   @@index([leadId])
+  @@index([branchId])
+  @@index([teamLeadId])
 }
 
 model Order {
@@ -1396,19 +1423,19 @@ model Order {
   financialYear   FinancialYear @relation(fields: [financialYearId], references: [id])
 
   // Lead Relation  
-  leadId Int  @unique
-  lead   Lead @relation(fields: [leadId], references: [id])
-  branchId Int?
-  branch Branch? @relation(fields: [branchId], references: [id])
+  leadId                Int     @unique
+  lead                  Lead    @relation(fields: [leadId], references: [id])
+  branchId              Int?
+  branch                Branch? @relation(fields: [branchId], references: [id])
   // Vehicle Charges
-  exShowroomPrice       Float @default(0)
-  insurance             Float @default(0)
-  roadSideAssistance    Float @default(0)
-  exWarranty2_3         Float @default(0)
-  hypothecationCharges  Float @default(0)
-  exWarranty2_8         Float @default(0)
-  rtoRegistrationCharge Float @default(0)
-  rtoOtherCharge        Float @default(0)
+  exShowroomPrice       Float   @default(0)
+  insurance             Float   @default(0)
+  roadSideAssistance    Float   @default(0)
+  exWarranty2_3         Float   @default(0)
+  hypothecationCharges  Float   @default(0)
+  exWarranty2_8         Float   @default(0)
+  rtoRegistrationCharge Float   @default(0)
+  rtoOtherCharge        Float   @default(0)
 
   // Allotment Details
   model               String?
@@ -1508,11 +1535,11 @@ model Order {
   createdType      String?
   orderAccessories OrderAccessory[]
   // Optional relation
-  
-invoiceNo   String? @unique
-invoiceDate DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  invoiceNo   String?   @unique
+  invoiceDate DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([companyId])
   @@index([financialYearId])
@@ -1536,9 +1563,9 @@ model OrderAccessory {
 
   salesPrice Float @default(0)
 
-  status String @default("Pending")
-    verifyStatus String @default("Pending")
-  createdAt DateTime @default(now())
+  status       String   @default("Pending")
+  verifyStatus String   @default("Pending")
+  createdAt    DateTime @default(now())
 
   @@index([orderId])
   @@index([accessoryId])
@@ -1559,11 +1586,11 @@ model Role {
 }
 
 model WebUser {
-  id       Int    @id @default(autoincrement())
-  avatar String?
+  id       Int     @id @default(autoincrement())
+  avatar   String?
   name     String
-  email    String @unique
-  phone    String @unique
+  email    String  @unique
+  phone    String  @unique
   password String
 
   // Profile
@@ -1608,12 +1635,12 @@ model WebVendor {
   vendorPassword String
 
   // ADD THESE
-  otp        String?
-  otpExpiry  DateTime?
+  otp       String?
+  otpExpiry DateTime?
 
   avatar String?
 
-  isVerified Boolean @default(false)
+  isVerified Boolean   @default(false)
   verifiedAt DateTime?
 
   websiteVariants WebsiteVariant[]
@@ -1628,10 +1655,10 @@ model WebsiteEnquiry {
   id Int @id @default(autoincrement())
 
   websiteVariantId Int?
-  websiteVariant WebsiteVariant? @relation(fields: [websiteVariantId], references: [id])
+  websiteVariant   WebsiteVariant? @relation(fields: [websiteVariantId], references: [id])
 
   usedWebsiteVariantId Int?
-  usedWebsiteVariant UsedWebsiteVariant? @relation(fields: [usedWebsiteVariantId], references: [id])
+  usedWebsiteVariant   UsedWebsiteVariant? @relation(fields: [usedWebsiteVariantId], references: [id])
 
   fullName     String
   email        String
@@ -1691,16 +1718,17 @@ model TestDrive {
   createdBy   String?
   createdType String?
 
-  branchId Int?              // ✅ NEW
-
+  branchId Int? // ✅ NEW
+    teamLeadId Int?
   // employee Employee? @relation("TestDriveEmployee", fields: [createdById], references: [id])  ❌ REMOVE
   lead            Lead            @relation(fields: [leadId], references: [id])
   model           Model           @relation(fields: [modelId], references: [id])
   showroomVariant ShowroomVariant @relation(fields: [showroomVariantId], references: [id])
   colour          Colour          @relation(fields: [colourId], references: [id])
-  branch          Branch?         @relation("TestDriveBranch", fields: [branchId], references: [id])  // ✅ NEW
+  branch          Branch?         @relation("TestDriveBranch", fields: [branchId], references: [id]) // ✅ NEW
 
   @@index([branchId])
+  @@index([teamLeadId])
 }
 
 model Wishlist {
@@ -1726,17 +1754,18 @@ model NotificationToken {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
 model UsedWebsiteVariant {
-  id          Int      @id @default(autoincrement())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  currentStep Int      @default(1)
-  status      String   @default("DRAFT")
-  isCompleted Boolean  @default(false)
+  currentStep Int     @default(1)
+  status      String  @default("DRAFT")
+  isCompleted Boolean @default(false)
 
-  vendorId    Int?
-  vendor       WebVendor? @relation(fields: [vendorId], references: [id])
+  vendorId Int?
+  vendor   WebVendor? @relation(fields: [vendorId], references: [id])
 
   createdById Int?
   createdBy   String?
@@ -1745,87 +1774,87 @@ model UsedWebsiteVariant {
   // ==========================
   // Product Classification
   // ==========================
-  categoryId    Int?
-  brandId       Int?
-  modelId       Int?
-  modelYearId   Int?
-  variantId     Int?
-  variantCode   String?
+  categoryId  Int?
+  brandId     Int?
+  modelId     Int?
+  modelYearId Int?
+  variantId   Int?
+  variantCode String?
 
   // Store selected names
-  brand         String?
-  model         String?
-  variant       String?
+  brand   String?
+  model   String?
+  variant String?
 
   // ==========================
   // Tractor Details
   // ==========================
-  hp                     Int?
-  manufacturingYear      Int?
-  purchaseYear           Int?
-  rcRegistrationNumber   String?
-  engineNumber           String?
-  chassisNumber          String?
-  tractorCategory        String?
-  fuelType               String?
-  driveType              String?
-description            String?  
+  hp                   Int?
+  manufacturingYear    Int?
+  purchaseYear         Int?
+  rcRegistrationNumber String?
+  engineNumber         String?
+  chassisNumber        String?
+  tractorCategory      String?
+  fuelType             String?
+  driveType            String?
+  description          String?
   // ==========================
   // Available Colors
   // ==========================
-  redColor               Boolean @default(false)
-  blueColor              Boolean @default(false)
-  greenColor             Boolean @default(false)
-  orangeColor            Boolean @default(false)
-  blackColor             Boolean @default(false)
-  whiteColor             Boolean @default(false)
-  customColor            Boolean @default(false)
-  customColorName        String?
-  customColorCode        String?
-// ==========================
-// Highlights
-// ==========================
-highlight1 String?
-highlight2 String?
-highlight3 String?
-highlight4 String?
-highlight5 String?
+  redColor             Boolean @default(false)
+  blueColor            Boolean @default(false)
+  greenColor           Boolean @default(false)
+  orangeColor          Boolean @default(false)
+  blackColor           Boolean @default(false)
+  whiteColor           Boolean @default(false)
+  customColor          Boolean @default(false)
+  customColorName      String?
+  customColorCode      String?
+  // ==========================
+  // Highlights
+  // ==========================
+  highlight1           String?
+  highlight2           String?
+  highlight3           String?
+  highlight4           String?
+  highlight5           String?
   // ==========================
   // Location
   // ==========================
- availablecountry                String?
-  availableStates        Json?
-  availableDistricts     Json?
+  availablecountry     String?
+  availableStates      Json?
+  availableDistricts   Json?
 
-  locationState          String?
-  locationDistrict       String?
-  locationTaluka         String?
-  locationVillage        String?
+  locationState    String?
+  locationDistrict String?
+  locationTaluka   String?
+  locationVillage  String?
 
   // ==========================
   // Ownership
   // ==========================
-  ownership              String?
-  ownerType              String?
-  firstOwner             String?
-  secondOwner            String?
-  thirdOwner             String?
-  sellerType             String?
+  ownership               String?
+  ownerType               String?
+  firstOwner              String?
+  secondOwner             String?
+  thirdOwner              String?
+  sellerType              String?
   ownershipProofAvailable Boolean @default(false)
 
   // ==========================
   // Usage
   // ==========================
-  hoursMeterReading      Int?
-  approxWorkingHours     Int?
-  acresWorked            Float?
-  purpose                String?
+  hoursMeterReading  Int?
+  approxWorkingHours Int?
+  acresWorked        Float?
+  purpose            String?
 
   // ==========================
   // Additional
   // ==========================
-  availableDealers       Json?
-  stockStatus            String?
+  availableDealers Json?
+  stockStatus      String?
 
   // Relations
   category   Category?  @relation(fields: [categoryId], references: [id])
@@ -1833,158 +1862,157 @@ highlight5 String?
   modelRef   Model?     @relation(fields: [modelId], references: [id])
   modelYear  ModelYear? @relation(fields: [modelYearId], references: [id])
   variantRef Variant?   @relation(fields: [variantId], references: [id])
-    // ==========================
+  // ==========================
   // Engine Details
   // ==========================
-  
 
   // ==========================
   // Vehicle Inspection
   // ==========================
-  overallCondition    String?
-  engineSelfStart     String?
-  engineColdStart     String?
-  engineSmoke         String?
-  engineSound         String?
-  engineOilLeakage    String?
+  overallCondition String?
+  engineSelfStart  String?
+  engineColdStart  String?
+  engineSmoke      String?
+  engineSound      String?
+  engineOilLeakage String?
 
-  clutchCondition     String?
-  gearboxCondition    String?
+  clutchCondition  String?
+  gearboxCondition String?
 
-  steeringType        String?
-  steeringCondition   String?
+  steeringType      String?
+  steeringCondition String?
 
-  brakesCondition     String?
-  batteryCondition    String?
+  brakesCondition  String?
+  batteryCondition String?
 
   // ==========================
   // Lights
   // ==========================
-  lightsHeadLight     Boolean @default(false)
-  lightsIndicator     Boolean @default(false)
-  lightsTailLight     Boolean @default(false)
-  lightsHorn          Boolean @default(false)
+  lightsHeadLight           Boolean @default(false)
+  lightsIndicator           Boolean @default(false)
+  lightsTailLight           Boolean @default(false)
+  lightsHorn                Boolean @default(false)
   // ==========================
-// Tyre Details
-// ==========================
-frontTyreBrand            String?
-frontTyreRemainingPercent Float?
-frontTyreCondition        String?
+  // Tyre Details
+  // ==========================
+  frontTyreBrand            String?
+  frontTyreRemainingPercent Float?
+  frontTyreCondition        String?
 
-rearTyreBrand             String?
-rearTyreRemainingPercent  Float?
-rearTyreCondition         String?
+  rearTyreBrand            String?
+  rearTyreRemainingPercent Float?
+  rearTyreCondition        String?
 
-// ==========================
-// Hydraulic Inspection
-// ==========================
-hydraulicLiftWorking      String?
-hydraulicCondition        String?
+  // ==========================
+  // Hydraulic Inspection
+  // ==========================
+  hydraulicLiftWorking String?
+  hydraulicCondition   String?
 
-// ==========================
-// PTO
-// ==========================
-ptoStatus                 String?
+  // ==========================
+  // PTO
+  // ==========================
+  ptoStatus String?
 
-// ==========================
-// Attachments
-// ==========================
-rotavator                 Boolean @default(false)
-cultivator                Boolean @default(false)
-trailer                   Boolean @default(false)
-trolley                   Boolean @default(false)
-mbPlough                  Boolean @default(false)
-seedDrill                 Boolean @default(false)
-sprayer                   Boolean @default(false)
-dozer                     Boolean @default(false)
-loader                    Boolean @default(false)
+  // ==========================
+  // Attachments
+  // ==========================
+  rotavator       Boolean   @default(false)
+  cultivator      Boolean   @default(false)
+  trailer         Boolean   @default(false)
+  trolley         Boolean   @default(false)
+  mbPlough        Boolean   @default(false)
+  seedDrill       Boolean   @default(false)
+  sprayer         Boolean   @default(false)
+  dozer           Boolean   @default(false)
+  loader          Boolean   @default(false)
   // ==========================
   // Transmission & Service
   // ==========================
-  lastServiceDate      DateTime?
+  lastServiceDate DateTime?
 
   // Service History
-  engineOverhauled     String?
-  gearboxRepaired      String?
-  clutchChanged        String?
-  tyresChanged         String?
-  batteryChanged       String?
+  engineOverhauled String?
+  gearboxRepaired  String?
+  clutchChanged    String?
+  tyresChanged     String?
+  batteryChanged   String?
 
   // Accident Details
-  accident             String?
-  floodDamage          String?
+  accident    String?
+  floodDamage String?
 
   // Insurance
-  insurance            String?
-  insuranceExpiryDate  DateTime?
+  insurance           String?
+  insuranceExpiryDate DateTime?
 
   // Finance
-  finance              String?
-  financeCompany       String?
-  outstandingAmount    Float?
-    // ==========================
+  finance           String?
+  financeCompany    String?
+  outstandingAmount Float?
+  // ==========================
   // Price Details
   // ==========================
- expectedPrice Float?
-  financeAvailable   String?
-  exchangeOffer      String?
-  negotiable         String?
+  expectedPrice     Float?
+  financeAvailable  String?
+  exchangeOffer     String?
+  negotiable        String?
 
   // ==========================
   // Location Details
   // ==========================
-  country            String?
-  state              String?
-  district           String?
-  taluka             String?
-  city               String?
-  pincode            String?
-  landmark           String?
-  fullAddress        String?
+  country     String?
+  state       String?
+  district    String?
+  taluka      String?
+  city        String?
+  pincode     String?
+  landmark    String?
+  fullAddress String?
 
   // ==========================
   // Map Location
   // ==========================
-  latitude           Float?
-  longitude          Float?
-    // ==========================
+  latitude      Float?
+  longitude     Float?
+  // ==========================
   // Media - Images
   // ==========================
-  frontView          String?
-  leftView           String?
-  rightView          String?
-  rearView           String?
-  engineView         String?
-  dashboardView      String?
-  tyreView           String?
-  hydraulicView      String?
-  ptoView            String?
+  frontView     String?
+  leftView      String?
+  rightView     String?
+  rearView      String?
+  engineView    String?
+  dashboardView String?
+  tyreView      String?
+  hydraulicView String?
+  ptoView       String?
 
   // Image of Chassis Number
   chassisNumberImage String?
 
   // RC Book Image
-  rcBook             String?
+  rcBook String?
 
   // Additional Images
-  additionalImage1   String?
-  additionalImage2   String?
-  additionalImage3   String?
-  additionalImage4   String?
-  additionalImage5   String?
+  additionalImage1 String?
+  additionalImage2 String?
+  additionalImage3 String?
+  additionalImage4 String?
+  additionalImage5 String?
 
   // ==========================
   // Documents
   // ==========================
-  brochure               String?
-  warrantyCard           String?
-  insuranceCertificate   String?
-  invoice                String?
-  others                 String?
-    enquiryCount              Int              @default(0)
+  brochure             String?
+  warrantyCard         String?
+  insuranceCertificate String?
+  invoice              String?
+  others               String?
+  enquiryCount         Int              @default(0)
   // ==========================
-// Preview & Submit
-// ==========================
-agreed Boolean @default(false)
-  enquiries WebsiteEnquiry[]
+  // Preview & Submit
+  // ==========================
+  agreed               Boolean          @default(false)
+  enquiries            WebsiteEnquiry[]
 }
