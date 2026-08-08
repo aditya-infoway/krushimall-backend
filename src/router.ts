@@ -43,6 +43,7 @@ import accountantRoute from "./routes/employee/accountant/index.js"
 import wishlistRoutes from "./routes/wishlist.js";
 import notificationRoutes from "./routes/notification.js";
 import storemanagerRoutes from "./routes/employee/storemanger/index.js"
+import teamleadRoutes from "./routes/employee/teamlead/index.js"
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -89,4 +90,5 @@ router.use("/accountant", accountantRoute);
 router.use("/storemanager", storemanagerRoutes);
 router.use("/wishlist", wishlistRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/teamlead", teamleadRoutes);
 export default router;

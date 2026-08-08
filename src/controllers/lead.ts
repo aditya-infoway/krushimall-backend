@@ -9,25 +9,58 @@ import { getFileUrl } from "../utils/getFileUrl.js";
 export const createLead = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const role = user?.role?.toUpperCase();
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+    // ==========================================
+    // GET LOGGED-IN EMPLOYEE
+    // ==========================================
 
+    let employee: any = null;
+
+    if (user?.id) {
+      employee = await prisma.employee.findUnique({
+        where: {
+          id: Number(user.id),
+        },
+        select: {
+          id: true,
+          employeeName: true,
+          role: true,
+          teamLeadId: true,
+          branchId: true,
+        },
+      });
+    }
+
+    // ==========================================
+    // DETERMINE TEAM LEAD
+    // ==========================================
+
+    let teamLeadId: number | null = null;
+
+    if (role === "TEAM_LEAD") {
+      // Team Lead creates Lead
+      // His own ID becomes teamLeadId
+      teamLeadId = employee?.id ?? null;
+    }
+
+    if (role === "SALES_EXECUTIVE") {
+      // Sales Executive creates Lead
+      // Use the Team Lead assigned to this employee
+      teamLeadId = employee?.teamLeadId ? Number(employee.teamLeadId) : null;
+
+      if (!teamLeadId) {
+        return res.status(400).json({
+          success: false,
+          message: "Team Lead is not assigned to this Sales Executive",
+        });
+      }
+    }
     if (role === "BRANCH" && !user?.branchId) {
       return res.status(400).json({
         success: false,
         message: "Branch ID missing from token — cannot create lead",
       });
     }
-
-    // ==========================================
-    // CALCULATE INITIAL QUOTATION GRAND TOTAL
-    // Lead create hote waqt frontend sirf model/variant/colour
-    // bhejta hai, price calculation nahi bhejta.
-    // Isliye yaha ExShowroom + Insurance + RTO (tax ke saath)
-    // nikal ke quotationGrandTotal me save karenge.
-    // (Accessories yaha include nahi hote — wo sirf
-    //  updateQuotation ke waqt add hote hain, kyunki
-    //  accessories selection Lead create step me nahi hota)
-    // ==========================================
     let initialQuotationGrandTotal = 0;
 
     if (req.body.showroomVariantId) {
@@ -65,7 +98,8 @@ export const createLead = async (req: Request, res: Response) => {
       quotationGrandTotal: initialQuotationGrandTotal,
       createdType: role,
       createdBy: req.body.createdBy || user?.employeeName || user?.name,
-   branchId: user?.branchId ? Number(user.branchId) : null,
+      branchId: user?.branchId ? Number(user.branchId) : null,
+      teamLeadId,
       executiveId: req.body.executiveId ? Number(req.body.executiveId) : null,
       companyId: Number(req.body.companyId),
       financialYearId: Number(req.body.financialYearId),
@@ -328,14 +362,14 @@ export const createLead = async (req: Request, res: Response) => {
 export const getLeads = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
     const whereClause: any = {};
-    if (user?.role?.toUpperCase() === "BRANCH") {
+    if (role === "BRANCH") {
       whereClause.branchId = Number(user.branchId);
-    }
-
-    if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+    } else if (role === "SALES_EXECUTIVE") {
       whereClause.executiveId = Number(user.id);
+    } else if (role === "TEAM_LEAD") {
+      whereClause.teamLeadId = Number(user.id);
     }
     // Admin panel: no filter — sees everything (admin-created + all branches)
 
@@ -351,7 +385,13 @@ export const getLeads = async (req: Request, res: Response) => {
         enquirySourceMaster: true,
         enquiryStatus: true,
         account: true,
-  order: true,
+        order: true,
+        teamLead: {
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
         showroomVariant: {
           include: {
             accessories: {
@@ -370,68 +410,66 @@ export const getLeads = async (req: Request, res: Response) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-  const data = await Promise.all(
-  leads.map(async (lead) => {
-    let leadTemperature = "Cold";
-    let leadColor = "sky";
+    const data = await Promise.all(
+      leads.map(async (lead) => {
+        let leadTemperature = "Cold";
+        let leadColor = "sky";
 
-    if (lead.expectedPurchaseDate) {
-      const expectedDate = new Date(lead.expectedPurchaseDate);
-      expectedDate.setHours(0, 0, 0, 0);
+        if (lead.expectedPurchaseDate) {
+          const expectedDate = new Date(lead.expectedPurchaseDate);
+          expectedDate.setHours(0, 0, 0, 0);
 
-      const diffDays = Math.ceil(
-        (expectedDate.getTime() - today.getTime()) /
-          (1000 * 60 * 60 * 24)
-      );
+          const diffDays = Math.ceil(
+            (expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+          );
 
-      if (diffDays <= 7) {
-        leadTemperature = "Hot";
-        leadColor = "red";
-      } else if (diffDays <= 15) {
-        leadTemperature = "Warm";
-        leadColor = "orange";
-      }
-    }
+          if (diffDays <= 7) {
+            leadTemperature = "Hot";
+            leadColor = "red";
+          } else if (diffDays <= 15) {
+            leadTemperature = "Warm";
+            leadColor = "orange";
+          }
+        }
 
-    const cashReceipts = await prisma.cashReceipt.aggregate({
-      where: {
-        leadId: lead.id,
-      },
-      _sum: {
-        amount: true,
-      },
-    });
+        const cashReceipts = await prisma.cashReceipt.aggregate({
+          where: {
+            leadId: lead.id,
+          },
+          _sum: {
+            amount: true,
+          },
+        });
 
-    const bankReceipts = await prisma.bankReceipt.aggregate({
-      where: {
-        leadId: lead.id,
-      },
-      _sum: {
-        amount: true,
-      },
-    });
+        const bankReceipts = await prisma.bankReceipt.aggregate({
+          where: {
+            leadId: lead.id,
+          },
+          _sum: {
+            amount: true,
+          },
+        });
 
-    const cashAmount = Number(cashReceipts._sum.amount || 0);
-    const bankAmount = Number(bankReceipts._sum.amount || 0);
+        const cashAmount = Number(cashReceipts._sum.amount || 0);
+        const bankAmount = Number(bankReceipts._sum.amount || 0);
 
-    const totalReceived = cashAmount + bankAmount;
+        const totalReceived = cashAmount + bankAmount;
 
-    const quotationAmount = Number(lead.quotationGrandTotal || 0);
+        const quotationAmount = Number(lead.quotationGrandTotal || 0);
 
-    const isBooked =
-      quotationAmount > 0 &&
-      totalReceived >= quotationAmount;
+        const isBooked =
+          quotationAmount > 0 && totalReceived >= quotationAmount;
 
-    return {
-      ...lead,
-      leadTemperature,
-      leadColor,
-      totalReceived,
-      quotationAmount,
-      leadStatus: isBooked ? "Booked" : leadTemperature,
-    };
-  })
-);
+        return {
+          ...lead,
+          leadTemperature,
+          leadColor,
+          totalReceived,
+          quotationAmount,
+          leadStatus: isBooked ? "Booked" : leadTemperature,
+        };
+      }),
+    );
     return res.json({
       success: true,
       data,
@@ -484,6 +522,12 @@ export const getLeadById = async (req: Request, res: Response) => {
         colour: true,
 
         executive: true,
+        teamLead: {
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -499,29 +543,26 @@ export const getLeadById = async (req: Request, res: Response) => {
     // =========================
 
     const latestQuotation = await prisma.quotationHistory.findFirst({
-  where: {
-    leadId: id,
-  },
-  orderBy: {
-    revisionNo: "desc",
-  },
-});
+      where: {
+        leadId: id,
+      },
+      orderBy: {
+        revisionNo: "desc",
+      },
+    });
 
-return res.status(200).json({
-  success: true,
-  data: {
-    ...lead,
-    quotationGrandTotal:
-      latestQuotation?.grandTotal ??
-      lead.quotationGrandTotal ??
-      0,
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...lead,
+        quotationGrandTotal:
+          latestQuotation?.grandTotal ?? lead.quotationGrandTotal ?? 0,
 
-    selectedAccessories:
-      latestQuotation?.selectedAccessories ?? [],
+        selectedAccessories: latestQuotation?.selectedAccessories ?? [],
 
-    hasQuotationHistory: !!latestQuotation,
-  },
-});
+        hasQuotationHistory: !!latestQuotation,
+      },
+    });
   } catch (error) {
     console.error("GET LEAD BY ID ERROR:", error);
 
@@ -1338,18 +1379,18 @@ export const generateOrderBillPdf = async (req: Request, res: Response) => {
     await page.setContent(html, {
       waitUntil: "domcontentloaded",
     });
-await page.evaluate(async () => {
-  const images = Array.from(document.images);
-  await Promise.all(
-    images.map((img) => {
-      if (img.complete) return Promise.resolve();
-      return new Promise((resolve) => {
-        img.addEventListener("load", resolve);
-        img.addEventListener("error", resolve); // don't hang forever on broken image
-      });
-    })
-  );
-});
+    await page.evaluate(async () => {
+      const images = Array.from(document.images);
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.addEventListener("load", resolve);
+            img.addEventListener("error", resolve); // don't hang forever on broken image
+          });
+        }),
+      );
+    });
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -1431,10 +1472,20 @@ export const updateQuotation = async (
       return;
     }
 
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+    const name = user?.employeeName || user?.name || "Admin";
+
     // Get existing lead
     const existingLead = await prisma.lead.findUnique({
       where: {
         id: leadId,
+      },
+      select: {
+        quotationNo: true,
+        quotationRevision: true,
+        branchId: true,
+        teamLeadId: true,
       },
     });
 
@@ -1445,6 +1496,48 @@ export const updateQuotation = async (
       });
       return;
     }
+
+    // ==========================================
+    // GET LOGGED-IN EMPLOYEE (to resolve Sales
+    // Executive -> assigned Team Lead)
+    // ==========================================
+    let employee: any = null;
+
+    if (user?.id) {
+      employee = await prisma.employee.findUnique({
+        where: {
+          id: Number(user.id),
+        },
+        select: {
+          id: true,
+          teamLeadId: true,
+        },
+      });
+    }
+
+    // ==========================================
+    // DETERMINE TEAM LEAD
+    // Team Lead updates      -> his own id
+    // Sales Executive updates -> his assigned teamLeadId
+    // Admin / Branch updates  -> fallback to Lead's teamLeadId
+    // ==========================================
+    let finalTeamLeadId: number | null = null;
+
+    if (role === "TEAM_LEAD") {
+      finalTeamLeadId = employee?.id ?? Number(user.id);
+    } else if (role === "SALES_EXECUTIVE") {
+      finalTeamLeadId = employee?.teamLeadId
+        ? Number(employee.teamLeadId)
+        : (existingLead.teamLeadId ?? null);
+    } else {
+      finalTeamLeadId = existingLead.teamLeadId ?? null;
+    }
+
+    // Branch users -> own branch
+    // Admin -> Lead's branch
+    const finalBranchId = user?.branchId
+      ? Number(user.branchId)
+      : existingLead.branchId;
 
     // Get selected showroom variant
     const selectedShowroomVariant = await prisma.showroomVariant.findUnique({
@@ -1580,11 +1673,13 @@ export const updateQuotation = async (
           // Only ON accessories
           selectedAccessories,
 
-          updatedBy:
-            req.body.createdBy ||
-            (req as any).user?.employeeName ||
-            (req as any).user?.name ||
-            null,
+          updatedBy: req.body.createdBy || name,
+
+          // ✅ NEW tracking fields
+          createdById: user?.id ? Number(user.id) : null,
+          createdType: role,
+          branchId: finalBranchId,
+          teamLeadId: finalTeamLeadId,
         },
       });
 
@@ -1622,6 +1717,7 @@ export const updateQuotation = async (
 export const getQuotationHistoryList = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
 
     const whereClause: any = {
       // Show only leads where quotation was revised
@@ -1630,10 +1726,15 @@ export const getQuotationHistoryList = async (req: Request, res: Response) => {
       },
     };
 
-    // Branch user can see only own branch leads
-   if (user?.branchId) {
-  whereClause.branchId = Number(user.branchId);
-}
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    } else if (role === "TEAM_LEAD") {
+      whereClause.teamLeadId = Number(user.id);
+    } else if (role === "SALES_EXECUTIVE") {
+      whereClause.executiveId = Number(user.id);
+    }
+    // Admin -> no filter, sees everything
+
     const leads = await prisma.lead.findMany({
       where: whereClause,
 
@@ -1706,10 +1807,24 @@ export const getQuotationHistoryByLeadId = async (
       });
     }
 
-    const lead = await prisma.lead.findUnique({
-      where: {
-        id: leadId,
-      },
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+
+    const whereClause: any = {
+      id: leadId,
+    };
+
+    if (role === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    } else if (role === "TEAM_LEAD") {
+      whereClause.teamLeadId = Number(user.id);
+    } else if (role === "SALES_EXECUTIVE") {
+      whereClause.executiveId = Number(user.id);
+    }
+    // Admin -> no restriction
+
+    const lead = await prisma.lead.findFirst({
+      where: whereClause,
 
       select: {
         id: true,

@@ -23,13 +23,14 @@ export const createTestDrive = async (req: Request, res: Response) => {
     const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
     const name = user?.employeeName || user?.name || "Admin";
 
-    // Get Lead Branch
+    // Get Lead Branch + TeamLead (fallback source for Admin/Branch created test drives)
     const lead = await prisma.lead.findUnique({
       where: {
         id: Number(leadId),
       },
       select: {
         branchId: true,
+        teamLeadId: true,
       },
     });
 
@@ -38,6 +39,43 @@ export const createTestDrive = async (req: Request, res: Response) => {
         success: false,
         message: "Lead not found",
       });
+    }
+
+    // ==========================================
+    // GET LOGGED-IN EMPLOYEE (needed to resolve
+    // Sales Executive -> assigned Team Lead)
+    // ==========================================
+    let employee: any = null;
+
+    if (user?.id) {
+      employee = await prisma.employee.findUnique({
+        where: {
+          id: Number(user.id),
+        },
+        select: {
+          id: true,
+          teamLeadId: true,
+        },
+      });
+    }
+
+    // ==========================================
+    // DETERMINE TEAM LEAD
+    // Team Lead creates      -> his own id
+    // Sales Executive creates -> his assigned teamLeadId
+    // Admin / Branch creates  -> fallback to Lead's teamLeadId
+    // ==========================================
+    let finalTeamLeadId: number | null = null;
+
+    if (role === "TEAM_LEAD") {
+      finalTeamLeadId = employee?.id ?? Number(user.id);
+    } else if (role === "SALES_EXECUTIVE") {
+      finalTeamLeadId = employee?.teamLeadId
+        ? Number(employee.teamLeadId)
+        : (lead.teamLeadId ?? null);
+    } else {
+      // Admin / Branch panel
+      finalTeamLeadId = lead.teamLeadId ?? null;
     }
 
     // Branch users -> own branch
@@ -69,6 +107,7 @@ export const createTestDrive = async (req: Request, res: Response) => {
         createdType: role,
 
         branchId: finalBranchId,
+        teamLeadId: finalTeamLeadId,
       },
       include: {
         lead: true,
@@ -97,12 +136,21 @@ export const createTestDrive = async (req: Request, res: Response) => {
 export const getTestDrives = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
 
     const whereClause: any = {};
 
-    if (user?.branchId) {
+    if (role === "TEAM_LEAD") {
+      // Team Lead sees only test drives under his team
+      whereClause.teamLeadId = Number(user.id);
+    } else if (role === "SALES_EXECUTIVE") {
+      // Sales Executive sees only test drives he created
+      whereClause.createdById = Number(user.id);
+    } else if (user?.branchId) {
+      // Branch panel -> own branch only
       whereClause.branchId = Number(user.branchId);
     }
+    // Admin -> no filter, sees everything
 
     const testDrives = await prisma.testDrive.findMany({
       where: whereClause,
@@ -135,26 +183,31 @@ export const getTestDrives = async (req: Request, res: Response) => {
 export const getTestDriveById = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-const user = (req as any).user;
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
 
-const whereClause: any = {
-  id,
-};
+    const whereClause: any = {
+      id,
+    };
 
-if (user?.branchId) {
-  whereClause.branchId = Number(user.branchId);
-}
+    if (role === "TEAM_LEAD") {
+      whereClause.teamLeadId = Number(user.id);
+    } else if (role === "SALES_EXECUTIVE") {
+      whereClause.createdById = Number(user.id);
+    } else if (user?.branchId) {
+      whereClause.branchId = Number(user.branchId);
+    }
 
-const testDrive = await prisma.testDrive.findFirst({
-  where: whereClause,
-  include: {
-    lead: true,
-    model: true,
-    showroomVariant: true,
-    colour: true,
-    branch: true,
-  },
-});
+    const testDrive = await prisma.testDrive.findFirst({
+      where: whereClause,
+      include: {
+        lead: true,
+        model: true,
+        showroomVariant: true,
+        colour: true,
+        branch: true,
+      },
+    });
 
     if (!testDrive) {
       return res.status(404).json({
@@ -254,15 +307,22 @@ export const deleteTestDrive = async (req: Request, res: Response) => {
 export const getTestDriveHistory = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+
+    const whereClause: any = {};
+
+    if (role === "TEAM_LEAD") {
+      whereClause.teamLeadId = Number(user.id);
+    } else if (role === "SALES_EXECUTIVE") {
+      whereClause.createdById = Number(user.id);
+    } else if (user?.branchId) {
+      whereClause.branchId = Number(user.branchId);
+    }
 
     const history = await prisma.testDrive.groupBy({
       by: ["leadId"],
 
-      where: user?.branchId
-        ? {
-            branchId: Number(user.branchId),
-          }
-        : undefined,
+      where: Object.keys(whereClause).length ? whereClause : undefined,
 
       _count: {
         id: true,
@@ -329,17 +389,17 @@ export const getTestDriveHistoryByLead = async (
       where: {
         leadId,
       },
-     include: {
-  lead: {
-    include: {
-      customer: true,
-    },
-  },
-  model: true,
-  showroomVariant: true,
-  colour: true,
-  branch: true,
-},
+      include: {
+        lead: {
+          include: {
+            customer: true,
+          },
+        },
+        model: true,
+        showroomVariant: true,
+        colour: true,
+        branch: true,
+      },
       orderBy: {
         createdAt: "desc",
       },
