@@ -125,7 +125,10 @@ const name = user?.employeeName || user?.name ;
       });
     }
 
-    const voucherNo = await generateBankPaymentVoucher();
+    const voucherNo = await generateBankPaymentVoucher(
+    Number(companyId),
+    Number(financialYearId)
+  );
 
     const payment = await prisma.$transaction(async (tx) => {
       const data = await tx.bankPayment.create({
@@ -183,16 +186,28 @@ export const getBankPaymentVoucher = async (
   res: Response
 ) => {
   try {
-    const voucherNo = await generateBankPaymentVoucher();
+    const { companyId, financialYearId } = req.query;
 
-    res.json({
+    if (!companyId || !financialYearId) {
+      return res.status(400).json({
+        success: false,
+        message: "Company ID and Financial Year ID are required",
+      });
+    }
+
+    const voucherNo = await generateBankPaymentVoucher(
+      Number(companyId),
+      Number(financialYearId)
+    );
+
+    return res.json({
       success: true,
       voucherNo,
     });
   } catch (err) {
     console.log(err);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Unable to generate voucher",
     });

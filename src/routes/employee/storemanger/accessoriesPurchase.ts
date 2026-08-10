@@ -14,41 +14,41 @@ import {
 
 
 
-import { verifyToken } from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 
 
 const router = Router();
 
-router.post("/",verifyToken, createAccessoriesPurchase);
+router.post("/",verifyEmployeeToken, createAccessoriesPurchase);
 
-router.get("/",verifyToken, getAccessoriesPurchases);
+router.get("/",verifyEmployeeToken, getAccessoriesPurchases);
 
-router.get("/bill-no",verifyToken, getAccessoriesPurchaseBillNo);
+router.get("/bill-no",verifyEmployeeToken, getAccessoriesPurchaseBillNo);
 
-router.get("/inventory",verifyToken, getAccessoriesInventory);
+router.get("/inventory",verifyEmployeeToken, getAccessoriesInventory);
 
-router.get("/:id",verifyToken, getAccessoriesPurchaseById);
+router.get("/:id",verifyEmployeeToken, getAccessoriesPurchaseById);
 
 router.get(
   "/history/:accessoryId",
-  verifyToken,
+  verifyEmployeeToken,
   getAccessoryPurchaseHistory
 );
 
-router.put("/:id",verifyToken, updateAccessoriesPurchase);
+router.put("/:id",verifyEmployeeToken, updateAccessoriesPurchase);
 
 router.put(
   "/item-status/:id",
-  verifyToken,
+  verifyEmployeeToken,
   updateAccessoriesPurchaseItemStatus
 );
 
 router.put(
   "/verify/:id",
-  verifyToken,
+  verifyEmployeeToken,
   verifyAccessoriesPurchase
 );
 
-router.delete("/:id",verifyToken, deleteAccessoriesPurchase);
+router.delete("/:id",verifyEmployeeToken, deleteAccessoriesPurchase);
 
 export default router;

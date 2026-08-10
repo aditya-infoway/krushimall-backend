@@ -9,18 +9,18 @@ import {
 
 
 
-import { verifyToken } from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 
 const router = express.Router();
 
-router.post("/", verifyToken, createAccessory);
+router.post("/", verifyEmployeeToken, createAccessory);
 
-router.get("/", verifyToken, getAccessories);
+router.get("/", verifyEmployeeToken, getAccessories);
 
-router.get("/history/:id", verifyToken, getAccessoriesHistory);
+router.get("/history/:id", verifyEmployeeToken, getAccessoriesHistory);
 
-router.put("/:id", verifyToken, updateAccessory);
+router.put("/:id", verifyEmployeeToken, updateAccessory);
 
-router.delete("/:id", verifyToken, deleteAccessory);
+router.delete("/:id", verifyEmployeeToken, deleteAccessory);
 
 export default router;

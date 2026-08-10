@@ -20,7 +20,7 @@ const router = express.Router();
 // Generate Bill No
 router.get(
   "/generate-bill-no",
-  verifyToken,
+ 
   getAccessoriesPurchaseBillNo,
 );
 

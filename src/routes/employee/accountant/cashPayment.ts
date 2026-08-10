@@ -1,18 +1,18 @@
 import { Router } from "express";
 import * as CashPaymentController from "../../../controllers/employee/accountant/cashPayment.js";
-import { verifyToken } from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 
 const router = Router();
 
-router.get("/", verifyToken, CashPaymentController.getCashPayments);
-router.get("/voucher", verifyToken, CashPaymentController.getCashPaymentVoucher);
-router.get("/export", verifyToken, CashPaymentController.exportCashPaymentExcel);
-router.get("/:id", verifyToken, CashPaymentController.getCashPaymentById);
+router.get("/", verifyEmployeeToken, CashPaymentController.getCashPayments);
+router.get("/voucher", CashPaymentController.getCashPaymentVoucher);
+router.get("/export", verifyEmployeeToken, CashPaymentController.exportCashPaymentExcel);
+router.get("/:id", verifyEmployeeToken, CashPaymentController.getCashPaymentById);
 
-router.post("/", verifyToken, CashPaymentController.createCashPayment);
+router.post("/", verifyEmployeeToken, CashPaymentController.createCashPayment);
 
-router.put("/:id", verifyToken, CashPaymentController.updateCashPayment);
+router.put("/:id", verifyEmployeeToken, CashPaymentController.updateCashPayment);
 
-router.delete("/:id", verifyToken, CashPaymentController.deleteCashPayment);
+router.delete("/:id", verifyEmployeeToken, CashPaymentController.deleteCashPayment);
 
 export default router;

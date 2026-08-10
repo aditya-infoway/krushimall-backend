@@ -502,3 +502,78 @@ export const employeeLogin = async (req: Request, res: Response) => {
     });
   }
 };
+// employee controller
+// export const employeeLogin = async (req: Request, res: Response) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     const employee = await prisma.employee.findUnique({
+//       where: { email },
+//     });
+
+//     if (!employee) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid Email",
+//       });
+//     }
+
+//     const isMatch = await bcrypt.compare(
+//       password,
+//       employee.password
+//     );
+
+//     if (!isMatch) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid Password",
+//       });
+//     }
+
+//     if (employee.status !== "ACTIVE") {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Employee is inactive",
+//       });
+//     }
+
+//     // Generate new employee token
+//     const token = jwt.sign(
+//       {
+//         id: employee.id,
+//         role: employee.role,
+//         employeeName: employee.employeeName,
+//         branchId: employee.branchId,
+//         department: employee.department,
+//       },
+//       process.env.JWT_SECRET!,
+//       {
+//         expiresIn: "7d",
+//       }
+//     );
+
+//     // Save latest token in DB
+//     // Previous login token will automatically become invalid
+//     await prisma.employee.update({
+//       where: {
+//         id: employee.id,
+//       },
+//       data: {
+//         activeToken: token,
+//       },
+//     });
+
+//     return res.json({
+//       success: true,
+//       token,
+//       user: employee,
+//     });
+//   } catch (err) {
+//     console.log(err);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Login Failed",
+//     });
+//   }
+// };

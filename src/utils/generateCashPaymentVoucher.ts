@@ -1,6 +1,9 @@
 import prisma from "../lib/prisma.js";
 
-export const generateCashPaymentVoucher = async () => {
+export const generateCashPaymentVoucher = async (
+  companyId: number,
+  financialYearId: number
+): Promise<string> => {
   const prefixMaster = await prisma.profilePrefix.findFirst({
     where: {
       prefixFor: "CASH_PAYMENT",
@@ -11,9 +14,10 @@ export const generateCashPaymentVoucher = async () => {
     throw new Error("Cash Payment prefix not found");
   }
 
-  const currentFY = await prisma.financialYear.findFirst({
-    orderBy: {
-      id: "desc",
+  // Selected financial year/session
+  const currentFY = await prisma.financialYear.findUnique({
+    where: {
+      id: financialYearId,
     },
   });
 
@@ -29,6 +33,8 @@ export const generateCashPaymentVoucher = async () => {
 
   const lastVoucher = await prisma.cashPayment.findFirst({
     where: {
+      companyId,
+      financialYearId,
       voucherNo: {
         startsWith: `${prefix}/${financialYear}/`,
       },
@@ -42,6 +48,7 @@ export const generateCashPaymentVoucher = async () => {
 
   if (lastVoucher?.voucherNo) {
     const parts = lastVoucher.voucherNo.split("/");
+
     nextNumber = Number(parts[2]) + 1;
   }
 

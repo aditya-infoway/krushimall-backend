@@ -139,7 +139,10 @@ const name = user?.employeeName || user?.name || "Admin";
       return;
     }
 
-    const voucherNo = await generateCashReceiptVoucher();
+const voucherNo = await generateCashReceiptVoucher(
+  Number(companyId),
+  Number(financialYearId)
+);
 
     const receipt = await prisma.$transaction(async (tx) => {
       const data = await tx.cashReceipt.create({
@@ -259,10 +262,23 @@ export const deleteCashReceipt = async (
 };
 export const getCashReceiptVoucher = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> => {
   try {
-    const voucherNo = await generateCashReceiptVoucher();
+    const { companyId, financialYearId } = req.query;
+
+    if (!companyId || !financialYearId) {
+      res.status(400).json({
+        success: false,
+        message: "Company ID and Financial Year ID are required",
+      });
+      return;
+    }
+
+    const voucherNo = await generateCashReceiptVoucher(
+      Number(companyId),
+      Number(financialYearId)
+    );
 
     res.status(200).json({
       success: true,

@@ -1,7 +1,7 @@
 // routes/employee/storemanager/accessoriesAllot.ts
 
 import { Router } from "express";
-import { verifyToken } from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 
 import {
   getAccessoriesAllotList,
@@ -12,19 +12,19 @@ import {
 
 const router = Router();
 
-router.get("/", verifyToken, getAccessoriesAllotList);
+router.get("/", verifyEmployeeToken, getAccessoriesAllotList);
 
-router.get("/:id", verifyToken, getAccessoriesAllotDetails);
+router.get("/:id", verifyEmployeeToken, getAccessoriesAllotDetails);
 
 router.patch(
   "/:allotmentId/item/:itemId/allot",
-  verifyToken,
+  verifyEmployeeToken,
   allotAccessoryStock
 );
 
 router.post(
   "/:id/save",
-  verifyToken,
+  verifyEmployeeToken,
   saveAccessoriesAllotment
 );
 

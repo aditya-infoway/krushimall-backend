@@ -13,7 +13,7 @@ import { verifyToken } from "../middleware/middleware.js";
 const router = Router();
 
 // Voucher
-router.get("/voucher", verifyToken, getBankPaymentVoucher);
+router.get("/voucher",  getBankPaymentVoucher);
 
 // CRUD
 router.get("/", verifyToken, getBankPayments);

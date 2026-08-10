@@ -7,6 +7,7 @@ import {
   updateAccount,
   deleteAccount,
 } from "../controllers/account.js";
+
 import { verifyToken } from "../middleware/middleware.js";
 
 const router = express.Router();

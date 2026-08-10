@@ -19,21 +19,21 @@ const router = Router();
 
 router.post("/", verifyToken, createLead);
 
-router.get("/", verifyToken, getLeads);
+router.get("/",  getLeads);
 
-router.get("/pending", verifyToken, getLeadsForCashReceipt);
+router.get("/pending",  getLeadsForCashReceipt);
 
-router.get("/quotation-history", verifyToken, getQuotationHistoryList);
+router.get("/quotation-history",  getQuotationHistoryList);
 
 router.get(
   "/quotation-history/:id",
-  verifyToken,
+
   getQuotationHistoryByLeadId
 );
 
 router.get(
   "/booking-balance",
-  verifyToken,
+
   getBookingBalance
 );
 
@@ -41,6 +41,6 @@ router.get("/:id/quotation", generateOrderBillPdf);
 
 router.put("/:id/quotation", verifyToken, updateQuotation);
 
-router.get("/:id", verifyToken, getLeadById);;
+router.get("/:id",  getLeadById);;
 
 export default router;

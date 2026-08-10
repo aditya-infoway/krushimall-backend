@@ -1,24 +1,24 @@
 import { Router } from "express";
 import * as FollowUpController from "../../../controllers/employee/teamlead/followup.js";
-import { verifyToken } from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 
 const router = Router();
 
-router.post("/", verifyToken, FollowUpController.createFollowUp);
+router.post("/", verifyEmployeeToken, FollowUpController.createFollowUp);
 
 router.get(
   "/:leadId",
-  verifyToken,
+  verifyEmployeeToken,
   FollowUpController.getFollowUpsByLead,
 );
 router.get(
   "/:leadId/latest",
-  verifyToken,
+  verifyEmployeeToken,
   FollowUpController.getLatestFollowUpByLead,
 );
 router.get(
   "/board",
-  verifyToken,
+  verifyEmployeeToken,
   FollowUpController.getFollowUpBoard,
 );
 
