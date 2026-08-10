@@ -23,7 +23,7 @@ import { verifyToken } from "../middleware/middleware.js";
 const router = express.Router();
 
 // Generate Purchase Bill No
-router.get("/generate-bill-no", verifyToken, getPurchaseBillNo);
+router.get("/generate-bill-no",  getPurchaseBillNo);
 
 // Generate Vehicle Serial No
 router.get("/vehicle-serial-no", verifyToken, getVehicleSerialNo);

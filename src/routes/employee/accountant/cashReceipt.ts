@@ -1,35 +1,35 @@
 import { Router } from "express";
 import * as CashReceiptController from "../../../controllers/employee/accountant/cashReceipt.js";
-import { verifyToken } from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 
 const router = Router();
 
-router.get("/", verifyToken, CashReceiptController.getcashReceipt);
+router.get("/", verifyEmployeeToken, CashReceiptController.getcashReceipt);
 
 router.get(
   "/generate-voucher",
-  verifyToken,
+  
   CashReceiptController.getCashReceiptVoucher
 );
 
 router.get(
   "/export/excel",
-  verifyToken,
+  verifyEmployeeToken,
   CashReceiptController.exportCashReceiptExcel
 );
 
 router.get(
 "/:id/print",
-  verifyToken,
+  verifyEmployeeToken,
   CashReceiptController.printCashReceipt
 );
 
-router.get("/:id", verifyToken, CashReceiptController.getcashReceiptById);
+router.get("/:id", verifyEmployeeToken, CashReceiptController.getcashReceiptById);
 
-router.post("/", verifyToken, CashReceiptController.createCashReceipt);
+router.post("/", verifyEmployeeToken, CashReceiptController.createCashReceipt);
 
-router.put("/:id", verifyToken, CashReceiptController.updateCashReceipt);
+router.put("/:id", verifyEmployeeToken, CashReceiptController.updateCashReceipt);
 
-router.delete("/:id", verifyToken, CashReceiptController.deleteCashReceipt);
+router.delete("/:id", verifyEmployeeToken, CashReceiptController.deleteCashReceipt);
 
 export default router;

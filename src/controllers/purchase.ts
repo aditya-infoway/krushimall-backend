@@ -143,10 +143,15 @@ export const createPurchase = async (req: Request, res: Response) => {
         });
       }
     }
-   const billNo = await generateBillNo("PURCHASE", "purchase", Number(companyId), Number(financialYearId));
-  const user = (req as any).user;
-const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
-const name = user?.employeeName || user?.name || "Admin";
+    const billNo = await generateBillNo(
+      "PURCHASE",
+      "purchase",
+      Number(companyId),
+      Number(financialYearId),
+    );
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+    const name = user?.employeeName || user?.name || "Admin";
     const purchase = await prisma.purchase.create({
       data: {
         companyId: Number(companyId),
@@ -156,9 +161,9 @@ const name = user?.employeeName || user?.name || "Admin";
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
         purchaseBillNo,
         purchaseLocation,
-           createdById: Number(user.id),
-    createdBy: user.employeeName || user.name,
-    createdType: role,
+        createdById: Number(user.id),
+        createdBy: user.employeeName || user.name,
+        createdType: role,
         dueDate: dueDate ? new Date(dueDate) : null,
         terms,
         narration,
@@ -361,7 +366,10 @@ const name = user?.employeeName || user?.name || "Admin";
       // }
     }
     if (terms?.toLowerCase() === "cash" && cashAccountId) {
-      const voucherNo = await generateCashPaymentVoucher();
+      const voucherNo = await generateCashPaymentVoucher(
+        Number(companyId),
+        Number(financialYearId),
+      );
 
       await prisma.cashPayment.create({
         data: {
@@ -392,7 +400,10 @@ const name = user?.employeeName || user?.name || "Admin";
       });
     }
     if (terms?.toLowerCase() === "bank" && bankAccountId) {
-      const voucherNo = await generateBankPaymentVoucher();
+      const voucherNo = await generateBankPaymentVoucher(
+        Number(companyId),
+        Number(financialYearId),
+      );
 
       await prisma.bankPayment.create({
         data: {
@@ -642,16 +653,16 @@ export const getPurchases = async (req: Request, res: Response) => {
       const totalItems = purchase.items.length;
 
       const inwardItems = purchase.items.filter(
-        (item) => item.status === "Inward"
+        (item) => item.status === "Inward",
       ).length;
 
       const hasBookedItem = purchase.items.some(
-        (item) => item.status === "Booked"
+        (item) => item.status === "Booked",
       );
 
       return {
         ...purchase,
-      createdBy: purchase.createdBy,
+        createdBy: purchase.createdBy,
         verified: purchase.status === "VERIFY",
         allInward: totalItems > 0 && totalItems === inwardItems,
         hasBookedItem,
@@ -673,7 +684,7 @@ export const getPurchases = async (req: Request, res: Response) => {
 };
 export const getPendingPurchasesForCashPayment = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const purchases = await prisma.purchase.findMany({
@@ -698,11 +709,11 @@ export const getPendingPurchasesForCashPayment = async (
         const paidAmount =
           purchase.cashPayments.reduce(
             (sum, item) => sum + Number(item.amount || 0),
-            0
+            0,
           ) +
           purchase.bankPayments.reduce(
             (sum, item) => sum + Number(item.amount || 0),
-            0
+            0,
           );
 
         const grandTotal = Number(purchase.grandTotal || 0);
@@ -803,13 +814,15 @@ export const getPurchaseBillNo = async (req: Request, res: Response) => {
       "PURCHASE",
       "purchase",
       Number(companyId),
-      Number(financialYearId)
+      Number(financialYearId),
     );
 
     return res.status(200).json({ success: true, billNo });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ success: false, message: "Failed to generate bill no" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to generate bill no" });
   }
 };
 export const submitPurchaseItemInward = async (req: Request, res: Response) => {
@@ -1061,7 +1074,7 @@ export const getModelWiseInventoryAnalysis = async (
   res: Response,
 ) => {
   try {
-     const { fromDate, toDate } = req.query;
+    const { fromDate, toDate } = req.query;
 
     const dateFilter: any = {};
     if (fromDate) dateFilter.gte = new Date(String(fromDate));
@@ -1082,16 +1095,16 @@ export const getModelWiseInventoryAnalysis = async (
     // ==========================================
     // MODEL WISE GROUPING
     // ==========================================
-   const modelMap = new Map<
-  string,
-  {
-    model: string;
-    present: number;
-    transit: number;
-    purchase: number;
-    sales: number;
-  }
->();
+    const modelMap = new Map<
+      string,
+      {
+        model: string;
+        present: number;
+        transit: number;
+        purchase: number;
+        sales: number;
+      }
+    >();
 
     purchases.forEach((purchase) => {
       purchase.items.forEach((item) => {
@@ -1154,7 +1167,7 @@ export const getInventoryDetails = async (req: Request, res: Response) => {
     // ==========================================
     // 1) PURCHASE ORDERS — Present/Transit yahin se
     // ==========================================
-      const { fromDate, toDate } = req.query;
+    const { fromDate, toDate } = req.query;
 
     const dateFilter: any = {};
     if (fromDate) dateFilter.gte = new Date(String(fromDate));
@@ -1242,7 +1255,7 @@ export const getInventoryDetails = async (req: Request, res: Response) => {
         model: modelName,
         variant: variantName,
         colour,
-        purchaseOrder:  purchase.billNo,
+        purchaseOrder: purchase.billNo,
         present,
         transit,
         hot: hotCountByModel.get(modelName) || 0,

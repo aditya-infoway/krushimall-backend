@@ -1,6 +1,9 @@
 import prisma from "../lib/prisma.js";
 
-export const generateCashReceiptVoucher = async () => {
+export const generateCashReceiptVoucher = async (
+  companyId: number,
+  financialYearId: number
+): Promise<string> => {
   const prefixMaster = await prisma.profilePrefix.findFirst({
     where: {
       prefixFor: "CASH_RECEIPT",
@@ -11,9 +14,10 @@ export const generateCashReceiptVoucher = async () => {
     throw new Error("Cash Receipt prefix not found");
   }
 
-  const currentFY = await prisma.financialYear.findFirst({
-    orderBy: {
-      id: "desc",
+  // Selected financial year
+  const currentFY = await prisma.financialYear.findUnique({
+    where: {
+      id: financialYearId,
     },
   });
 
@@ -29,6 +33,8 @@ export const generateCashReceiptVoucher = async () => {
 
   const lastVoucher = await prisma.cashReceipt.findFirst({
     where: {
+      companyId,
+      financialYearId,
       voucherNo: {
         startsWith: `${prefix}/${financialYear}/`,
       },
@@ -42,6 +48,7 @@ export const generateCashReceiptVoucher = async () => {
 
   if (lastVoucher?.voucherNo) {
     const parts = lastVoucher.voucherNo.split("/");
+
     nextNumber = Number(parts[2]) + 1;
   }
 

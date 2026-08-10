@@ -14,15 +14,15 @@ import {
 const router = express.Router();
 
 router.get("/", verifyToken, getcashReceipt);
-router.get("/voucher", verifyToken, getCashReceiptVoucher);
-router.get("/:id", verifyToken, getcashReceiptById);
+router.get("/voucher",  getCashReceiptVoucher);
+router.get("/:id",  getcashReceiptById);
 router.post("/", verifyToken, createCashReceipt);
 router.put("/:id", verifyToken, updateCashReceipt);
 router.delete("/:id", verifyToken, deleteCashReceipt);
 router.get(
   "/export/excel",
-  verifyToken,
+ 
   exportCashReceiptExcel
 );
-router.get("/:id/print", verifyToken, printCashReceipt);
+router.get("/:id/print",  printCashReceipt);
 export default router;

@@ -8,25 +8,27 @@ import {
 } from "../controllers/model.js";
 
 import { upload } from "../middleware/upload.js";
-
+import { verifyToken } from "../middleware/middleware.js";
 const router = Router();
 
 router.post(
   "/",
+     verifyToken,
   upload.single("image"),
   createModel
 );
 
-router.get("/", getModels);
+router.get("/",     getModels);
 
-router.get("/:id", getModelById);
+router.get("/:id",     getModelById);
 
 router.put(
   "/:id",
+     verifyToken,
   upload.single("image"),
   updateModel
 );
 
-router.delete("/:id", deleteModel);
+router.delete("/:id",   verifyToken, deleteModel);
 
 export default router;

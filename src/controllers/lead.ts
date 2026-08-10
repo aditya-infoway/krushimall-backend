@@ -265,7 +265,10 @@ export const createLead = async (req: Request, res: Response) => {
       if (req.body.paymentMode === "CASH") {
         await prisma.cashReceipt.create({
           data: {
-            voucherNo: await generateCashReceiptVoucher(),
+            voucherNo: await generateCashReceiptVoucher(
+  Number(req.body.companyId),
+  Number(req.body.financialYearId)
+),
             date: new Date(),
             companyId: Number(req.body.companyId),
             financialYearId: Number(req.body.financialYearId),
@@ -300,7 +303,10 @@ export const createLead = async (req: Request, res: Response) => {
       if (req.body.paymentMode === "BANK") {
         await prisma.bankReceipt.create({
           data: {
-            voucherNo: await generateBankReceiptVoucher(),
+            voucherNo: await generateBankReceiptVoucher(
+        Number(req.body.companyId),
+        Number(req.body.financialYearId)
+      ),
             date: new Date(),
 
             companyId: Number(req.body.companyId),

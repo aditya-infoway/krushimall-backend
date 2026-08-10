@@ -499,7 +499,10 @@ export const createOrder = async (req: Request, res: Response) => {
       ) {
         await tx.cashReceipt.create({
           data: {
-            voucherNo: await generateCashReceiptVoucher(),
+            voucherNo: await generateCashReceiptVoucher(
+              Number(req.body.companyId),
+              Number(req.body.financialYearId),
+            ),
 
             date: new Date(),
 
@@ -549,7 +552,10 @@ export const createOrder = async (req: Request, res: Response) => {
       ) {
         await tx.bankReceipt.create({
           data: {
-            voucherNo: await generateBankReceiptVoucher(),
+            voucherNo: await generateBankReceiptVoucher(
+              Number(req.body.companyId),
+              Number(req.body.financialYearId),
+            ),
 
             date: new Date(),
 
@@ -993,9 +999,9 @@ export const getVehicleInchargeList = async (req: Request, res: Response) => {
     const whereClause: any = {};
 
     // Branch/Sales Executive ka data unke hisaab se filter (agar lead se linked ho)
-  if (user?.role?.toUpperCase() === "BRANCH") {
-    whereClause.branchId = Number(user.branchId);
-}
+    if (user?.role?.toUpperCase() === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
     if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
       whereClause.lead = { executiveId: Number(user.id) };
     }
@@ -1072,9 +1078,9 @@ export const getAccessoriesAllotList = async (req: Request, res: Response) => {
 
     const whereClause: any = {};
 
-  if (user?.role?.toUpperCase() === "BRANCH") {
-    whereClause.branchId = Number(user.branchId);
-}
+    if (user?.role?.toUpperCase() === "BRANCH") {
+      whereClause.branchId = Number(user.branchId);
+    }
 
     if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
       whereClause.lead = {
@@ -1481,7 +1487,7 @@ export const getOrderByLeadId = async (req: Request, res: Response) => {
             account: true,
           },
         },
-          branch: true,
+        branch: true,
         cashAccount: true,
 
         bankAccount: true,

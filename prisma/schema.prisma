@@ -21,6 +21,7 @@ model Admin {
   email     String   @unique
   role      String   @default("Admin")
   password  String
+    activeToken String? 
   createdAt DateTime @default(now())
 }
 
@@ -581,7 +582,7 @@ model Employee {
   teamMembers Employee[] @relation("EmployeeTeamLead")
 
   accounts Account[] @relation("AccountCreatedBy")
-
+  
   teamLeadAccounts         Account[]                 @relation("AccountTeamLead")
   purchases                Purchase[]
   accessoriesPurchases     AccessoriesPurchase[]

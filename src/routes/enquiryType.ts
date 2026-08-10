@@ -8,17 +8,18 @@ import {
   deleteEnquiryType,
   toggleEnquiryTypeStatus,
 } from "../controllers/enquiryType.js";
-
+import { verifyToken } from "../middleware/middleware.js";
 const router = express.Router();
 
-router.post("/", createEnquiryType);
-router.get("/", getEnquiryTypes);
-router.get("/:id", getEnquiryTypeById);
-router.put("/:id", updateEnquiryType);
-router.delete("/:id", deleteEnquiryType);
+router.post("/", verifyToken, createEnquiryType);
+router.get("/",   getEnquiryTypes);
+router.get("/:id",   getEnquiryTypeById);
+router.put("/:id", verifyToken, updateEnquiryType);
+router.delete("/:id", verifyToken, deleteEnquiryType);
 
 router.patch(
   "/toggle-status/:id",
+   verifyToken,
   toggleEnquiryTypeStatus
 );
 

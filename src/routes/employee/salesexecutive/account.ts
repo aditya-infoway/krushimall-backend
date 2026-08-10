@@ -1,22 +1,15 @@
-import express from "express";
-import { verifyToken } from "../../../middleware/middleware.js";
+// account.ts
 
+import express from "express";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 import * as AccountController from "../../../controllers/employee/salesexecutive/account.js";
 
 const router = express.Router();
 
-// ==========================================
-// ACCOUNT ROUTES
-// ==========================================
-
-router.post("/", verifyToken, AccountController.createAccount);
-
-router.get("/", verifyToken, AccountController.getAccounts);
-
-router.get("/:id", verifyToken, AccountController.getAccountById);
-
-router.put("/:id", verifyToken, AccountController.updateAccount);
-
-router.delete("/:id", verifyToken, AccountController.deleteAccount);
+router.post("/", verifyEmployeeToken, AccountController.createAccount);
+router.get("/", verifyEmployeeToken, AccountController.getAccounts);
+router.get("/:id", verifyEmployeeToken, AccountController.getAccountById);
+router.put("/:id", verifyEmployeeToken, AccountController.updateAccount);
+router.delete("/:id", verifyEmployeeToken, AccountController.deleteAccount);
 
 export default router;

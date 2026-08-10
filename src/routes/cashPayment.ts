@@ -16,8 +16,8 @@ router.get("/generate-voucher", getCashPaymentVoucher);
 
 // CRUD
 router.post("/", verifyToken, createCashPayment);
-router.get("/", verifyToken, getCashPayments);
-router.get("/:id", verifyToken, getCashPaymentById);
+router.get("/",  getCashPayments);
+router.get("/:id",  getCashPaymentById);
 router.put("/:id", verifyToken, updateCashPayment);
 router.delete("/:id", verifyToken, deleteCashPayment);
 router.get("/export/excel", exportCashPaymentExcel);

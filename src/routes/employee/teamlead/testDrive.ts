@@ -1,19 +1,19 @@
 import { Router } from "express";
 import * as TestDriveController from "../../../controllers/employee/teamlead/testDrive.js";
-import { verifyToken } from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 
 const router = Router();
 
-router.post("/", verifyToken, TestDriveController.createTestDrive);
+router.post("/", verifyEmployeeToken, TestDriveController.createTestDrive);
 
 // History routes (must be before /:id)
-router.get("/history", verifyToken, TestDriveController.getTestDriveHistory);
-router.get("/history/:id", verifyToken, TestDriveController.getTestDriveHistoryByLead);
+router.get("/history", verifyEmployeeToken, TestDriveController.getTestDriveHistory);
+router.get("/history/:id", verifyEmployeeToken, TestDriveController.getTestDriveHistoryByLead);
 
-router.get("/", verifyToken, TestDriveController.getTestDrives);
-router.get("/:id", verifyToken, TestDriveController.getTestDriveById);
+router.get("/", verifyEmployeeToken, TestDriveController.getTestDrives);
+router.get("/:id", verifyEmployeeToken, TestDriveController.getTestDriveById);
 
-router.put("/:id", verifyToken, TestDriveController.updateTestDrive);
-router.delete("/:id", verifyToken, TestDriveController.deleteTestDrive);
+router.put("/:id", verifyEmployeeToken, TestDriveController.updateTestDrive);
+router.delete("/:id", verifyEmployeeToken, TestDriveController.deleteTestDrive);
 
 export default router;

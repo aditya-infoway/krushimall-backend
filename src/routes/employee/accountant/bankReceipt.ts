@@ -1,35 +1,35 @@
 import { Router } from "express";
 import * as BankReceiptController from "../../../controllers/employee/accountant/bankReceipt.js";
-import { verifyToken } from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 
 const router = Router();
 
-router.get("/", verifyToken, BankReceiptController.getBankReceipt);
+router.get("/", verifyEmployeeToken, BankReceiptController.getBankReceipt);
 
 router.get(
   "/generate-voucher",
-  verifyToken,
+  
   BankReceiptController.getBankReceiptVoucher
 );
 
 router.get(
   "/export/excel",
-  verifyToken,
+  verifyEmployeeToken,
   BankReceiptController.exportBankReceiptExcel
 );
 
 router.get(
   "/:id/print",
-  verifyToken,
+  verifyEmployeeToken,
   BankReceiptController.printBankReceipt
 );
 
-router.get("/:id", verifyToken, BankReceiptController.getBankReceiptById);
+router.get("/:id", verifyEmployeeToken, BankReceiptController.getBankReceiptById);
 
-router.post("/", verifyToken, BankReceiptController.createBankReceipt);
+router.post("/", verifyEmployeeToken, BankReceiptController.createBankReceipt);
 
-router.put("/:id", verifyToken, BankReceiptController.updateBankReceipt);
+router.put("/:id", verifyEmployeeToken, BankReceiptController.updateBankReceipt);
 
-router.delete("/:id", verifyToken, BankReceiptController.deleteBankReceipt);
+router.delete("/:id", verifyEmployeeToken, BankReceiptController.deleteBankReceipt);
 
 export default router;

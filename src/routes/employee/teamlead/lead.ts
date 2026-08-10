@@ -1,45 +1,45 @@
 import { Router } from "express";
 import * as LeadController from "../../../controllers/employee/teamlead/lead.js";
-import {verifyToken} from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 
 const router = Router();
 
-router.post("/", verifyToken, LeadController.createLead);
-router.get("/", verifyToken, LeadController.getLeads);
+router.post("/", verifyEmployeeToken, LeadController.createLead);
+router.get("/", verifyEmployeeToken, LeadController.getLeads);
 router.get(
   "/pending",
-  verifyToken,
+  verifyEmployeeToken,
   LeadController.getLeadsForCashReceipt,
 );
-router.get("/:id", verifyToken, LeadController.getLeadById);
+router.get("/:id", verifyEmployeeToken, LeadController.getLeadById);
 
 router.put(
   "/quotation/:id",
-  verifyToken,
+  verifyEmployeeToken,
   LeadController.updateQuotation,
 );
 
 router.get(
   "/quotation/history",
-  verifyToken,
+  verifyEmployeeToken,
   LeadController.getQuotationHistoryList,
 );
 
 router.get(
   "/quotation/history/:id",
-  verifyToken,
+  verifyEmployeeToken,
   LeadController.getQuotationHistoryByLeadId,
 );
 
 router.get(
   "/quotation/pdf/:id",
-  verifyToken,
+  verifyEmployeeToken,
   LeadController.generateOrderBillPdf,
 );
 
 router.get(
   "/booking-balance",
-  verifyToken,
+  verifyEmployeeToken,
   LeadController.getBookingBalance,
 );
 
