@@ -12,14 +12,14 @@ const router = express.Router();
 
 router.get("/", verifyToken, getContras);
 
-router.get("/voucher", verifyToken, getNextContraVoucher);
+router.get("/voucher",  getNextContraVoucher);
 
 router.get("/:id", verifyToken, getContraById);
 
 router.post("/", verifyToken, createContra);
 router.get(
   "/export/excel",
-  verifyToken,
+ 
   exportContraExcel
 );
 export default router;

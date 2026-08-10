@@ -153,10 +153,13 @@ export const createAccessoriesPurchase = async (
         });
       }
     }
-  const billNo = await generateAccessoriesPurchaseBillNo(Number(companyId), Number(financialYearId));
-const user = (req as any).user;
-const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
-const name = user?.employeeName || user?.name || "Admin";
+    const billNo = await generateAccessoriesPurchaseBillNo(
+      Number(companyId),
+      Number(financialYearId),
+    );
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+    const name = user?.employeeName || user?.name || "Admin";
     const purchase = await prisma.accessoriesPurchase.create({
       data: {
         companyId: Number(companyId),
@@ -166,8 +169,8 @@ const name = user?.employeeName || user?.name || "Admin";
 
         accountId: Number(accountId),
         createdById: Number(user.id),
-createdBy: name,
-createdType: role,
+        createdBy: name,
+        createdType: role,
         purchaseBillNo,
 
         purchaseDate: new Date(purchaseDate),
@@ -327,7 +330,7 @@ createdType: role,
             drCr: "Dr",
           },
         });
-      } 
+      }
     }
     // ─────────────────────────────────────
     // BANK ACCESSORIES PURCHASE
@@ -362,7 +365,10 @@ createdType: role,
     // ─────────────────────────────────────
 
     if (terms?.toLowerCase() === "cash" && cashAccountId) {
-      const voucherNo = await generateCashPaymentVoucher();
+      const voucherNo = await generateCashPaymentVoucher(
+        Number(companyId),
+        Number(financialYearId),
+      );
 
       await prisma.cashPayment.create({
         data: {
@@ -395,7 +401,10 @@ createdType: role,
     // ─────────────────────────────────────
 
     if (terms?.toLowerCase() === "bank" && bankAccountId) {
-      const voucherNo = await generateBankPaymentVoucher();
+      const voucherNo = await generateBankPaymentVoucher(
+        Number(companyId),
+        Number(financialYearId),
+      );
 
       await prisma.bankPayment.create({
         data: {
@@ -518,7 +527,8 @@ export const getAccessoryPurchaseHistory = async (
     const data = items.map((item) => ({
       id: item.id,
       purchaseId: item.purchase?.id,
-      purchaseBillNo: item.purchase?.purchaseBillNo || item.purchase?.billNo || "-",
+      purchaseBillNo:
+        item.purchase?.purchaseBillNo || item.purchase?.billNo || "-",
       billNo: item.purchase?.billNo || "-",
       inwardDate: item.inwardDate,
       stock: item.stock ?? item.qty,
@@ -777,13 +787,16 @@ export const deleteAccessoriesPurchase = async (
     });
   }
 };
-export const getAccessoriesPurchaseBillNo = async (req: Request, res: Response) => {
+export const getAccessoriesPurchaseBillNo = async (
+  req: Request,
+  res: Response,
+) => {
   try {
     const { companyId, financialYearId } = req.query;
 
     const billNo = await generateAccessoriesPurchaseBillNo(
       Number(companyId),
-      Number(financialYearId)
+      Number(financialYearId),
     );
 
     return res.json({ success: true, billNo });

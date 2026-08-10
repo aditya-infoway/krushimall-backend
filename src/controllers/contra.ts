@@ -11,7 +11,20 @@ export const getNextContraVoucher = async (
   res: Response
 ) => {
   try {
-    const voucherNo = await generateContraVoucher();
+    const companyId = Number(req.query.companyId);
+    const financialYearId = Number(req.query.financialYearId);
+
+    if (!companyId || !financialYearId) {
+      return res.status(400).json({
+        success: false,
+        message: "Company ID and Financial Year ID are required",
+      });
+    }
+
+    const voucherNo = await generateContraVoucher(
+      companyId,
+      financialYearId
+    );
 
     return res.json({
       success: true,
@@ -77,7 +90,10 @@ export const createContra = async (req: Request, res: Response) => {
       });
     }
 
-    const voucherNo = await generateContraVoucher();
+   const voucherNo = await generateContraVoucher(
+  Number(companyId),
+  Number(financialYearId)
+);
 
     const cashBank = await prisma.account.findUnique({
       where: { id: Number(cashBankAccountId) },

@@ -7,17 +7,17 @@ import {
   updateShowroomVariant,
   deleteShowroomVariant,
 } from "../controllers/showroomVariant.js";
-
+import { verifyToken } from "../middleware/middleware.js";
 const router = express.Router();
 
-router.post("/", createShowroomVariant);
+router.post("/",   verifyToken, createShowroomVariant);
 
-router.get("/", getShowroomVariants);
+router.get("/",    getShowroomVariants);
 
-router.get("/:id", getShowroomVariantById);
+router.get("/:id",    getShowroomVariantById);
 
-router.put("/:id", updateShowroomVariant);
+router.put("/:id",   verifyToken, updateShowroomVariant);
 
-router.delete("/:id", deleteShowroomVariant);
+router.delete("/:id",   verifyToken, deleteShowroomVariant);
 
 export default router;

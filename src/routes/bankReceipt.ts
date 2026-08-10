@@ -16,7 +16,7 @@ const router = Router();
 
 
 // Generate Voucher No.
-router.get("/voucher", verifyToken, getBankReceiptVoucher);
+router.get("/voucher",  getBankReceiptVoucher);
 
 // Get All
 router.get("/", verifyToken, getBankReceipt);

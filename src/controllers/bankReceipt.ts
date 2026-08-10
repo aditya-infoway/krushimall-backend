@@ -45,11 +45,11 @@ export const getBankReceipt = async (
           },
         },
         employee: {
-  select: {
-    id: true,
-    employeeName: true,
-  },
-},
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -84,11 +84,11 @@ export const getBankReceiptById = async (
         oppAccount: true,
         lead: true,
         employee: {
-  select: {
-    id: true,
-    employeeName: true,
-  },
-},
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -130,8 +130,8 @@ export const createBankReceipt = async (
     } = req.body;
 
     const user = (req as any).user;
-const role = user?.role?.toUpperCase();
-const name = user?.employeeName || user?.name || "Admin";
+    const role = user?.role?.toUpperCase();
+    const name = user?.employeeName || user?.name || "Admin";
 
     if (role === "BRANCH" && !user?.branchId) {
       res.status(400).json({
@@ -141,7 +141,10 @@ const name = user?.employeeName || user?.name || "Admin";
       return;
     }
 
-    const voucherNo = await generateBankReceiptVoucher();
+   const voucherNo = await generateBankReceiptVoucher(
+  Number(companyId),
+  Number(financialYearId)
+);
 
     const receipt = await prisma.$transaction(async (tx) => {
       const data = await tx.bankReceipt.create({
@@ -168,10 +171,10 @@ const name = user?.employeeName || user?.name || "Admin";
 
           narration,
 
-         createdById: Number(user.id),
-createdBy: name,
-createdType: role,
- branchId: user?.branchId ? Number(user.branchId) : null,
+          createdById: Number(user.id),
+          createdBy: name,
+          createdType: role,
+          branchId: user?.branchId ? Number(user.branchId) : null,
         },
       });
 
@@ -199,10 +202,23 @@ createdType: role,
 };
 export const getBankReceiptVoucher = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> => {
   try {
-    const voucherNo = await generateBankReceiptVoucher();
+    const { companyId, financialYearId } = req.query;
+
+    if (!companyId || !financialYearId) {
+      res.status(400).json({
+        success: false,
+        message: "Company ID and Financial Year ID are required",
+      });
+      return;
+    }
+
+    const voucherNo = await generateBankReceiptVoucher(
+      Number(companyId),
+      Number(financialYearId)
+    );
 
     res.json({
       success: true,
@@ -309,11 +325,11 @@ export const exportBankReceiptExcel = async (
             accountName: true,
           },
         },
-         employee: {
-    select: {
-      employeeName: true,
-    },
-  },
+        employee: {
+          select: {
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -360,7 +376,7 @@ export const exportBankReceiptExcel = async (
           : "",
         narration: item.narration || "",
         createdType: item.createdType || "",
-       createdBy: item.employee?.employeeName || item.createdBy || "",
+        createdBy: item.employee?.employeeName || item.createdBy || "",
       });
     });
 
@@ -509,7 +525,7 @@ export const printBankReceipt = async (
       ? new Date(receipt.chequeClearDate).toLocaleDateString("en-GB")
       : null;
 
-      const logoUrl = getFileUrl(company?.logo);
+    const logoUrl = getFileUrl(company?.logo);
 
     const renderCopy = (copyLabel: "Customer Copy" | "Company Copy") => `
   <div class="voucher">
@@ -770,18 +786,18 @@ ${
     await page.setContent(html, {
       waitUntil: "domcontentloaded",
     });
-await page.evaluate(async () => {
-  const images = Array.from(document.images);
-  await Promise.all(
-    images.map((img) => {
-      if (img.complete) return Promise.resolve();
-      return new Promise((resolve) => {
-        img.addEventListener("load", resolve);
-        img.addEventListener("error", resolve); // don't hang forever on broken image
-      });
-    })
-  );
-});
+    await page.evaluate(async () => {
+      const images = Array.from(document.images);
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.addEventListener("load", resolve);
+            img.addEventListener("error", resolve); // don't hang forever on broken image
+          });
+        }),
+      );
+    });
     const pdf = await page.pdf({
       format: "A4",
       printBackground: true,

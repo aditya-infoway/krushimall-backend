@@ -1,12 +1,12 @@
 import express from "express";
-import { verifyToken } from "../../../middleware/middleware.js";
+import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 import * as OrderController from "../../../controllers/employee/salesexecutive/order.js";
 
 const router = express.Router();
 
-router.post("/", verifyToken, OrderController.createOrder);
+router.post("/", verifyEmployeeToken, OrderController.createOrder);
 
-router.get("/", verifyToken, OrderController.getOrders);
+router.get("/", verifyEmployeeToken, OrderController.getOrders);
 
 // ✅ Specific routes first
 router.get(
@@ -17,13 +17,13 @@ router.get(
 
 router.get(
   "/lead/:leadId",
-  verifyToken,
+  verifyEmployeeToken,
   OrderController.getOrderByLeadId
 );
 
 // ✅ Generic route last
-router.get("/:id", verifyToken, OrderController.getOrderById);
+router.get("/:id", verifyEmployeeToken, OrderController.getOrderById);
 
-router.delete("/:id", verifyToken, OrderController.deleteOrder);
+router.delete("/:id", verifyEmployeeToken, OrderController.deleteOrder);
 
 export default router;
