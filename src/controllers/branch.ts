@@ -177,10 +177,17 @@ export const getBranches = async (
 };
 export const getBranchById = async (
   req: Request,
-  res: Response,
-): Promise<void> => {
+  res: Response
+) => {
   try {
     const id = Number(req.params.id);
+
+    if (!req.params.id || !Number.isInteger(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid branch ID is required",
+      });
+    }
 
     const branch = await prisma.branch.findUnique({
       where: {
@@ -194,20 +201,22 @@ export const getBranchById = async (
     });
 
     if (!branch) {
-      res.status(404).json({
+      return res.status(404).json({
         success: false,
-        message: "Branch not found.",
+        message: "Branch not found",
       });
-      return;
     }
 
-    res.status(200).json(branch);
+    return res.status(200).json({
+      success: true,
+      data: branch,
+    });
   } catch (error) {
-    console.log(error);
+    console.error("getBranchById error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Unable to fetch branch.",
+      message: "Failed to fetch branch",
     });
   }
 };

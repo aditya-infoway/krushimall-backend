@@ -17,9 +17,9 @@ router.post(
   createVariant
 );
 
-router.get("/",   verifyToken, getVariants);
+router.get("/",    getVariants);
 
-router.get("/:id",   verifyToken, getVariantById);
+router.get("/:id",    getVariantById);
 
 router.put(
   "/:id",
