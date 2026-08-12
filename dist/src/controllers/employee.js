@@ -1,41 +1,82 @@
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma.js";
 export const createEmployee = async (req, res) => {
     try {
-        const { department, branch, role, employeeName, mobileNumber, alternateNumber, email, password, status, } = req.body;
-        // Check existing email
+        const user = req.user;
+        const loginRole = user?.role?.toUpperCase();
+        const { department, branchId: bodyBranchId, role: employeeRole, teamLeadId, employeeName, mobileNumber, alternateNumber, email, password, status, } = req.body;
+        // Check duplicate
         const existingEmployee = await prisma.employee.findFirst({
             where: {
                 OR: [
-                    { email: req.body.email },
-                    { mobileNumber: req.body.mobileNumber }
-                ]
-            }
+                    { email },
+                    { mobileNumber },
+                ],
+            },
         });
         if (existingEmployee) {
             return res.status(400).json({
                 success: false,
-                message: existingEmployee.email === req.body.email
+                message: existingEmployee.email === email
                     ? "Email already exists"
                     : "Mobile number already exists",
             });
         }
-        // Encrypt password
+        // Decide which branch to use
+        let finalBranchId;
+        if (loginRole === "BRANCH") {
+            if (!user.branchId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Branch ID missing from token",
+                });
+            }
+            finalBranchId = Number(user.branchId);
+        }
+        else {
+            if (!bodyBranchId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please select a branch",
+                });
+            }
+            finalBranchId = Number(bodyBranchId);
+        }
+        // Get branch details
+        const selectedBranch = await prisma.branch.findUnique({
+            where: {
+                id: finalBranchId,
+            },
+            select: {
+                branchName: true,
+            },
+        });
+        if (!selectedBranch) {
+            return res.status(404).json({
+                success: false,
+                message: "Branch not found",
+            });
+        }
         const hashedPassword = await bcrypt.hash(password, 10);
         const employee = await prisma.employee.create({
             data: {
                 department,
-                branch,
-                role,
+                branch: selectedBranch.branchName,
+                branchId: finalBranchId,
+                role: employeeRole,
+                teamLeadId: teamLeadId ? Number(teamLeadId) : null,
                 employeeName,
                 mobileNumber,
                 alternateNumber,
                 email,
                 password: hashedPassword,
                 status,
+                createdType: loginRole,
+                createdBy: user.employeeName || user.name,
             },
         });
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             data: employee,
             message: "Employee created successfully",
@@ -43,7 +84,7 @@ export const createEmployee = async (req, res) => {
     }
     catch (error) {
         console.log(error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Failed to create employee",
         });
@@ -51,18 +92,29 @@ export const createEmployee = async (req, res) => {
 };
 export const getEmployees = async (req, res) => {
     try {
+        const user = req.user;
+        const role = user?.role?.toUpperCase();
+        const whereClause = {};
+        if (role === "BRANCH") {
+            whereClause.branchId = Number(user.branchId);
+        }
         const employees = await prisma.employee.findMany({
+            where: whereClause,
             select: {
                 id: true,
                 department: true,
                 branch: true,
                 role: true,
+                teamLeadId: true,
                 employeeName: true,
                 mobileNumber: true,
                 alternateNumber: true,
                 email: true,
                 status: true,
                 createdAt: true,
+                createdType: true,
+                createdBy: true,
+                branchId: true,
             },
             orderBy: {
                 id: "desc",
@@ -81,9 +133,57 @@ export const getEmployees = async (req, res) => {
         });
     }
 };
+export const getEmployeeById = async (req, res) => {
+    try {
+        const user = req.user;
+        const role = user?.role?.toUpperCase();
+        const whereClause = { id: Number(req.params.id) };
+        if (role === "BRANCH") {
+            whereClause.branchId = Number(user.branchId);
+        }
+        const employee = await prisma.employee.findFirst({
+            where: whereClause,
+            select: {
+                id: true,
+                department: true,
+                branch: true,
+                role: true,
+                teamLeadId: true,
+                employeeName: true,
+                mobileNumber: true,
+                alternateNumber: true,
+                email: true,
+                status: true,
+                createdAt: true,
+                createdType: true,
+                createdBy: true,
+                branchId: true,
+            },
+        });
+        if (!employee) {
+            return res.status(404).json({
+                success: false,
+                message: "Employee not found",
+            });
+        }
+        res.status(200).json({
+            success: true,
+            data: employee,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch employee",
+        });
+    }
+};
 export const updateEmployee = async (req, res) => {
     try {
         const id = Number(req.params.id);
+        const user = req.user;
+        const loginRole = user?.role?.toUpperCase();
         const existingEmployee = await prisma.employee.findFirst({
             where: {
                 AND: [
@@ -105,17 +205,42 @@ export const updateEmployee = async (req, res) => {
                     : "Mobile number already exists",
             });
         }
+        // Decide branch
+        let finalBranchId;
+        if (loginRole === "BRANCH") {
+            finalBranchId = Number(user.branchId);
+        }
+        else {
+            finalBranchId = Number(req.body.branchId);
+        }
+        const selectedBranch = await prisma.branch.findUnique({
+            where: {
+                id: finalBranchId,
+            },
+            select: {
+                branchName: true,
+            },
+        });
+        if (!selectedBranch) {
+            return res.status(404).json({
+                success: false,
+                message: "Branch not found",
+            });
+        }
         const updateData = {
             department: req.body.department,
-            branch: req.body.branch,
+            branch: selectedBranch.branchName,
+            branchId: finalBranchId,
             role: req.body.role,
+            teamLeadId: req.body.teamLeadId
+                ? Number(req.body.teamLeadId)
+                : null,
             employeeName: req.body.employeeName,
             mobileNumber: req.body.mobileNumber,
             alternateNumber: req.body.alternateNumber,
             email: req.body.email,
             status: req.body.status,
         };
-        // Update password only if provided
         if (req.body.password) {
             updateData.password = await bcrypt.hash(req.body.password, 10);
         }
@@ -172,9 +297,7 @@ export const toggleEmployeeStatus = async (req, res) => {
         const updated = await prisma.employee.update({
             where: { id },
             data: {
-                status: employee.status === "ACTIVE"
-                    ? "INACTIVE"
-                    : "ACTIVE",
+                status: employee.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
             },
         });
         res.status(200).json({
@@ -190,42 +313,193 @@ export const toggleEmployeeStatus = async (req, res) => {
         });
     }
 };
-export const getEmployeeById = async (req, res) => {
+export const getDepartments = async (req, res) => {
     try {
-        const employee = await prisma.employee.findUnique({
-            where: {
-                id: Number(req.params.id),
-            },
-            select: {
-                id: true,
-                department: true,
-                branch: true,
-                role: true,
-                employeeName: true,
-                mobileNumber: true,
-                alternateNumber: true,
-                email: true,
-                status: true,
-                createdAt: true,
+        const departments = await prisma.department.findMany({
+            orderBy: {
+                name: "asc",
             },
         });
-        if (!employee) {
-            return res.status(404).json({
-                success: false,
-                message: "Employee not found",
-            });
-        }
         res.status(200).json({
             success: true,
-            data: employee,
+            data: departments,
         });
     }
     catch (error) {
         console.log(error);
         res.status(500).json({
             success: false,
-            message: "Failed to fetch employee",
+            message: "Failed to fetch departments",
         });
     }
 };
+export const getRolesByDepartment = async (req, res) => {
+    try {
+        const departmentId = Number(req.params.departmentId);
+        const roles = await prisma.role.findMany({
+            where: {
+                departmentId,
+            },
+            orderBy: {
+                roleName: "asc",
+            },
+        });
+        res.status(200).json({
+            success: true,
+            data: roles,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch roles",
+        });
+    }
+};
+export const getTeamLeads = async (req, res) => {
+    try {
+        const { department } = req.query;
+        const teamLeads = await prisma.employee.findMany({
+            where: {
+                department: String(department),
+                role: "Team Lead",
+                status: "ACTIVE",
+            },
+            select: {
+                id: true,
+                employeeName: true,
+            },
+            orderBy: {
+                employeeName: "asc",
+            },
+        });
+        res.json({
+            success: true,
+            data: teamLeads,
+        });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({
+            success: false,
+            message: "Failed",
+        });
+    }
+};
+// employee controller
+export const employeeLogin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const employee = await prisma.employee.findUnique({
+            where: { email },
+        });
+        if (!employee) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid Email",
+            });
+        }
+        const isMatch = await bcrypt.compare(password, employee.password);
+        if (!isMatch) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid Password",
+            });
+        }
+        if (employee.status !== "ACTIVE") {
+            return res.status(400).json({
+                success: false,
+                message: "Employee is inactive",
+            });
+        }
+        const token = jwt.sign({
+            id: employee.id,
+            role: employee.role,
+            employeeName: employee.employeeName,
+            branchId: employee.branchId,
+            department: employee.department,
+        }, process.env.JWT_SECRET, {
+            expiresIn: "7d",
+        });
+        return res.json({
+            success: true,
+            token,
+            user: employee,
+        });
+    }
+    catch (err) {
+        console.log(err);
+        return res.status(500).json({
+            success: false,
+            message: "Login Failed",
+        });
+    }
+};
+// employee controller
+// export const employeeLogin = async (req: Request, res: Response) => {
+//   try {
+//     const { email, password } = req.body;
+//     const employee = await prisma.employee.findUnique({
+//       where: { email },
+//     });
+//     if (!employee) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid Email",
+//       });
+//     }
+//     const isMatch = await bcrypt.compare(
+//       password,
+//       employee.password
+//     );
+//     if (!isMatch) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid Password",
+//       });
+//     }
+//     if (employee.status !== "ACTIVE") {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Employee is inactive",
+//       });
+//     }
+//     // Generate new employee token
+//     const token = jwt.sign(
+//       {
+//         id: employee.id,
+//         role: employee.role,
+//         employeeName: employee.employeeName,
+//         branchId: employee.branchId,
+//         department: employee.department,
+//       },
+//       process.env.JWT_SECRET!,
+//       {
+//         expiresIn: "7d",
+//       }
+//     );
+//     // Save latest token in DB
+//     // Previous login token will automatically become invalid
+//     await prisma.employee.update({
+//       where: {
+//         id: employee.id,
+//       },
+//       data: {
+//         activeToken: token,
+//       },
+//     });
+//     return res.json({
+//       success: true,
+//       token,
+//       user: employee,
+//     });
+//   } catch (err) {
+//     console.log(err);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Login Failed",
+//     });
+//   }
+// };
 //# sourceMappingURL=employee.js.map

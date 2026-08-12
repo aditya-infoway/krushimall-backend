@@ -1,10 +1,131 @@
 import prisma from "../lib/prisma.js";
 import puppeteer from "puppeteer";
 import { generateQuotationNo } from "../utils/generateQuotationNo.js";
+import { generateCashReceiptVoucher } from "../utils/generateCashReceiptVoucher.js";
+import { generateBankReceiptVoucher } from "../utils/generateBankReceiptVoucher.js";
+import { getFileUrl } from "../utils/getFileUrl.js";
 export const createLead = async (req, res) => {
     try {
+        const user = req.user;
+        const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+        // ==========================================
+        // GET LOGGED-IN EMPLOYEE
+        // ==========================================
+        let employee = null;
+        if (user?.id) {
+            employee = await prisma.employee.findUnique({
+                where: {
+                    id: Number(user.id),
+                },
+                select: {
+                    id: true,
+                    employeeName: true,
+                    role: true,
+                    teamLeadId: true,
+                    branchId: true,
+                },
+            });
+        }
+        // ==========================================
+        // DETERMINE TEAM LEAD
+        // ==========================================
+        let teamLeadId = null;
+        if (role === "TEAM_LEAD") {
+            // Team Lead creates Lead
+            // His own ID becomes teamLeadId
+            teamLeadId = employee?.id ?? null;
+        }
+        if (role === "SALES_EXECUTIVE") {
+            // Sales Executive creates Lead
+            // Use the Team Lead assigned to this employee
+            teamLeadId = employee?.teamLeadId ? Number(employee.teamLeadId) : null;
+            if (!teamLeadId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Team Lead is not assigned to this Sales Executive",
+                });
+            }
+        }
+        if (role === "BRANCH" && !user?.branchId) {
+            return res.status(400).json({
+                success: false,
+                message: "Branch ID missing from token — cannot create lead",
+            });
+        }
+        let initialQuotationGrandTotal = 0;
+        if (req.body.showroomVariantId) {
+            const showroomVariant = await prisma.showroomVariant.findUnique({
+                where: {
+                    id: Number(req.body.showroomVariantId),
+                },
+            });
+            if (showroomVariant) {
+                const exShowroomTaxable = Number(showroomVariant.exShowroomPrice) || 0;
+                const exShowroomTaxPercent = Number(showroomVariant.exShowroomTaxPercent) || 0;
+                const exShowroomAmount = exShowroomTaxable + (exShowroomTaxable * exShowroomTaxPercent) / 100;
+                const insuranceTaxable = Number(showroomVariant.insurance) || 0;
+                const insuranceTaxPercent = Number(showroomVariant.insuranceTaxPercent) || 0;
+                const insuranceAmount = insuranceTaxable + (insuranceTaxable * insuranceTaxPercent) / 100;
+                const rtoTaxable = Number(showroomVariant.rtoCharge) || 0;
+                const rtoTaxPercent = Number(showroomVariant.rtoTaxPercent) || 0;
+                const rtoAmount = rtoTaxable + (rtoTaxable * rtoTaxPercent) / 100;
+                initialQuotationGrandTotal =
+                    exShowroomAmount + insuranceAmount + rtoAmount;
+            }
+        }
         const data = {
             ...req.body,
+            // ...existing transforms...
+            quotationGrandTotal: initialQuotationGrandTotal,
+            createdType: role,
+            createdBy: req.body.createdBy || user?.employeeName || user?.name,
+            branchId: user?.branchId ? Number(user.branchId) : null,
+            teamLeadId,
+            executiveId: req.body.executiveId ? Number(req.body.executiveId) : null,
+            companyId: Number(req.body.companyId),
+            financialYearId: Number(req.body.financialYearId),
+            // ========================
+            // FINANCE DETAILS
+            // ========================
+            financeDoneBy: req.body.purchaseType === "Finance"
+                ? req.body.financeDoneBy || null
+                : null,
+            financeAmount: req.body.purchaseType === "Finance" &&
+                req.body.financeAmount !== "" &&
+                req.body.financeAmount !== null &&
+                req.body.financeAmount !== undefined
+                ? Number(req.body.financeAmount)
+                : null,
+            emi: req.body.purchaseType === "Finance" &&
+                req.body.emi !== "" &&
+                req.body.emi !== null &&
+                req.body.emi !== undefined
+                ? Number(req.body.emi)
+                : null,
+            tenureMonths: req.body.purchaseType === "Finance" &&
+                req.body.tenureMonths !== "" &&
+                req.body.tenureMonths !== null &&
+                req.body.tenureMonths !== undefined
+                ? Number(req.body.tenureMonths)
+                : null,
+            processingCharge: req.body.purchaseType === "Finance" &&
+                req.body.processingCharge !== "" &&
+                req.body.processingCharge !== null &&
+                req.body.processingCharge !== undefined
+                ? Number(req.body.processingCharge)
+                : null,
+            loanROI: req.body.purchaseType === "Finance" &&
+                req.body.loanROI !== "" &&
+                req.body.loanROI !== null &&
+                req.body.loanROI !== undefined
+                ? Number(req.body.loanROI)
+                : null,
+            marginMoney: req.body.purchaseType === "Finance" &&
+                req.body.marginMoney !== "" &&
+                req.body.marginMoney !== null &&
+                req.body.marginMoney !== undefined
+                ? Number(req.body.marginMoney)
+                : null,
             showroomVariantId: req.body.showroomVariantId
                 ? Number(req.body.showroomVariantId)
                 : null,
@@ -34,7 +155,7 @@ export const createLead = async (req, res) => {
                 : null,
             insurance: req.body.insurance ? Number(req.body.insurance) : null,
             vehicleNo: req.body.vehicleNo || null,
-            accountId: req.body.selectAccount ? Number(req.body.selectAccount) : null,
+            accountId: req.body.customerId ? Number(req.body.customerId) : null,
             professionId: req.body.profession ? Number(req.body.profession) : null,
             enquiryTypeId: req.body.enquiryType ? Number(req.body.enquiryType) : null,
             enquirySourceId: req.body.enquirySource
@@ -81,6 +202,75 @@ export const createLead = async (req, res) => {
         const lead = await prisma.lead.create({
             data,
         });
+        if (req.body.advancePayment &&
+            Number(req.body.listOfBooking) > 0 &&
+            req.body.selectAccount) {
+            const amount = Number(req.body.listOfBooking);
+            if (req.body.paymentMode === "CASH") {
+                await prisma.cashReceipt.create({
+                    data: {
+                        voucherNo: await generateCashReceiptVoucher(Number(req.body.companyId), Number(req.body.financialYearId)),
+                        date: new Date(),
+                        companyId: Number(req.body.companyId),
+                        financialYearId: Number(req.body.financialYearId),
+                        cashAccountId: Number(req.body.selectAccount),
+                        oppAccountId: Number(req.body.customerId),
+                        leadId: lead.id,
+                        amount,
+                        narration: req.body.narration,
+                        type: "LCR", // ✅ Lead Cash Receipt
+                        createdType: req.user?.role,
+                        createdBy: req.user?.name,
+                    },
+                });
+                await prisma.account.update({
+                    where: {
+                        id: Number(req.body.selectAccount),
+                    },
+                    data: {
+                        closingBalance: {
+                            increment: amount,
+                        },
+                    },
+                });
+            }
+            if (req.body.paymentMode === "BANK") {
+                await prisma.bankReceipt.create({
+                    data: {
+                        voucherNo: await generateBankReceiptVoucher(Number(req.body.companyId), Number(req.body.financialYearId)),
+                        date: new Date(),
+                        companyId: Number(req.body.companyId),
+                        financialYearId: Number(req.body.financialYearId),
+                        bankAccountId: Number(req.body.selectAccount),
+                        oppAccountId: Number(req.body.customerId),
+                        leadId: lead.id,
+                        amount,
+                        paymentType: req.body.bankMode || "UPI",
+                        chequeNo: req.body.chequeNo || null,
+                        chequeDate: req.body.chequeDate
+                            ? new Date(req.body.chequeDate)
+                            : null,
+                        chequeClearDate: req.body.chequeClearDate
+                            ? new Date(req.body.chequeClearDate)
+                            : null,
+                        narration: req.body.narration,
+                        type: "LBR",
+                        createdType: req.user?.role,
+                        createdBy: req.user?.name,
+                    },
+                });
+                await prisma.account.update({
+                    where: {
+                        id: Number(req.body.selectAccount),
+                    },
+                    data: {
+                        closingBalance: {
+                            increment: amount,
+                        },
+                    },
+                });
+            }
+        }
         return res.status(201).json({
             success: true,
             data: lead,
@@ -97,11 +287,24 @@ export const createLead = async (req, res) => {
 };
 export const getLeads = async (req, res) => {
     try {
+        const user = req.user;
+        const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+        const whereClause = {};
+        if (role === "BRANCH") {
+            whereClause.branchId = Number(user.branchId);
+        }
+        else if (role === "SALES_EXECUTIVE") {
+            whereClause.executiveId = Number(user.id);
+        }
+        else if (role === "TEAM_LEAD") {
+            whereClause.teamLeadId = Number(user.id);
+        }
+        // Admin panel: no filter — sees everything (admin-created + all branches)
         const leads = await prisma.lead.findMany({
+            where: whereClause,
             include: {
                 customer: true,
                 model: true,
-                showroomVariant: true,
                 colour: true,
                 executive: true,
                 profession: true,
@@ -109,6 +312,22 @@ export const getLeads = async (req, res) => {
                 enquirySourceMaster: true,
                 enquiryStatus: true,
                 account: true,
+                order: true,
+                teamLead: {
+                    select: {
+                        id: true,
+                        employeeName: true,
+                    },
+                },
+                showroomVariant: {
+                    include: {
+                        accessories: {
+                            include: {
+                                accessory: true,
+                            },
+                        },
+                    },
+                },
             },
             orderBy: {
                 createdAt: "desc",
@@ -116,14 +335,13 @@ export const getLeads = async (req, res) => {
         });
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const data = leads.map((lead) => {
+        const data = await Promise.all(leads.map(async (lead) => {
             let leadTemperature = "Cold";
             let leadColor = "sky";
             if (lead.expectedPurchaseDate) {
                 const expectedDate = new Date(lead.expectedPurchaseDate);
                 expectedDate.setHours(0, 0, 0, 0);
-                const diffDays = Math.ceil((expectedDate.getTime() - today.getTime()) /
-                    (1000 * 60 * 60 * 24));
+                const diffDays = Math.ceil((expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
                 if (diffDays <= 7) {
                     leadTemperature = "Hot";
                     leadColor = "red";
@@ -132,17 +350,37 @@ export const getLeads = async (req, res) => {
                     leadTemperature = "Warm";
                     leadColor = "orange";
                 }
-                else {
-                    leadTemperature = "Cold";
-                    leadColor = "sky";
-                }
             }
+            const cashReceipts = await prisma.cashReceipt.aggregate({
+                where: {
+                    leadId: lead.id,
+                },
+                _sum: {
+                    amount: true,
+                },
+            });
+            const bankReceipts = await prisma.bankReceipt.aggregate({
+                where: {
+                    leadId: lead.id,
+                },
+                _sum: {
+                    amount: true,
+                },
+            });
+            const cashAmount = Number(cashReceipts._sum.amount || 0);
+            const bankAmount = Number(bankReceipts._sum.amount || 0);
+            const totalReceived = cashAmount + bankAmount;
+            const quotationAmount = Number(lead.quotationGrandTotal || 0);
+            const isBooked = quotationAmount > 0 && totalReceived >= quotationAmount;
             return {
                 ...lead,
                 leadTemperature,
                 leadColor,
+                totalReceived,
+                quotationAmount,
+                leadStatus: isBooked ? "Booked" : leadTemperature,
             };
-        });
+        }));
         return res.json({
             success: true,
             data,
@@ -157,32 +395,100 @@ export const getLeads = async (req, res) => {
     }
 };
 export const getLeadById = async (req, res) => {
-    const id = Number(req.params.id);
-    const lead = await prisma.lead.findUnique({
-        where: { id },
-        include: {
-            customer: true,
-            model: true,
-            showroomVariant: true,
-            colour: true,
-            executive: true,
-        },
-    });
-    return res.json({
-        success: true,
-        data: lead,
-    });
+    try {
+        const id = Number(req.params.id);
+        const user = req.user;
+        const whereClause = {
+            id,
+        };
+        if (user?.role === "BRANCH") {
+            whereClause.branchId = Number(user.branchId);
+        }
+        if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+            whereClause.executiveId = Number(user.id);
+        }
+        // =========================
+        // GET LEAD
+        // =========================
+        const lead = await prisma.lead.findFirst({
+            where: whereClause,
+            include: {
+                customer: true,
+                model: true,
+                showroomVariant: {
+                    include: {
+                        accessories: {
+                            include: {
+                                accessory: true,
+                            },
+                        },
+                    },
+                },
+                colour: true,
+                executive: true,
+                teamLead: {
+                    select: {
+                        id: true,
+                        employeeName: true,
+                    },
+                },
+            },
+        });
+        if (!lead) {
+            return res.status(404).json({
+                success: false,
+                message: "Lead not found",
+            });
+        }
+        // =========================
+        // GET LATEST QUOTATION
+        // =========================
+        const latestQuotation = await prisma.quotationHistory.findFirst({
+            where: {
+                leadId: id,
+            },
+            orderBy: {
+                revisionNo: "desc",
+            },
+        });
+        return res.status(200).json({
+            success: true,
+            data: {
+                ...lead,
+                quotationGrandTotal: latestQuotation?.grandTotal ?? lead.quotationGrandTotal ?? 0,
+                selectedAccessories: latestQuotation?.selectedAccessories ?? [],
+                hasQuotationHistory: !!latestQuotation,
+            },
+        });
+    }
+    catch (error) {
+        console.error("GET LEAD BY ID ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch lead",
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
 };
 export const generateOrderBillPdf = async (req, res) => {
     try {
         const leadId = Number(req.params.id);
         const company = await prisma.company.findFirst();
+        const logoUrl = getFileUrl(company?.logo);
         const lead = await prisma.lead.findUnique({
             where: { id: leadId },
             include: {
                 customer: true,
                 model: true,
-                showroomVariant: true,
+                showroomVariant: {
+                    include: {
+                        accessories: {
+                            include: {
+                                accessory: true,
+                            },
+                        },
+                    },
+                },
                 colour: true,
                 executive: true,
                 profession: true,
@@ -205,13 +511,74 @@ export const generateOrderBillPdf = async (req, res) => {
                 maximumFractionDigits: 2,
             }) || "0.00");
         };
+        const latestQuotationHistory = await prisma.quotationHistory.findFirst({
+            where: {
+                leadId,
+            },
+            orderBy: {
+                revisionNo: "desc",
+            },
+        });
         // Calculate totals from lead data or use default values
-        const exShowroomPrice = lead.showroomVariant?.exShowroomPrice ?? 0;
-        const insurance = lead.showroomVariant?.insurance ?? 0;
-        const rtoCharge = lead.showroomVariant?.rtoCharge ?? 0;
-        const total = exShowroomPrice +
-            insurance +
-            rtoCharge;
+        // EX-SHOWROOM
+        const exShowroomTaxable = Number(lead.showroomVariant?.exShowroomPrice) || 0;
+        const exShowroomTaxPercent = Number(lead.showroomVariant?.exShowroomTaxPercent) || 0;
+        const exShowroomTaxAmount = (exShowroomTaxable * exShowroomTaxPercent) / 100;
+        const exShowroomTotal = exShowroomTaxable + exShowroomTaxAmount;
+        // INSURANCE
+        const insuranceTaxable = Number(lead.showroomVariant?.insurance) || 0;
+        const insuranceTaxPercent = Number(lead.showroomVariant?.insuranceTaxPercent) || 0;
+        const insuranceTaxAmount = (insuranceTaxable * insuranceTaxPercent) / 100;
+        const insuranceTotal = insuranceTaxable + insuranceTaxAmount;
+        // RTO
+        const rtoTaxable = Number(lead.showroomVariant?.rtoCharge) || 0;
+        const rtoTaxPercent = Number(lead.showroomVariant?.rtoTaxPercent) || 0;
+        const rtoTaxAmount = (rtoTaxable * rtoTaxPercent) / 100;
+        const rtoTotal = rtoTaxable + rtoTaxAmount;
+        // ACCESSORIES
+        // ACCESSORIES
+        // ====================================
+        // ONLY TOGGLE-ON ACCESSORIES
+        // ====================================
+        const selectedAccessories = latestQuotationHistory
+            ? Array.isArray(latestQuotationHistory.selectedAccessories)
+                ? latestQuotationHistory.selectedAccessories
+                : []
+            : (lead.showroomVariant?.accessories || []).map((item) => ({
+                id: item.id,
+                accessoryId: item.accessoryId,
+                name: item.accessory?.itemName || "Accessory",
+                qty: Number(item.qty) || 1,
+                price: Number(item.price) || 0,
+                taxPercent: Number(item.taxPercent) || 0,
+                totalPrice: Number(item.totalPrice) || 0,
+            }));
+        // Calculate only selected accessories
+        const accessoriesTotal = selectedAccessories.reduce((sum, item) => {
+            return sum + (Number(item.totalPrice) || 0);
+        }, 0);
+        // Generate rows only for selected accessories
+        const accessoryRows = selectedAccessories
+            .map((item) => {
+            const accessoryName = item.name || "Accessory";
+            const qty = Number(item.qty) || 1;
+            const accessoryTotal = Number(item.totalPrice) || 0;
+            return `
+        <tr>
+          <td>
+            ${accessoryName}
+            ${qty > 1 ? ` × ${qty}` : ""}
+          </td>
+
+          <td align="right">
+            ${formatCurrency(accessoryTotal)}
+          </td>
+        </tr>
+      `;
+        })
+            .join("");
+        // FINAL TOTAL
+        const total = exShowroomTotal + insuranceTotal + rtoTotal + accessoriesTotal;
         // Convert number to words (Indian format)
         const numberToWords = (num) => {
             const ones = [
@@ -252,8 +619,7 @@ export const generateOrderBillPdf = async (req, res) => {
                 if (n < 20)
                     return ones[n];
                 if (n < 100) {
-                    return (tens[Math.floor(n / 10)] +
-                        (n % 10 ? " " + ones[n % 10] : ""));
+                    return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
                 }
                 return (ones[Math.floor(n / 100)] +
                     " Hundred" +
@@ -322,6 +688,7 @@ export const generateOrderBillPdf = async (req, res) => {
 .company-right {
   width: 20%;
   text-align: center;
+   margin-top: 10px;
 }
 
 .company-logo {
@@ -499,29 +866,56 @@ export const generateOrderBillPdf = async (req, res) => {
             color: #000000;
           }
           
-          /* Terms & Conditions */
-          .terms {
-            margin: 10px 0;
-            padding: 10px 12px;
-            border: 1px solid #cccccc;
-            background: #f9f9f9;
-            font-size: 9pt;
-            font-family: 'Arial', sans-serif;
-          }
-          .terms strong {
-            color: #000000;
-            font-size: 10pt;
-          }
-          .terms ul {
-            margin-left: 18px;
-            margin-top: 3px;
-            list-style-type: disc;
-          }
-          .terms li {
-            margin: 1px 0;
-            color: #333333;
-          }
-          
+        .quotation-terms {
+  padding: 8px 12px !important;
+  vertical-align: top;
+  font-size: 10px;
+  line-height: 1.4;
+  font-weight: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.quotation-terms ol {
+  margin: 0;
+  padding-left: 20px;
+  list-style-position: outside;
+}
+
+.quotation-terms ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style-position: outside;
+}
+
+.quotation-terms li {
+  margin: 2px 0;
+  padding-left: 2px;
+  font-weight: normal;
+}
+
+.quotation-terms li p {
+  display: inline;
+  margin: 0;
+  padding: 0;
+}
+
+.quotation-terms p {
+  margin: 2px 0;
+  font-weight: normal;
+}
+
+.quotation-terms strong {
+  font-weight: bold;
+}
+
+.quotation-terms em {
+  font-style: italic;
+}
+
+.quotation-terms u {
+  text-decoration: underline;
+}
           /* Signatures */
           .signature-section {
             margin-top: 25px;
@@ -628,7 +1022,7 @@ export const generateOrderBillPdf = async (req, res) => {
     </div>
 
     <div class="company-details">
-      Email: ${company || ""}
+      Email: ${company?.email || ""}
     </div>
 
     <div class="company-details">
@@ -636,11 +1030,9 @@ export const generateOrderBillPdf = async (req, res) => {
     </div>
   </div>
 
-  <div class="company-right">
-    ${company?.logo
-            ? `<img src="http://localhost:5000/uploads/${company.logo}" class="company-logo" />`
-            : ""}
-  </div>
+ <div class="company-right">
+  ${logoUrl ? `<img src="${logoUrl}" class="company-logo" />` : ""}
+</div>
 
 </div>
         </div>
@@ -658,7 +1050,11 @@ export const generateOrderBillPdf = async (req, res) => {
 
   <tr>
     <td><b>Quotation No</b></td>
-    <td>${lead.quotationNo || ""}</td>
+   <td>
+  ${Number(lead.quotationRevision) > 0
+            ? `${lead.quotationNo}/R${lead.quotationRevision}`
+            : lead.quotationNo || ""}
+</td>
     <td><b>Name</b></td>
     <td>${lead.customer?.accountName || "Danish pastel"}</td>
   </tr>
@@ -713,19 +1109,19 @@ export const generateOrderBillPdf = async (req, res) => {
   </tr>
 <tr>
   <td>EX-showroom price</td>
-  <td align="right">${formatCurrency(exShowroomPrice)}</td>
+  <td align="right">${formatCurrency(exShowroomTotal)}</td>
 </tr>
 
 <tr>
   <td>Insurance</td>
-  <td align="right">${formatCurrency(insurance)}</td>
+  <td align="right">${formatCurrency(insuranceTotal)}</td>
 </tr>
 
 <tr>
   <td>RTO Charge</td>
-  <td align="right">${formatCurrency(rtoCharge)}</td>
+  <td align="right">${formatCurrency(rtoTotal)}</td>
 </tr>
-
+  ${accessoryRows}
   <tr>
     <td><b>Total</b></td>
     <td align="right">
@@ -744,22 +1140,22 @@ export const generateOrderBillPdf = async (req, res) => {
 
   <tr>
     <td class="payment-label">Account Holder</td>
-    <td>${lead.account || ""}</td>
+    <td>${company?.bankHolderName || ""}</td>
   </tr>
 
   <tr>
     <td class="payment-label">Bank</td>
-    <td>${lead.account?.bankName || ""}</td>
+     <td>${company?.bankName || ""}</td>
   </tr>
 
   <tr>
     <td class="payment-label">Account Number</td>
-    <td>${lead.account || ""}</td>
+    <td>${company?.accountNumber || ""}</td>
   </tr>
 
   <tr>
     <td class="payment-label">IFSC</td>
-    <td>${lead.account?.ifscCode || ""}</td>
+  <td>${company?.ifscCode || ""}</td>
   </tr>
 </table>
         <!-- Payable Amount in Words -->
@@ -787,13 +1183,13 @@ export const generateOrderBillPdf = async (req, res) => {
   </tr>
 
   <tr>
-    <td colspan="2" style="height:40px; vertical-align:top;">
-      1. This is a system generated quotation/invoice.<br>
-      2. Subject to Jalgaon jurisdiction.<br>
-      3. All disputes subject to Jalgaon court only.<br>
-      4. Goods once sold will not be taken back.<br>
-      5. Interest @ 18% p.a. will be charged on delayed payments.
-    </td>
+   <td
+    colspan="2"
+    class="quotation-terms"
+  >
+    ${company?.quotationTerms ||
+            "<p>No quotation terms and conditions added.</p>"}
+  </td>
   </tr>
 </table>
 
@@ -819,6 +1215,17 @@ export const generateOrderBillPdf = async (req, res) => {
         const page = await browser.newPage();
         await page.setContent(html, {
             waitUntil: "domcontentloaded",
+        });
+        await page.evaluate(async () => {
+            const images = Array.from(document.images);
+            await Promise.all(images.map((img) => {
+                if (img.complete)
+                    return Promise.resolve();
+                return new Promise((resolve) => {
+                    img.addEventListener("load", resolve);
+                    img.addEventListener("error", resolve); // don't hang forever on broken image
+                });
+            }));
         });
         const pdf = await page.pdf({
             format: "A4",
@@ -870,4 +1277,629 @@ export const generateOrderBillPdf = async (req, res) => {
 //   <td>RTO Registration Charges</td>
 //   <td align="right">${formatCurrency(rtoRegistrationCharges)}</td>
 // </tr>
+export const updateQuotation = async (req, res) => {
+    try {
+        const leadId = Number(req.params.id);
+        const { modelId, showroomVariantId, colourId, selectedAccessories = [], } = req.body;
+        if (!leadId || !modelId || !showroomVariantId || !colourId) {
+            res.status(400).json({
+                success: false,
+                message: "Model, showroom variant and colour are required",
+            });
+            return;
+        }
+        const user = req.user;
+        const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+        const name = user?.employeeName || user?.name || "Admin";
+        // Get existing lead
+        const existingLead = await prisma.lead.findUnique({
+            where: {
+                id: leadId,
+            },
+            select: {
+                quotationNo: true,
+                quotationRevision: true,
+                branchId: true,
+                teamLeadId: true,
+            },
+        });
+        if (!existingLead) {
+            res.status(404).json({
+                success: false,
+                message: "Lead not found",
+            });
+            return;
+        }
+        // ==========================================
+        // GET LOGGED-IN EMPLOYEE (to resolve Sales
+        // Executive -> assigned Team Lead)
+        // ==========================================
+        let employee = null;
+        if (user?.id) {
+            employee = await prisma.employee.findUnique({
+                where: {
+                    id: Number(user.id),
+                },
+                select: {
+                    id: true,
+                    teamLeadId: true,
+                },
+            });
+        }
+        // ==========================================
+        // DETERMINE TEAM LEAD
+        // Team Lead updates      -> his own id
+        // Sales Executive updates -> his assigned teamLeadId
+        // Admin / Branch updates  -> fallback to Lead's teamLeadId
+        // ==========================================
+        let finalTeamLeadId = null;
+        if (role === "TEAM_LEAD") {
+            finalTeamLeadId = employee?.id ?? Number(user.id);
+        }
+        else if (role === "SALES_EXECUTIVE") {
+            finalTeamLeadId = employee?.teamLeadId
+                ? Number(employee.teamLeadId)
+                : (existingLead.teamLeadId ?? null);
+        }
+        else {
+            finalTeamLeadId = existingLead.teamLeadId ?? null;
+        }
+        // Branch users -> own branch
+        // Admin -> Lead's branch
+        const finalBranchId = user?.branchId
+            ? Number(user.branchId)
+            : existingLead.branchId;
+        // Get selected showroom variant
+        const selectedShowroomVariant = await prisma.showroomVariant.findUnique({
+            where: {
+                id: Number(showroomVariantId),
+            },
+        });
+        if (!selectedShowroomVariant) {
+            res.status(404).json({
+                success: false,
+                message: "Showroom variant not found",
+            });
+            return;
+        }
+        // R1 → R2 → R3
+        const nextRevision = (existingLead.quotationRevision || 0) + 1;
+        // =========================
+        // EX-SHOWROOM WITH TAX
+        // =========================
+        const exShowroomTaxable = Number(selectedShowroomVariant.exShowroomPrice) || 0;
+        const exShowroomTaxPercent = Number(selectedShowroomVariant.exShowroomTaxPercent) || 0;
+        const exShowroomAmount = exShowroomTaxable + (exShowroomTaxable * exShowroomTaxPercent) / 100;
+        // =========================
+        // INSURANCE WITH TAX
+        // =========================
+        const insuranceTaxable = Number(selectedShowroomVariant.insurance) || 0;
+        const insuranceTaxPercent = Number(selectedShowroomVariant.insuranceTaxPercent) || 0;
+        const insuranceAmount = insuranceTaxable + (insuranceTaxable * insuranceTaxPercent) / 100;
+        // =========================
+        // RTO WITH TAX
+        // =========================
+        const rtoTaxable = Number(selectedShowroomVariant.rtoCharge) || 0;
+        const rtoTaxPercent = Number(selectedShowroomVariant.rtoTaxPercent) || 0;
+        const rtoAmount = rtoTaxable + (rtoTaxable * rtoTaxPercent) / 100;
+        // =========================
+        // ONLY TOGGLE-ON ACCESSORIES
+        // =========================
+        const accessoriesAmount = selectedAccessories.reduce((sum, item) => {
+            return sum + (Number(item.totalPrice) || 0);
+        }, 0);
+        // =========================
+        // GRAND TOTAL
+        // =========================
+        const grandTotal = exShowroomAmount + insuranceAmount + rtoAmount + accessoriesAmount;
+        // Update Lead + save history together
+        const result = await prisma.$transaction(async (tx) => {
+            // Update current quotation values
+            const updatedLead = await tx.lead.update({
+                where: {
+                    id: leadId,
+                },
+                data: {
+                    modelId: Number(modelId),
+                    showroomVariantId: Number(showroomVariantId),
+                    colourId: Number(colourId),
+                    quotationRevision: nextRevision,
+                },
+                include: {
+                    customer: true,
+                    model: true,
+                    colour: true,
+                    showroomVariant: {
+                        include: {
+                            accessories: {
+                                include: {
+                                    accessory: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+            // Save R1/R2/R3 history
+            const history = await tx.quotationHistory.create({
+                data: {
+                    leadId,
+                    quotationNo: existingLead.quotationNo || "",
+                    revisionNo: nextRevision,
+                    modelId: Number(modelId),
+                    showroomVariantId: Number(showroomVariantId),
+                    colourId: Number(colourId),
+                    exShowroomAmount,
+                    insuranceAmount,
+                    rtoAmount,
+                    accessoriesAmount,
+                    grandTotal,
+                    // Only ON accessories
+                    selectedAccessories,
+                    updatedBy: req.body.createdBy || name,
+                    // ✅ NEW tracking fields
+                    createdById: user?.id ? Number(user.id) : null,
+                    createdType: role,
+                    branchId: finalBranchId,
+                    teamLeadId: finalTeamLeadId,
+                },
+            });
+            return {
+                updatedLead,
+                history,
+            };
+        });
+        res.status(200).json({
+            success: true,
+            message: `Quotation updated successfully to R${nextRevision}`,
+            quotationDisplayNo: `${existingLead.quotationNo}/R${nextRevision}`,
+            data: result.updatedLead,
+            history: result.history,
+        });
+    }
+    catch (error) {
+        console.error("UPDATE QUOTATION ERROR:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update quotation",
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+};
+// leadController.ts
+export const getQuotationHistoryList = async (req, res) => {
+    try {
+        const user = req.user;
+        const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+        const whereClause = {
+            // Show only leads where quotation was revised
+            quotationRevision: {
+                gt: 0,
+            },
+        };
+        if (role === "BRANCH") {
+            whereClause.branchId = Number(user.branchId);
+        }
+        else if (role === "TEAM_LEAD") {
+            whereClause.teamLeadId = Number(user.id);
+        }
+        else if (role === "SALES_EXECUTIVE") {
+            whereClause.executiveId = Number(user.id);
+        }
+        // Admin -> no filter, sees everything
+        const leads = await prisma.lead.findMany({
+            where: whereClause,
+            select: {
+                id: true,
+                quotationNo: true,
+                quotationRevision: true,
+                updatedAt: true,
+                customer: {
+                    select: {
+                        accountName: true,
+                        mobile: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        quotationHistories: true,
+                    },
+                },
+            },
+            orderBy: {
+                updatedAt: "desc",
+            },
+        });
+        const data = leads.map((lead) => ({
+            id: lead.id,
+            customerName: lead.customer?.accountName || "-",
+            mobile: lead.customer?.mobile || "-",
+            quotationNo: lead.quotationNo || "-",
+            // Actual saved quotation-history records
+            revisionCount: lead._count.quotationHistories,
+            updatedAt: lead.updatedAt,
+        }));
+        return res.status(200).json({
+            success: true,
+            data,
+        });
+    }
+    catch (error) {
+        console.error("GET QUOTATION HISTORY LIST ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch quotation history",
+        });
+    }
+};
+// controllers/lead.ts
+export const getQuotationHistoryByLeadId = async (req, res) => {
+    try {
+        const leadId = Number(req.params.id);
+        if (!leadId || Number.isNaN(leadId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid lead ID",
+            });
+        }
+        const user = req.user;
+        const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+        const whereClause = {
+            id: leadId,
+        };
+        if (role === "BRANCH") {
+            whereClause.branchId = Number(user.branchId);
+        }
+        else if (role === "TEAM_LEAD") {
+            whereClause.teamLeadId = Number(user.id);
+        }
+        else if (role === "SALES_EXECUTIVE") {
+            whereClause.executiveId = Number(user.id);
+        }
+        // Admin -> no restriction
+        const lead = await prisma.lead.findFirst({
+            where: whereClause,
+            select: {
+                id: true,
+                quotationNo: true,
+                quotationRevision: true,
+                createdAt: true,
+                updatedAt: true,
+                createdBy: true,
+                // Original quotation model
+                model: {
+                    select: {
+                        modelName: true,
+                    },
+                },
+                // Original quotation variant
+                showroomVariant: {
+                    select: {
+                        variantName: true,
+                    },
+                },
+                // Original quotation colour
+                colour: {
+                    select: {
+                        colourName: true,
+                    },
+                },
+                customer: {
+                    select: {
+                        accountName: true,
+                        mobile: true,
+                        city: true,
+                    },
+                },
+                // Updated quotation records
+                quotationHistories: {
+                    orderBy: {
+                        revisionNo: "asc",
+                    },
+                    select: {
+                        id: true,
+                        revisionNo: true,
+                        quotationNo: true,
+                        // Already saved quotation total
+                        grandTotal: true,
+                        updatedBy: true,
+                        createdAt: true,
+                        model: {
+                            select: {
+                                modelName: true,
+                            },
+                        },
+                        showroomVariant: {
+                            select: {
+                                variantName: true,
+                            },
+                        },
+                        colour: {
+                            select: {
+                                colourName: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!lead) {
+            return res.status(404).json({
+                success: false,
+                message: "Lead not found",
+            });
+        }
+        const history = [
+            // =========================
+            // ORIGINAL QUOTATION
+            // =========================
+            {
+                id: `original-${lead.id}`,
+                leadId: lead.id,
+                revisionNo: 0,
+                revisionName: "Original Quotation",
+                quotationNo: lead.quotationNo || "-",
+                modelName: lead.model?.modelName || "-",
+                variantName: lead.showroomVariant?.variantName || "-",
+                colourName: lead.colour?.colourName || "-",
+                /*
+                 Original total is not currently
+                 saved in your Lead table.
+        
+                 Therefore don't recalculate it.
+                */
+                totalAmount: null,
+                createdBy: lead.createdBy || "-",
+                createdAt: lead.createdAt,
+                isOriginal: true,
+            },
+            // =========================
+            // UPDATED QUOTATIONS
+            // =========================
+            ...lead.quotationHistories.map((item) => ({
+                id: item.id,
+                leadId: lead.id,
+                revisionNo: item.revisionNo,
+                revisionName: `Revision ${item.revisionNo}`,
+                quotationNo: lead.quotationNo
+                    ? `${lead.quotationNo}-R${item.revisionNo}`
+                    : "-",
+                modelName: item.model?.modelName || "-",
+                variantName: item.showroomVariant?.variantName || "-",
+                colourName: item.colour?.colourName || "-",
+                // Direct saved value — no calculation
+                totalAmount: Number(item.grandTotal) || 0,
+                createdBy: item.updatedBy || "-",
+                createdAt: item.createdAt,
+                isOriginal: false,
+            })),
+        ];
+        return res.status(200).json({
+            success: true,
+            customer: {
+                customerName: lead.customer?.accountName || "-",
+                mobile: lead.customer?.mobile || "-",
+                city: lead.customer?.city || "-",
+            },
+            data: history,
+        });
+    }
+    catch (error) {
+        console.error("GET QUOTATION HISTORY DETAILS ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch quotation history details",
+            error: error instanceof Error ? error.message : "Unknown error",
+        });
+    }
+};
+export const getBookingBalance = async (req, res) => {
+    try {
+        const leads = await prisma.lead.findMany({
+            include: {
+                customer: {
+                    select: {
+                        accountName: true,
+                        mobile: true,
+                    },
+                },
+                model: {
+                    select: {
+                        modelName: true,
+                    },
+                },
+                showroomVariant: {
+                    select: {
+                        variantName: true,
+                    },
+                },
+                colour: {
+                    select: {
+                        colourName: true,
+                    },
+                },
+                cashReceipts: {
+                    select: {
+                        amount: true,
+                    },
+                },
+                bankReceipts: {
+                    select: {
+                        amount: true,
+                    },
+                },
+                // NEW: latest quotation revision, agar hai to
+                quotationHistories: {
+                    orderBy: {
+                        revisionNo: "desc",
+                    },
+                    take: 1,
+                    select: {
+                        grandTotal: true,
+                    },
+                },
+                order: {
+                    select: {
+                        invoiceAmount: true,
+                        total: true,
+                        receivedAmount: true,
+                        pendingAmount: true,
+                        chassisNo: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+        const bookingBalance = leads.map((lead, index) => {
+            // ==========================================
+            // 1) INVOICE AMOUNT
+            // Order bana hai -> Order.invoiceAmount
+            // Order nahi bana -> latest quotation grandTotal
+            //    -> agar wo bhi nahi to Lead.quotationGrandTotal (initial value)
+            // ==========================================
+            const invoiceAmount = lead.order
+                ? Number(lead.order.invoiceAmount || 0)
+                : Number(lead.quotationHistories?.[0]?.grandTotal ??
+                    lead.quotationGrandTotal ??
+                    0);
+            // ==========================================
+            // 2) RECEIVED AMOUNT
+            // Order bana hai -> Order.receivedAmount (exchange discount + margin payment)
+            // Order nahi bana -> sirf jo advance payment (cash/bank receipts) leadId se linked hai uska total
+            // ==========================================
+            const advancePaid = lead.cashReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0) +
+                lead.bankReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+            const receivedAmount = advancePaid;
+            // Hamesha invoiceAmount - receivedAmount (never negative)
+            const pendingAmount = Math.max(invoiceAmount - receivedAmount, 0);
+            const age = Math.floor((Date.now() - new Date(lead.createdAt).getTime()) /
+                (1000 * 60 * 60 * 24));
+            return {
+                sr: index + 1,
+                leadDate: lead.createdAt,
+                leadId: lead.id,
+                dmsEnquiryNo: lead.dmsEnquiryNo,
+                dmsEnquiryDate: lead.dmsEnquiryDate,
+                customerName: lead.customer?.accountName || "-",
+                contact: lead.customer?.mobile || "-",
+                model: lead.model?.modelName || "-",
+                variant: lead.showroomVariant?.variantName || "-",
+                colour: lead.colour?.colourName || "-",
+                ageLead: `${age} Days`,
+                invoiceAmount,
+                receivedAmount,
+                pendingAmount,
+                // Order bana hai to hi chassis suggest hoga
+                suggestChassisNo: lead.order?.chassisNo || "-",
+                paymentHistory: lead.cashReceipts.length + lead.bankReceipts.length > 0
+                    ? "View"
+                    : "-",
+            };
+        });
+        // ==========================================
+        // REMOVE FULLY SETTLED ENTRIES
+        // Jab invoiceAmount > 0 AND receivedAmount === invoiceAmount
+        // AND pendingAmount === 0 -> lead ka pura paisa aa chuka hai,
+        // isliye Booking Balance list se hata do.
+        // (invoiceAmount === 0 wale fresh leads list mein rahenge)
+        // ==========================================
+        const pendingBookingBalance = bookingBalance.filter((row) => {
+            const isFullySettled = row.receivedAmount === row.invoiceAmount && row.pendingAmount === 0;
+            return !isFullySettled;
+        });
+        const summary = {
+            invoiceAmount: pendingBookingBalance.reduce((sum, row) => sum + row.invoiceAmount, 0),
+            receivedAmount: pendingBookingBalance.reduce((sum, row) => sum + row.receivedAmount, 0),
+            pendingAmount: pendingBookingBalance.reduce((sum, row) => sum + row.pendingAmount, 0),
+        };
+        const modelMap = new Map();
+        pendingBookingBalance.forEach((row) => {
+            if (!modelMap.has(row.model)) {
+                modelMap.set(row.model, {
+                    model: row.model,
+                    totalLead: 0,
+                    bookedLead: 0,
+                });
+            }
+            const model = modelMap.get(row.model);
+            model.totalLead++;
+            // "Booked" ab order create hone par count hoga
+            if (row.invoiceAmount > 0 && row.receivedAmount > 0) {
+                model.bookedLead++;
+            }
+        });
+        return res.json({
+            success: true,
+            data: {
+                summary,
+                modelAnalysis: Array.from(modelMap.values()),
+                rows: pendingBookingBalance,
+            },
+        });
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch booking balance",
+        });
+    }
+};
+export const getLeadsForCashReceipt = async (req, res) => {
+    try {
+        const user = req.user;
+        const whereClause = {};
+        if (user?.role?.toUpperCase() === "BRANCH") {
+            whereClause.branchId = Number(user.branchId);
+        }
+        if (user?.role?.toUpperCase() === "SALES EXECUTIVE") {
+            whereClause.executiveId = Number(user.id);
+        }
+        const leads = await prisma.lead.findMany({
+            where: whereClause,
+            include: {
+                customer: true,
+                cashReceipts: { select: { amount: true } },
+                bankReceipts: { select: { amount: true } },
+                quotationHistories: {
+                    orderBy: { revisionNo: "desc" },
+                    take: 1,
+                    select: { grandTotal: true },
+                },
+                order: {
+                    select: { invoiceAmount: true },
+                },
+            },
+            orderBy: { createdAt: "desc" },
+        });
+        // ==========================================
+        // SIRF WOH LEADS JINME ABHI PAYMENT PENDING HAI
+        // invoiceAmount - receivedAmount > 0
+        // ==========================================
+        const pendingLeads = leads.filter((lead) => {
+            const invoiceAmount = lead.order
+                ? Number(lead.order.invoiceAmount || 0)
+                : Number(lead.quotationHistories?.[0]?.grandTotal ??
+                    lead.quotationGrandTotal ??
+                    0);
+            const receivedAmount = lead.cashReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0) +
+                lead.bankReceipts.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+            const pendingAmount = invoiceAmount - receivedAmount;
+            return pendingAmount > 0;
+        });
+        return res.json({
+            success: true,
+            data: pendingLeads,
+        });
+    }
+    catch (error) {
+        console.error("GET LEADS FOR CASH RECEIPT ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch leads",
+        });
+    }
+};
 //# sourceMappingURL=lead.js.map

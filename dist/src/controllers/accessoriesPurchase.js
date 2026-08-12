@@ -1,13 +1,111 @@
 import prisma from "../lib/prisma.js";
 import { generateAccessoriesPurchaseBillNo } from "../utils/accessoriesPurchase.js";
+import { generateCashPaymentVoucher } from "../utils/generateCashPaymentVoucher.js";
+import { generateBankPaymentVoucher } from "../utils/generateBankPaymentVoucher.js";
 export const createAccessoriesPurchase = async (req, res) => {
     try {
-        const { accountId, purchaseDate, purchaseBillNo, purchaseLocation, dueDate, terms, narration, cashAccountId, bankAccountId, paymentMode, chequeNo, chequeDate, clearDate, bankNarration, freightCharge, insurance, otherCharge, roundAmount, taxableValue, totalQty, totalAmount, cgst, sgst, igst, grandTotal, verifyStatus, items, } = req.body;
-        const billNo = await generateAccessoriesPurchaseBillNo();
+        const { companyId, financialYearId, accountId, purchaseDate, purchaseBillNo, purchaseLocation, dueDate, terms, narration, cashAccountId, bankAccountId, paymentMode, chequeNo, chequeDate, clearDate, bankNarration, freightCharge, insurance, otherCharge, roundAmount, taxableValue, totalQty, totalAmount, cgst, sgst, igst, grandTotal, verifyStatus, items, } = req.body;
+        // ======================================================
+        // CHECK CASH / BANK BALANCE BEFORE ACCESSORIES PURCHASE
+        // ======================================================
+        const purchaseAmount = Number(grandTotal || 0);
+        if (purchaseAmount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Purchase amount must be greater than zero",
+            });
+        }
+        // CASH BALANCE CHECK
+        if (terms?.toLowerCase() === "cash") {
+            if (!cashAccountId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please select a cash account",
+                });
+            }
+            const cashAccount = await prisma.account.findUnique({
+                where: {
+                    id: Number(cashAccountId),
+                },
+                select: {
+                    id: true,
+                    accountName: true,
+                    closingBalance: true,
+                    drCr: true,
+                },
+            });
+            if (!cashAccount) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Selected cash account was not found",
+                });
+            }
+            const availableBalance = cashAccount.drCr === "Dr" ? Number(cashAccount.closingBalance || 0) : 0;
+            if (availableBalance < purchaseAmount) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Insufficient balance in ${cashAccount.accountName}. Available balance: ₹${availableBalance.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    })}, Purchase amount: ₹${purchaseAmount.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    })}`,
+                });
+            }
+        }
+        // BANK BALANCE CHECK
+        if (terms?.toLowerCase() === "bank") {
+            if (!bankAccountId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Please select a bank account",
+                });
+            }
+            const bankAccount = await prisma.account.findUnique({
+                where: {
+                    id: Number(bankAccountId),
+                },
+                select: {
+                    id: true,
+                    accountName: true,
+                    closingBalance: true,
+                    drCr: true,
+                },
+            });
+            if (!bankAccount) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Selected bank account was not found",
+                });
+            }
+            const availableBalance = bankAccount.drCr === "Dr" ? Number(bankAccount.closingBalance || 0) : 0;
+            if (availableBalance < purchaseAmount) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Insufficient balance in ${bankAccount.accountName}. Available balance: ₹${availableBalance.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    })}, Purchase amount: ₹${purchaseAmount.toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                    })}`,
+                });
+            }
+        }
+        const billNo = await generateAccessoriesPurchaseBillNo(Number(companyId), Number(financialYearId));
+        const user = req.user;
+        const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+        const name = user?.employeeName || user?.name || "Admin";
         const purchase = await prisma.accessoriesPurchase.create({
             data: {
+                companyId: Number(companyId),
+                financialYearId: Number(financialYearId),
                 billNo,
                 accountId: Number(accountId),
+                createdById: Number(user.id),
+                createdBy: name,
+                createdType: role,
                 purchaseBillNo,
                 purchaseDate: new Date(purchaseDate),
                 dueDate: dueDate ? new Date(dueDate) : null,
@@ -39,6 +137,7 @@ export const createAccessoriesPurchase = async (req, res) => {
                         itemName: item.item,
                         itemCode: item.itemCode,
                         shortName: item.shortName || null,
+                        barCode: item.barCode || null,
                         hsnCode: item.hsn || null,
                         unit: item.unit || null,
                         taxSlab: item.gstPercent != null ? String(item.gstPercent) : null,
@@ -60,17 +159,21 @@ export const createAccessoriesPurchase = async (req, res) => {
                 items: true,
             },
         });
+        // User details
+        // ─────────────────────────────────────
+        // CREDIT ACCESSORIES PURCHASE
+        // ─────────────────────────────────────
         if (terms?.toLowerCase() === "credit" && accountId) {
-            const account = await prisma.account.findUnique({
+            const supplier = await prisma.account.findUnique({
                 where: {
                     id: Number(accountId),
                 },
             });
-            if (account) {
-                const currentBalance = Number(account.closingBalance || 0);
-                const purchaseAmount = Number(grandTotal || 0);
+            if (supplier) {
+                const currentBalance = Number(supplier.closingBalance || 0);
                 let closingBalance = currentBalance;
-                let balanceType = account.drCr;
+                let balanceType = supplier.drCr;
+                // Supplier balance increases
                 if (balanceType === "Cr") {
                     closingBalance += purchaseAmount;
                 }
@@ -93,6 +196,102 @@ export const createAccessoriesPurchase = async (req, res) => {
                     },
                 });
             }
+        }
+        // ─────────────────────────────────────
+        // CASH ACCESSORIES PURCHASE
+        // ─────────────────────────────────────
+        // ─────────────────────────────────────
+        // CASH ACCESSORIES PURCHASE
+        // ─────────────────────────────────────
+        else if (terms?.toLowerCase() === "cash" && cashAccountId) {
+            const cashAccount = await prisma.account.findUnique({
+                where: {
+                    id: Number(cashAccountId),
+                },
+            });
+            if (cashAccount) {
+                const currentBalance = Number(cashAccount.closingBalance || 0);
+                await prisma.account.update({
+                    where: {
+                        id: Number(cashAccountId),
+                    },
+                    data: {
+                        closingBalance: currentBalance - purchaseAmount,
+                        drCr: "Dr",
+                    },
+                });
+            }
+        }
+        // ─────────────────────────────────────
+        // BANK ACCESSORIES PURCHASE
+        // ─────────────────────────────────────
+        // ─────────────────────────────────────
+        // BANK ACCESSORIES PURCHASE
+        // ─────────────────────────────────────
+        else if (terms?.toLowerCase() === "bank" && bankAccountId) {
+            const bankAccount = await prisma.account.findUnique({
+                where: {
+                    id: Number(bankAccountId),
+                },
+            });
+            if (bankAccount) {
+                const currentBalance = Number(bankAccount.closingBalance || 0);
+                await prisma.account.update({
+                    where: {
+                        id: Number(bankAccountId),
+                    },
+                    data: {
+                        closingBalance: currentBalance - purchaseAmount,
+                        drCr: "Dr",
+                    },
+                });
+            }
+        }
+        // ─────────────────────────────────────
+        // CREATE CASH PAYMENT
+        // ─────────────────────────────────────
+        if (terms?.toLowerCase() === "cash" && cashAccountId) {
+            const voucherNo = await generateCashPaymentVoucher(Number(companyId), Number(financialYearId));
+            await prisma.cashPayment.create({
+                data: {
+                    companyId: Number(companyId),
+                    financialYearId: Number(financialYearId),
+                    voucherNo,
+                    type: "APCP",
+                    date: purchase.purchaseDate ?? new Date(),
+                    cashAccountId: Number(cashAccountId),
+                    oppAccountId: Number(accountId),
+                    amount: purchaseAmount,
+                    narration: narration || "",
+                    createdType: role,
+                    createdBy: name,
+                },
+            });
+        }
+        // ─────────────────────────────────────
+        // CREATE BANK PAYMENT
+        // ─────────────────────────────────────
+        if (terms?.toLowerCase() === "bank" && bankAccountId) {
+            const voucherNo = await generateBankPaymentVoucher(Number(companyId), Number(financialYearId));
+            await prisma.bankPayment.create({
+                data: {
+                    companyId: Number(companyId),
+                    financialYearId: Number(financialYearId),
+                    voucherNo,
+                    type: "APBP",
+                    date: purchase.purchaseDate ?? new Date(),
+                    bankAccountId: Number(bankAccountId),
+                    oppAccountId: Number(accountId),
+                    amount: purchaseAmount,
+                    paymentMode: paymentMode || null,
+                    chequeNo: chequeNo || null,
+                    chequeDate: chequeDate ? new Date(chequeDate) : null,
+                    clearDate: clearDate ? new Date(clearDate) : null,
+                    narration: bankNarration || narration || "",
+                    createdType: role,
+                    createdBy: name,
+                },
+            });
         }
         return res.status(201).json({
             success: true,
@@ -136,6 +335,61 @@ export const getAccessoriesPurchases = async (req, res) => {
         });
     }
 };
+// accessoriesPurchase.controller.ts me add karein
+export const getAccessoryPurchaseHistory = async (req, res) => {
+    try {
+        const accessoryId = Number(req.params.accessoryId);
+        if (!Number.isInteger(accessoryId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid accessory ID",
+            });
+        }
+        // Sirf INWARD status wale items chahiye — kyunki wahi actual stock hai
+        const items = await prisma.accessoriesPurchaseItem.findMany({
+            where: {
+                accessoryId: accessoryId,
+                status: "Inward",
+            },
+            include: {
+                purchase: {
+                    select: {
+                        id: true,
+                        billNo: true,
+                        purchaseBillNo: true,
+                        purchaseDate: true,
+                        verifyStatus: true,
+                    },
+                },
+            },
+            orderBy: {
+                inwardDate: "desc",
+            },
+        });
+        const data = items.map((item) => ({
+            id: item.id,
+            purchaseId: item.purchase?.id,
+            purchaseBillNo: item.purchase?.purchaseBillNo || item.purchase?.billNo || "-",
+            billNo: item.purchase?.billNo || "-",
+            inwardDate: item.inwardDate,
+            stock: item.stock ?? item.qty,
+            qty: item.qty,
+            status: item.status,
+        }));
+        return res.json({
+            success: true,
+            data,
+        });
+    }
+    catch (error) {
+        console.error("GET ACCESSORY PURCHASE HISTORY ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch accessory purchase history",
+            error: error?.message,
+        });
+    }
+};
 export const updateAccessoriesPurchase = async (req, res) => {
     try {
         const id = Number(req.params.id);
@@ -162,25 +416,15 @@ export const updateAccessoriesPurchase = async (req, res) => {
                 purchaseDate: new Date(purchaseDate),
                 purchaseBillNo,
                 purchaseLocation,
-                dueDate: dueDate
-                    ? new Date(dueDate)
-                    : null,
+                dueDate: dueDate ? new Date(dueDate) : null,
                 terms,
                 narration,
-                cashAccountId: cashAccountId
-                    ? Number(cashAccountId)
-                    : null,
-                bankAccountId: bankAccountId
-                    ? Number(bankAccountId)
-                    : null,
+                cashAccountId: cashAccountId ? Number(cashAccountId) : null,
+                bankAccountId: bankAccountId ? Number(bankAccountId) : null,
                 paymentMode,
                 chequeNo,
-                chequeDate: chequeDate
-                    ? new Date(chequeDate)
-                    : null,
-                clearDate: clearDate
-                    ? new Date(clearDate)
-                    : null,
+                chequeDate: chequeDate ? new Date(chequeDate) : null,
+                clearDate: clearDate ? new Date(clearDate) : null,
                 bankNarration,
                 freightCharge: Number(freightCharge || 0),
                 insurance: Number(insurance || 0),
@@ -196,18 +440,15 @@ export const updateAccessoriesPurchase = async (req, res) => {
                 verifyStatus,
                 items: {
                     create: items.map((item) => ({
-                        accessoryId: item.accessoryId
-                            ? Number(item.accessoryId)
-                            : null,
+                        accessoryId: item.accessoryId ? Number(item.accessoryId) : null,
                         itemName: item.item,
                         itemCode: item.itemCode,
                         shortName: item.shortName || null,
+                        barCode: item.barCode || null,
                         hsnCode: item.hsn || null,
                         unit: item.unit || null,
                         groupName: item.groupName || null,
-                        taxSlab: item.gstPercent != null
-                            ? String(item.gstPercent)
-                            : null,
+                        taxSlab: item.gstPercent != null ? String(item.gstPercent) : null,
                         modelName: item.modelName || null,
                         variantName: item.variantName || null,
                         qty: Number(item.qty),
@@ -307,11 +548,9 @@ export const deleteAccessoriesPurchase = async (req, res) => {
 };
 export const getAccessoriesPurchaseBillNo = async (req, res) => {
     try {
-        const billNo = await generateAccessoriesPurchaseBillNo();
-        return res.json({
-            success: true,
-            billNo,
-        });
+        const { companyId, financialYearId } = req.query;
+        const billNo = await generateAccessoriesPurchaseBillNo(Number(companyId), Number(financialYearId));
+        return res.json({ success: true, billNo });
     }
     catch (error) {
         return res.status(500).json({
@@ -324,13 +563,24 @@ export const updateAccessoriesPurchaseItemStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
+        const user = req.user;
+        const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+        const name = user?.employeeName || user?.name || "Admin";
+        const updateData = {
+            status,
+        };
+        // Save inward audit only when status becomes Inward
+        if (status === "Inward") {
+            updateData.inwardById = Number(user.id);
+            updateData.inwardBy = name;
+            updateData.inwardType = role;
+            updateData.inwardDate = new Date();
+        }
         const item = await prisma.accessoriesPurchaseItem.update({
             where: {
                 id: Number(id),
             },
-            data: {
-                status,
-            },
+            data: updateData,
         });
         return res.json({
             success: true,
@@ -342,6 +592,73 @@ export const updateAccessoriesPurchaseItemStatus = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to update item status",
+        });
+    }
+};
+export const getAccessoriesInventory = async (req, res) => {
+    try {
+        // Only verified accessories purchases
+        const purchases = await prisma.accessoriesPurchase.findMany({
+            where: {
+                verifyStatus: "verify",
+            },
+            include: {
+                items: {
+                    where: {
+                        status: "Inward",
+                    },
+                    include: {
+                        accessory: true,
+                    },
+                },
+            },
+            orderBy: {
+                id: "desc",
+            },
+        });
+        // Combine the same accessory from multiple purchases
+        const inventoryMap = new Map();
+        for (const purchase of purchases) {
+            for (const item of purchase.items) {
+                // Prefer accessoryId because item code may change
+                const key = item.accessoryId
+                    ? `accessory-${item.accessoryId}`
+                    : `code-${item.itemCode}`;
+                const existingItem = inventoryMap.get(key);
+                const purchasedQty = Number(item.qty || 0);
+                if (existingItem) {
+                    existingItem.closingStock += purchasedQty;
+                    existingItem.purPrice = Number(item.purchaseRate || 0);
+                }
+                else {
+                    const openingStock = Number(item.accessory?.opStock || 0);
+                    inventoryMap.set(key, {
+                        id: item.accessoryId ?? item.id,
+                        accessoryId: item.accessoryId ?? null,
+                        itemName: item.itemName || "-",
+                        itemCode: item.itemCode || "-",
+                        hsn: item.hsnCode || "-",
+                        group: item.groupName || item.accessory?.group || "-",
+                        tax: Number(item.gstPercent || item.taxSlab || 0),
+                        purPrice: Number(item.purchaseRate || 0),
+                        salesPrice: Number(item.accessory?.salesPrice || 0),
+                        mrp: Number(item.accessory?.mrp || 0),
+                        closingStock: openingStock + purchasedQty,
+                    });
+                }
+            }
+        }
+        const inventory = Array.from(inventoryMap.values());
+        return res.status(200).json({
+            success: true,
+            data: inventory,
+        });
+    }
+    catch (error) {
+        console.error("GET ACCESSORIES INVENTORY ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch accessories inventory",
         });
     }
 };

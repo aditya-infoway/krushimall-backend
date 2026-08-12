@@ -1,11 +1,12 @@
 import express from "express";
 import { createProfession, getProfessions, getProfessionById, updateProfession, deleteProfession, toggleProfessionStatus, } from "../controllers/profession.js";
+import { verifyToken } from "../middleware/middleware.js";
 const router = express.Router();
-router.post("/", createProfession);
+router.post("/", verifyToken, createProfession);
 router.get("/", getProfessions);
 router.get("/:id", getProfessionById);
-router.put("/:id", updateProfession);
-router.delete("/:id", deleteProfession);
-router.patch("/toggle-status/:id", toggleProfessionStatus);
+router.put("/:id", verifyToken, updateProfession);
+router.delete("/:id", verifyToken, deleteProfession);
+router.patch("/toggle-status/:id", verifyToken, toggleProfessionStatus);
 export default router;
 //# sourceMappingURL=profession.js.map

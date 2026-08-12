@@ -3,7 +3,12 @@ export const createFinance = async (req, res) => {
     try {
         const finance = await prisma.finance.create({
             data: {
-                finance: req.body.finance,
+                account: {
+                    connect: {
+                        id: Number(req.body.accountId),
+                    },
+                },
+                employeeName: req.body.employeeName,
                 status: req.body.status || "ACTIVE",
             },
         });
@@ -24,6 +29,15 @@ export const createFinance = async (req, res) => {
 export const getFinances = async (req, res) => {
     try {
         const finances = await prisma.finance.findMany({
+            include: {
+                account: {
+                    select: {
+                        id: true,
+                        accountName: true,
+                        mobile: true,
+                    },
+                },
+            },
             orderBy: {
                 id: "desc",
             },
@@ -47,6 +61,9 @@ export const getFinanceById = async (req, res) => {
             where: {
                 id: Number(req.params.id),
             },
+            include: {
+                account: true,
+            },
         });
         res.status(200).json({
             success: true,
@@ -64,7 +81,12 @@ export const updateFinance = async (req, res) => {
                 id: Number(req.params.id),
             },
             data: {
-                finance: req.body.finance,
+                account: {
+                    connect: {
+                        id: Number(req.body.accountId),
+                    },
+                },
+                employeeName: req.body.employeeName,
                 status: req.body.status,
             },
         });
