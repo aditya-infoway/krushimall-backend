@@ -1,0 +1,20 @@
+import { Router } from "express";
+import purchaseRoutes from "./purchase.js";
+import accountRoutes from "./account.js";
+import accessoriesPurchaseRoutes from "./accessoriesPurchase.js";
+import cashPaymentRoutes from "./cashPayment.js";
+import bankPaymentRoutes from "./bankPayment.js";
+import cashReceiptRoutes from "./cashReceipt.js";
+import bankReceiptRoutes from "./bankReceipt.js";
+import contraRoutes from "./contra.js";
+const router = Router();
+router.use("/purchases", purchaseRoutes);
+router.use("/accounts", accountRoutes);
+router.use("/accessories-purchase", accessoriesPurchaseRoutes);
+router.use("/cash-payment", cashPaymentRoutes);
+router.use("/bank-payment", bankPaymentRoutes);
+router.use("/cash-receipt", cashReceiptRoutes);
+router.use("/bank-receipt", bankReceiptRoutes);
+router.use("/contra", contraRoutes);
+export default router;
+//# sourceMappingURL=index.js.map

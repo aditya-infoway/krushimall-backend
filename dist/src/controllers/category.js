@@ -1,9 +1,11 @@
 import prisma from "../lib/prisma.js";
 export const createCategory = async (req, res) => {
     try {
+        // Get categoryName from either field
+        const categoryName = req.body.categoryName || req.body.name;
         const existingCategory = await prisma.category.findFirst({
             where: {
-                categoryName: req.body.categoryName,
+                categoryName: categoryName,
             },
         });
         if (existingCategory) {
@@ -14,8 +16,9 @@ export const createCategory = async (req, res) => {
         }
         const category = await prisma.category.create({
             data: {
-                categoryName: req.body.categoryName,
+                categoryName: categoryName,
                 status: req.body.status || "ACTIVE",
+                image: req.file?.filename || null,
             },
         });
         return res.status(201).json({
@@ -79,14 +82,21 @@ export const getCategoryById = async (req, res) => {
 };
 export const updateCategory = async (req, res) => {
     try {
+        // Get categoryName from either field
+        const categoryName = req.body.categoryName || req.body.name;
+        const updateData = {
+            categoryName: categoryName,
+            status: req.body.status,
+        };
+        // Add image handling
+        if (req.file) {
+            updateData.image = req.file.filename;
+        }
         const category = await prisma.category.update({
             where: {
                 id: Number(req.params.id),
             },
-            data: {
-                categoryName: req.body.categoryName,
-                status: req.body.status,
-            },
+            data: updateData,
         });
         return res.status(200).json({
             success: true,

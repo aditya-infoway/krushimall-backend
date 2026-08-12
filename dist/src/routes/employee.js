@@ -1,11 +1,28 @@
 import express from "express";
-import { createEmployee, getEmployees, getEmployeeById, updateEmployee, deleteEmployee, toggleEmployeeStatus, } from "../controllers/employee.js";
+import { createEmployee, getEmployees, getEmployeeById, updateEmployee, deleteEmployee, toggleEmployeeStatus, getDepartments, getRolesByDepartment, getTeamLeads, employeeLogin, } from "../controllers/employee.js";
+import { verifyToken } from "../middleware/middleware.js";
+import { verifyEmployeeToken } from "../middleware/employeeMiddleware.js";
 const router = express.Router();
-router.post("/", createEmployee);
-router.get("/", getEmployees);
-router.get("/:id", getEmployeeById);
-router.put("/:id", updateEmployee);
-router.delete("/:id", deleteEmployee);
-router.patch("/toggle-status/:id", toggleEmployeeStatus);
+// ========================================
+// ADMIN APIs - Admin token required
+// ========================================
+router.post("/", verifyToken, createEmployee);
+router.get("/departments", verifyToken, getDepartments);
+router.get("/roles/department/:departmentId", verifyToken, getRolesByDepartment);
+router.get("/team-leads", verifyToken, getTeamLeads);
+router.get("/", verifyToken, getEmployees);
+router.put("/:id", verifyToken, updateEmployee);
+router.delete("/:id", verifyToken, deleteEmployee);
+router.patch("/toggle-status/:id", verifyToken, toggleEmployeeStatus);
+// ========================================
+// EMPLOYEE LOGIN
+// No token required
+// ========================================
+router.post("/login", employeeLogin);
+// ========================================
+// EMPLOYEE PROFILE
+// Employee token required
+// ========================================
+router.get("/:id", verifyEmployeeToken, getEmployeeById);
 export default router;
 //# sourceMappingURL=employee.js.map

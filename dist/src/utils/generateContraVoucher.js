@@ -1,5 +1,5 @@
 import prisma from "../lib/prisma.js";
-export const generateContraVoucher = async () => {
+export const generateContraVoucher = async (companyId, financialYearId) => {
     const prefixMaster = await prisma.profilePrefix.findFirst({
         where: {
             prefixFor: "CONTRA",
@@ -8,9 +8,10 @@ export const generateContraVoucher = async () => {
     if (!prefixMaster) {
         throw new Error("Contra prefix not found");
     }
-    const currentFY = await prisma.financialYear.findFirst({
-        orderBy: {
-            id: "desc",
+    // Selected/session financial year
+    const currentFY = await prisma.financialYear.findUnique({
+        where: {
+            id: financialYearId,
         },
     });
     if (!currentFY) {
@@ -21,6 +22,8 @@ export const generateContraVoucher = async () => {
     const prefix = prefixMaster.prefix;
     const lastVoucher = await prisma.contra.findFirst({
         where: {
+            companyId,
+            financialYearId,
             voucherNo: {
                 startsWith: `${prefix}/${financialYear}/`,
             },

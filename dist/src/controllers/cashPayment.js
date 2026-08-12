@@ -1,11 +1,19 @@
 import prisma from "../lib/prisma.js";
 import { generateCashPaymentVoucher } from "../utils/generateCashPaymentVoucher.js";
+import ExcelJS from "exceljs";
 // ==========================
 // Get All Cash Payments
 // ==========================
 export const getCashPayments = async (req, res) => {
     try {
+        const user = req.user;
+        const role = user?.role?.toUpperCase();
+        const whereClause = {};
+        if (role === "BRANCH") {
+            whereClause.branchId = Number(user.branchId);
+        }
         const cashPayments = await prisma.cashPayment.findMany({
+            where: whereClause,
             orderBy: {
                 id: "desc",
             },
@@ -30,12 +38,12 @@ export const getCashPayments = async (req, res) => {
                         billNo: true,
                     },
                 },
-                // lead: {
-                //   select: {
-                //     id: true,
-                //     leadNo: true,
-                //   },
-                // },
+                employee: {
+                    select: {
+                        id: true,
+                        employeeName: true,
+                    },
+                },
             },
         });
         res.status(200).json(cashPayments);
@@ -47,19 +55,27 @@ export const getCashPayments = async (req, res) => {
         });
     }
 };
-// ==========================
-// Get Single Cash Payment
-// ==========================
 export const getCashPaymentById = async (req, res) => {
     try {
         const id = Number(req.params.id);
-        const payment = await prisma.cashPayment.findUnique({
-            where: { id },
+        const user = req.user;
+        const role = user?.role?.toUpperCase();
+        const whereClause = { id };
+        if (role === "BRANCH") {
+            whereClause.branchId = Number(user.branchId);
+        }
+        const payment = await prisma.cashPayment.findFirst({
+            where: whereClause,
             include: {
                 cashAccount: true,
                 oppAccount: true,
                 purchase: true,
-                // lead: true,
+                employee: {
+                    select: {
+                        id: true,
+                        employeeName: true,
+                    },
+                },
             },
         });
         if (!payment) {
@@ -77,36 +93,6 @@ export const getCashPaymentById = async (req, res) => {
         });
     }
 };
-// ==========================
-// Generate Voucher Number
-// ==========================
-export const generateVoucherNo = async (req, res) => {
-    try {
-        const lastVoucher = await prisma.cashPayment.findFirst({
-            orderBy: {
-                id: "desc",
-            },
-        });
-        let nextNumber = 1;
-        if (lastVoucher) {
-            const parts = lastVoucher.voucherNo.split("/");
-            nextNumber = Number(parts[2]) + 1;
-        }
-        const voucherNo = `CP/26-27/${String(nextNumber).padStart(3, "0")}`;
-        res.json({
-            voucherNo,
-        });
-    }
-    catch (error) {
-        console.log(error);
-        res.status(500).json({
-            message: "Unable to generate voucher number",
-        });
-    }
-};
-// ==========================
-// Create Cash Payment
-// ==========================
 export const createCashPayment = async (req, res) => {
     try {
         const { companyId, financialYearId, date, cashAccountId, oppAccountId, purchaseId, leadId, amount, narration, } = req.body;
@@ -116,9 +102,17 @@ export const createCashPayment = async (req, res) => {
             });
             return;
         }
-        const voucherNo = await generateCashPaymentVoucher();
-        const role = req.user?.role;
-        const name = req.user?.name;
+        const user = req.user;
+        const role = user?.role?.toUpperCase();
+        const name = user?.employeeName || user?.name || "Admin";
+        if (role === "BRANCH" && !user?.branchId) {
+            res.status(400).json({
+                success: false,
+                message: "Branch ID missing from token — cannot create cash payment",
+            });
+            return;
+        }
+        const voucherNo = await generateCashPaymentVoucher(Number(companyId), Number(financialYearId));
         const payment = await prisma.$transaction(async (tx) => {
             const data = await tx.cashPayment.create({
                 data: {
@@ -126,38 +120,26 @@ export const createCashPayment = async (req, res) => {
                     financialYearId: Number(financialYearId),
                     voucherNo,
                     date: new Date(date),
-                    type: "CP", // <-- Always save CP
+                    type: "CP",
                     cashAccountId: Number(cashAccountId),
                     oppAccountId: Number(oppAccountId),
                     purchaseId: purchaseId ? Number(purchaseId) : null,
                     leadId: leadId ? Number(leadId) : null,
                     amount: Number(amount),
                     narration,
+                    createdById: Number(user.id),
                     createdType: role,
                     createdBy: name,
+                    branchId: user?.branchId ? Number(user.branchId) : null,
                 },
             });
-            // Cash account balance decrease
             await tx.account.update({
-                where: {
-                    id: Number(cashAccountId),
-                },
-                data: {
-                    closingBalance: {
-                        decrement: Number(amount),
-                    },
-                },
+                where: { id: Number(cashAccountId) },
+                data: { closingBalance: { decrement: Number(amount) } },
             });
-            // Opposite account balance increase
             await tx.account.update({
-                where: {
-                    id: Number(oppAccountId),
-                },
-                data: {
-                    closingBalance: {
-                        increment: Number(amount),
-                    },
-                },
+                where: { id: Number(oppAccountId) },
+                data: { closingBalance: { increment: Number(amount) } },
             });
             return data;
         });
@@ -225,7 +207,14 @@ export const deleteCashPayment = async (req, res) => {
 };
 export const getCashPaymentVoucher = async (req, res) => {
     try {
-        const voucherNo = await generateCashPaymentVoucher();
+        const { companyId, financialYearId } = req.query;
+        if (!companyId || !financialYearId) {
+            return res.status(400).json({
+                success: false,
+                message: "Company ID and Financial Year ID are required",
+            });
+        }
+        const voucherNo = await generateCashPaymentVoucher(Number(companyId), Number(financialYearId));
         return res.status(200).json({
             success: true,
             voucherNo,
@@ -236,6 +225,68 @@ export const getCashPaymentVoucher = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to generate voucher no",
+        });
+    }
+};
+export const exportCashPaymentExcel = async (req, res) => {
+    try {
+        const payments = await prisma.cashPayment.findMany({
+            orderBy: {
+                id: "desc",
+            },
+            include: {
+                cashAccount: {
+                    select: {
+                        accountName: true,
+                    },
+                },
+                oppAccount: {
+                    select: {
+                        accountName: true,
+                    },
+                },
+            },
+        });
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Cash Payment Register");
+        worksheet.columns = [
+            { header: "Sr No", key: "sr", width: 10 },
+            { header: "Date", key: "date", width: 15 },
+            { header: "Voucher No", key: "voucherNo", width: 20 },
+            { header: "Type", key: "type", width: 15 },
+            { header: "Cash Account", key: "cashAccount", width: 30 },
+            { header: "Opp. Account", key: "oppAccount", width: 30 },
+            { header: "Amount", key: "amount", width: 15 },
+            { header: "Narration", key: "narration", width: 40 },
+            { header: "Created Type", key: "createdType", width: 20 },
+            { header: "Created By", key: "createdBy", width: 20 },
+        ];
+        worksheet.getRow(1).font = {
+            bold: true,
+        };
+        payments.forEach((item, index) => {
+            worksheet.addRow({
+                sr: index + 1,
+                date: new Date(item.date).toLocaleDateString("en-GB"),
+                voucherNo: item.voucherNo,
+                type: item.type,
+                cashAccount: item.cashAccount?.accountName,
+                oppAccount: item.oppAccount?.accountName,
+                amount: item.amount,
+                narration: item.narration,
+                createdType: item.createdType,
+                createdBy: item.createdBy,
+            });
+        });
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", "attachment; filename=CashPaymentRegister.xlsx");
+        await workbook.xlsx.write(res);
+        res.end();
+    }
+    catch (err) {
+        console.log(err);
+        res.status(500).json({
+            message: "Failed to export excel",
         });
     }
 };

@@ -1,4 +1,5 @@
 import multer from "multer";
+import path from "path";
 import fs from "fs";
 const uploadDir = "uploads";
 if (!fs.existsSync(uploadDir)) {
@@ -12,17 +13,44 @@ const storage = multer.diskStorage({
         cb(null, Date.now() + "-" + file.originalname.replace(/\s+/g, "-"));
     },
 });
+const allowedMimeTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/heic",
+    "image/heif",
+    "image/avif",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const allowedExtensions = [
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".gif",
+    ".heic",
+    ".heif",
+    ".avif",
+    ".pdf",
+    ".doc",
+    ".docx",
+];
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/webp",
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-    if (allowedTypes.includes(file.mimetype)) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const mimeOk = allowedMimeTypes.includes(file.mimetype);
+    const extOk = allowedExtensions.includes(ext);
+    console.log("UPLOAD CHECK:", {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        ext,
+        mimeOk,
+        extOk,
+    });
+    if (mimeOk || extOk) {
         cb(null, true);
     }
     else {

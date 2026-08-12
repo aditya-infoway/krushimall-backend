@@ -1,10 +1,15 @@
 import prisma from "../lib/prisma.js";
 export const createWebsiteVariant = async (req, res) => {
     try {
+        const user = req.user;
+        const role = user?.role?.toUpperCase();
         const createData = {
             ...req.body,
             currentStep: 1,
             status: "DRAFT",
+            createdType: role,
+            createdBy: user?.employeeName || user?.name,
+            createdById: user?.id,
         };
         const files = req.files;
         if (files) {
@@ -33,7 +38,17 @@ export const createWebsiteVariant = async (req, res) => {
 };
 export const getWebsiteVariants = async (req, res) => {
     try {
+        const { status, isUpcoming } = req.query;
+        const where = {};
+        if (status) {
+            where.status = status;
+        }
+        // Only filter if the query parameter is provided
+        if (isUpcoming !== undefined) {
+            where.isUpcoming = isUpcoming === "true";
+        }
         const variants = await prisma.websiteVariant.findMany({
+            where,
             include: {
                 category: true,
                 brand: true,
@@ -60,9 +75,10 @@ export const getWebsiteVariants = async (req, res) => {
 };
 export const getWebsiteVariantById = async (req, res) => {
     try {
-        const variant = await prisma.websiteVariant.findUnique({
+        const id = Number(req.params.id);
+        const current = await prisma.websiteVariant.findUnique({
             where: {
-                id: Number(req.params.id),
+                id,
             },
             include: {
                 brand: true,
@@ -72,13 +88,88 @@ export const getWebsiteVariantById = async (req, res) => {
                 modelYear: true,
             },
         });
+        if (!current) {
+            return res.status(404).json({
+                success: false,
+                message: "Website Variant not found",
+            });
+        }
+        // ===========================
+        // Similar Products
+        // Same Brand + Same Category
+        // ===========================
+        const similarProducts = await prisma.websiteVariant.findMany({
+            where: {
+                id: {
+                    not: current.id,
+                },
+                status: "ACTIVE",
+                categoryId: current.categoryId,
+                brandId: current.brandId,
+            },
+            include: {
+                brand: true,
+                model: true,
+            },
+            take: 4,
+        });
+        // Fill remaining from same category if less than 4
+        if (similarProducts.length < 4) {
+            const extraProducts = await prisma.websiteVariant.findMany({
+                where: {
+                    id: {
+                        notIn: [
+                            current.id,
+                            ...similarProducts.map((item) => item.id),
+                        ],
+                    },
+                    status: "ACTIVE",
+                    categoryId: current.categoryId,
+                },
+                include: {
+                    brand: true,
+                    model: true,
+                },
+                take: 4 - similarProducts.length,
+            });
+            similarProducts.push(...extraProducts);
+        }
+        // ===========================
+        // Related Products
+        // Same Category
+        // ===========================
+        const relatedProducts = await prisma.websiteVariant.findMany({
+            where: {
+                id: {
+                    not: current.id,
+                },
+                status: "ACTIVE",
+                categoryId: current.categoryId,
+            },
+            include: {
+                brand: true,
+                model: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+            take: 8,
+        });
         return res.status(200).json({
             success: true,
-            data: variant,
+            data: {
+                ...current,
+                similarProducts,
+                relatedProducts,
+            },
         });
     }
     catch (error) {
         console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch Website Variant",
+        });
     }
 };
 export const updateWebsiteVariant = async (req, res) => {
@@ -212,9 +303,7 @@ export const toggleWebsiteVariantStatus = async (req, res) => {
                 message: "Website Variant not found",
             });
         }
-        const newStatus = existing.status === "ACTIVE"
-            ? "INACTIVE"
-            : "ACTIVE";
+        const newStatus = existing.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
         const updated = await prisma.websiteVariant.update({
             where: { id },
             data: {
@@ -232,6 +321,159 @@ export const toggleWebsiteVariantStatus = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to update status",
+        });
+    }
+};
+export const getLatestWebsiteVariants = async (req, res) => {
+    try {
+        const variants = await prisma.websiteVariant.findMany({
+            where: {
+                status: "ACTIVE",
+                isUpcoming: false,
+                AND: [
+                    { frontView: { not: null } },
+                    { frontView: { not: "" } },
+                    { productName: { not: null } },
+                    { productName: { not: "" } },
+                ],
+            },
+            select: {
+                id: true,
+                productName: true,
+                frontView: true,
+                exShowroomPrice: true,
+                horsePower: true,
+                fuelType: true,
+                createdAt: true,
+                state: true,
+                city: true,
+                brand: { select: { brandName: true } },
+                model: { select: { modelName: true } },
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+            take: 8,
+        });
+        return res.status(200).json({
+            success: true,
+            data: variants,
+        });
+    }
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch latest tractors",
+        });
+    }
+};
+export const getPopularWebsiteVariants = async (req, res) => {
+    try {
+        const variants = await prisma.websiteVariant.findMany({
+            where: {
+                status: "ACTIVE",
+                isUpcoming: false,
+                AND: [
+                    { frontView: { not: null } },
+                    { frontView: { not: "" } },
+                    { productName: { not: null } },
+                    { productName: { not: "" } },
+                ],
+            },
+            select: {
+                id: true,
+                productName: true,
+                frontView: true,
+                exShowroomPrice: true,
+                horsePower: true,
+                fuelType: true,
+                createdAt: true,
+                state: true,
+                city: true,
+                enquiryCount: true,
+                brand: {
+                    select: {
+                        brandName: true,
+                    },
+                },
+                model: {
+                    select: {
+                        modelName: true,
+                    },
+                },
+            },
+            orderBy: [
+                {
+                    enquiryCount: "desc",
+                },
+                {
+                    createdAt: "desc",
+                },
+            ],
+            take: 8,
+        });
+        return res.status(200).json({
+            success: true,
+            data: variants,
+        });
+    }
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch popular tractors",
+        });
+    }
+};
+export const getUpcomingWebsiteVariants = async (req, res) => {
+    try {
+        const variants = await prisma.websiteVariant.findMany({
+            where: {
+                status: "ACTIVE",
+                isUpcoming: true,
+                AND: [
+                    { frontView: { not: null } },
+                    { frontView: { not: "" } },
+                    { productName: { not: null } },
+                    { productName: { not: "" } },
+                ],
+            },
+            select: {
+                id: true,
+                productName: true,
+                frontView: true,
+                exShowroomPrice: true,
+                horsePower: true,
+                fuelType: true,
+                state: true,
+                city: true,
+                brand: {
+                    select: {
+                        brandName: true,
+                    },
+                },
+                model: {
+                    select: {
+                        modelName: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+            take: 8,
+        });
+        return res.status(200).json({
+            success: true,
+            data: variants,
+        });
+    }
+    catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch upcoming tractors",
         });
     }
 };
