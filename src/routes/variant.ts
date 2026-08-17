@@ -8,26 +8,20 @@ import {
 } from "../controllers/variant.js";
 import { upload } from "../middleware/upload.js";
 import { verifyToken } from "../middleware/middleware.js";
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
+
 const router = Router();
 
-router.post(
-  "/",
-     verifyToken,
-  upload.single("image"),
-  createVariant
-);
+// ✅ Sirf Admin create/edit/delete kar sakta hai
+router.post("/", verifyToken, upload.single("image"), createVariant);
 
-router.get("/",    getVariants);
+// ✅ Admin, Branch, Employee sab dropdown/list ke liye dekh sakte hain
+router.get("/", verifyAnyToken, getVariants);
 
-router.get("/:id",    getVariantById);
+router.get("/:id", verifyAnyToken, getVariantById);
 
-router.put(
-  "/:id",
-     verifyToken,
-  upload.single("image"),
-  updateVariant
-);
+router.put("/:id", verifyToken, upload.single("image"), updateVariant);
 
-router.delete("/:id",   verifyToken, deleteVariant);
+router.delete("/:id", verifyToken, deleteVariant);
 
 export default router;

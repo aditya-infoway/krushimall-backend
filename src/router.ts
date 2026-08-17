@@ -45,8 +45,8 @@ import notificationRoutes from "./routes/notification.js";
 import storemanagerRoutes from "./routes/employee/storemanger/index.js"
 import teamleadRoutes from "./routes/employee/teamlead/index.js"
 import branchEmployeeRoutes from "./routes/branch/index.js";
-
-
+import webRoutes from "./routes/web/index.js";
+import tractorInventoryRoutes from "./routes/tractorInventory.js"
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -95,4 +95,6 @@ router.use("/wishlist", wishlistRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/teamlead", teamleadRoutes);
 router.use("/branch-panel", branchEmployeeRoutes);
+router.use("/web", webRoutes);
+router.use("/tractor-inventory", tractorInventoryRoutes);
 export default router;

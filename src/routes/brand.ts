@@ -8,25 +8,19 @@ import {
 } from "../controllers/brand.js";
 import { upload } from "../middleware/upload.js";
 import { verifyToken } from "../middleware/middleware.js";
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
+
 const router = Router();
 
-router.post(
-  "/",
-  verifyToken,
-  upload.single("image"),
-  createBrand
-);
+// ✅ Sirf Admin create/edit/delete kar sakta hai
+router.post("/", verifyToken, upload.single("image"), createBrand);
 
-router.get("/",  getBrands);
+// ✅ Admin, Branch, Employee sab list/detail dekh sakte hain
+router.get("/", verifyAnyToken, getBrands);
 
-router.get("/:id",  getBrandById);
+router.get("/:id", verifyAnyToken, getBrandById);
 
-router.put(
-  "/:id",
-   verifyToken,
-  upload.single("image"),
-  updateBrand
-);
+router.put("/:id", verifyToken, upload.single("image"), updateBrand);
 
 router.delete("/:id", verifyToken, deleteBrand);
 

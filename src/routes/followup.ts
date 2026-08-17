@@ -4,19 +4,26 @@ import {
   createFollowUp,
   getFollowUpsByLead,
   getFollowUpBoard,
-  getLatestFollowUpByLead
+  getLatestFollowUpByLead,
 } from "../controllers/followup.js";
-import { verifyToken } from "../middleware/middleware.js";
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
 
 const router = express.Router();
 
-router.post("/", verifyToken, createFollowUp);
+// ✅ Sales Executive/Team Lead/Branch bhi apne leads ke liye
+// follow-up create karte hain — sirf Admin tak restrict nahi karna
+router.post("/", verifyAnyToken, createFollowUp);
 
-router.get("/lead/:leadId",  getFollowUpsByLead);
+// ✅ Pehle in teeno pe koi bhi middleware nahi tha — bina login
+// koi bhi customer ka follow-up data (naam, notes, status) dekh sakta tha
+router.get("/lead/:leadId", verifyAnyToken, getFollowUpsByLead);
+
 router.get(
   "/lead/:leadId/latest",
+  verifyAnyToken,
   getLatestFollowUpByLead,
 );
-router.get("/board",  getFollowUpBoard);
+
+router.get("/board", verifyAnyToken, getFollowUpBoard);
 
 export default router;

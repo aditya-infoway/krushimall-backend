@@ -15,6 +15,10 @@ import employeeRoutes from "./employee.js";
 import purchaseRoutes from "./purchase.js";
 import bankerRoutes from "./banker.js";
 import ledgerRoutes from "./ledger.js";
+import stocktrnasferRoutes from "./vehicleStockTransfer.js"
+import tractorInventoryRoutes from "./tractorInventory.js";
+import branchRoutes from "./branch.js"
+
 const router = Router();
 
 // 🔐 Protect ALL branch APIs
@@ -34,4 +38,10 @@ router.use("/employees", employeeRoutes);
 router.use("/purchases", purchaseRoutes);
 router.use("/bankers", bankerRoutes);
 router.use("/ledger", ledgerRoutes);
+router.use("/stocktransfer", stocktrnasferRoutes);
+router.use(
+  "/tractor-inventory",
+  tractorInventoryRoutes
+);
+router.use("/branch", branchRoutes);
 export default router;

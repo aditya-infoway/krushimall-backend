@@ -12,28 +12,28 @@ import {
   getBookingBalance,
   getLeadsForCashReceipt
 } from "../controllers/lead.js";
-
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
 
 
 const router = Router();
 
 router.post("/", verifyToken, createLead);
 
-router.get("/",  getLeads);
+router.get("/",verifyAnyToken,  getLeads);
 
-router.get("/pending",  getLeadsForCashReceipt);
+router.get("/pending", verifyAnyToken, getLeadsForCashReceipt);
 
-router.get("/quotation-history",  getQuotationHistoryList);
+router.get("/quotation-history",verifyAnyToken,  getQuotationHistoryList);
 
 router.get(
   "/quotation-history/:id",
-
+verifyAnyToken,
   getQuotationHistoryByLeadId
 );
 
 router.get(
   "/booking-balance",
-
+verifyAnyToken,
   getBookingBalance
 );
 
@@ -41,6 +41,6 @@ router.get("/:id/quotation", generateOrderBillPdf);
 
 router.put("/:id/quotation", verifyToken, updateQuotation);
 
-router.get("/:id",  getLeadById);;
+router.get("/:id", verifyAnyToken, getLeadById);;
 
 export default router;
