@@ -5,13 +5,13 @@ import { verifyEmployeeToken } from "../../../middleware/employeeMiddleware.js";
 const router = Router();
 
 router.post("/", verifyEmployeeToken, LeadController.createLead);
-router.get("/", LeadController.getLeads);
+router.get("/",verifyEmployeeToken, LeadController.getLeads);
 router.get(
   "/pending",
-  
+  verifyEmployeeToken,
   LeadController.getLeadsForCashReceipt,
 );
-router.get("/:id",  LeadController.getLeadById);
+router.get("/:id",verifyEmployeeToken,  LeadController.getLeadById);
 
 router.put(
   "/quotation/:id",
@@ -21,13 +21,13 @@ router.put(
 
 router.get(
   "/quotation/history",
-  
+  verifyEmployeeToken,
   LeadController.getQuotationHistoryList,
 );
 
 router.get(
   "/quotation/history/:id",
- 
+ verifyEmployeeToken,
   LeadController.getQuotationHistoryByLeadId,
 );
 
@@ -39,7 +39,7 @@ router.get(
 
 router.get(
   "/booking-balance",
-
+verifyEmployeeToken,
   LeadController.getBookingBalance,
 );
 

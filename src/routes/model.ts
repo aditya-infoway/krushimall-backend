@@ -9,6 +9,7 @@ import {
 
 import { upload } from "../middleware/upload.js";
 import { verifyToken } from "../middleware/middleware.js";
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
 const router = Router();
 
 router.post(
@@ -18,9 +19,9 @@ router.post(
   createModel
 );
 
-router.get("/",     getModels);
+router.get("/",verifyAnyToken, getModels);
 
-router.get("/:id",     getModelById);
+router.get("/:id",  verifyAnyToken,getModelById);
 
 router.put(
   "/:id",

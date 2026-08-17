@@ -9,28 +9,20 @@ import {
 } from "../controllers/category.js";
 import { upload } from "../middleware/upload.js";
 import { verifyToken } from "../middleware/middleware.js";
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
+
 const router = Router();
 
-router.post(
-  "/",
-  verifyToken,
-  upload.single("image"),
-  createCategory
-);
+// ✅ Sirf Admin create/edit/delete kar sakta hai
+router.post("/", verifyToken, upload.single("image"), createCategory);
 
-router.post("/", verifyToken, createCategory);
+// ✅ Admin, Branch, Employee sab list/detail dekh sakte hain
+router.get("/", verifyAnyToken, getCategories);
 
-router.get("/",  getCategories);
+router.get("/:id", verifyAnyToken, getCategoryById);
 
-router.get("/:id",  getCategoryById);
+router.put("/:id", verifyToken, upload.single("image"), updateCategory);
 
-router.put(
-  "/:id",
-   verifyToken,
-  upload.single("image"),
-  updateCategory
-);
-
-router.delete("/:id",  verifyToken, deleteCategory);
+router.delete("/:id", verifyToken, deleteCategory);
 
 export default router;

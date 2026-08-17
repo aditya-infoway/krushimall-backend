@@ -7,7 +7,8 @@ import {
   getVehicleStockTransferNo,
   getVehicleStockTransfers,
   getVehicleStockTransferById,
-  updateVehicleStockTransfer
+  updateVehicleStockTransfer,
+  
 } from "../controllers/vehicleStockTransfer.js";
 
 const router = Router();

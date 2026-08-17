@@ -1,7 +1,7 @@
 import express from "express";
 import { verifyToken } from "../middleware/middleware.js";
 import { multerErrorHandler } from "../middleware/multerErrorHandler.js";
-
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
 
 import {
   createBranch,
@@ -28,9 +28,9 @@ router.post(
 );
 
 
-router.get("/",  getBranches);
+router.get("/",verifyAnyToken,  getBranches);
 
-router.get("/:id",  getBranchById);
+router.get("/:id",verifyAnyToken,  getBranchById);
 
 // router.put("/:id", verifyToken, upload.single("logo"), updateBranch);
 
