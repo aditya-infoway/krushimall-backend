@@ -15,15 +15,20 @@ import {
   getTractorInventory,
   getPendingPurchasesForCashPayment,
   getModelWiseInventoryAnalysis,
-  getInventoryDetails
+  getInventoryDetails,
 } from "../controllers/purchase.js";
 
 import { verifyToken } from "../middleware/middleware.js";
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
 
 const router = express.Router();
 
-// Generate Purchase Bill No
-router.get("/generate-bill-no",  getPurchaseBillNo);
+// ⚠️ Pehle ye 3 routes bina kisi middleware ke thi — bina login koi bhi
+// company ka bill number/inventory data dekh sakta tha. Ab protected
+// hain (verifyAnyToken -> read access sab role ko).
+router.get("/generate-bill-no", verifyAnyToken, getPurchaseBillNo);
+router.get("/model-analysis", verifyAnyToken, getModelWiseInventoryAnalysis);
+router.get("/inventory-details", verifyAnyToken, getInventoryDetails);
 
 // Generate Vehicle Serial No
 router.get("/vehicle-serial-no", verifyToken, getVehicleSerialNo);
@@ -33,11 +38,10 @@ router.post("/", verifyToken, createPurchase);
 
 // Get All Purchases
 router.get("/", verifyToken, getPurchases);
-router.get("/pending", verifyToken, getPendingPurchasesForCashPayment);
-router.get("/model-analysis", getModelWiseInventoryAnalysis);
-router.get("/inventory-details", getInventoryDetails);
+router.get("/pending", verifyAnyToken, getPendingPurchasesForCashPayment);
+
 // Fixed routes must remain before /:id
-router.get("/tractor-inventory", verifyToken, getTractorInventory);
+router.get("/tractor-inventory", verifyAnyToken, getTractorInventory);
 
 router.put("/purchase-items/:id/inward", verifyToken, submitPurchaseItemInward);
 

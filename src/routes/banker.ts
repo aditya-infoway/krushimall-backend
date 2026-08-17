@@ -9,10 +9,11 @@ import {
   toggleBankerStatus,
 } from "../controllers/banker.js";
 import { verifyToken } from "../middleware/middleware.js";
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
 const router = express.Router();
 
 router.post("/",verifyToken, createBanker);
-router.get("/",verifyToken, getBankers);
+router.get("/",verifyAnyToken, getBankers);
 router.get("/:id",verifyToken, getBankerById);
 router.put("/:id",verifyToken, updateBanker);
 router.delete("/:id",verifyToken, deleteBanker);
