@@ -31,7 +31,7 @@ router.get("/model-analysis", verifyAnyToken, getModelWiseInventoryAnalysis);
 router.get("/inventory-details", verifyAnyToken, getInventoryDetails);
 
 // Generate Vehicle Serial No
-router.get("/vehicle-serial-no", verifyToken, getVehicleSerialNo);
+router.get("/vehicle-serial-no",  getVehicleSerialNo);
 
 // Create Purchase
 router.post("/", verifyToken, createPurchase);
