@@ -28,9 +28,9 @@ router.post(
 );
 
 
-router.get("/",verifyBranchToken,  getBranches);
+router.get("/",  getBranches);
 
-router.get("/:id",verifyBranchToken,  getBranchById);
+router.get("/:id",  getBranchById);
 
 // router.put("/:id", verifyToken, upload.single("logo"), updateBranch);
 
