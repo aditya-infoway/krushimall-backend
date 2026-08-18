@@ -12,7 +12,7 @@ router.get(
   PurchaseController.getPendingPurchasesForCashPayment
 );
 router.get("/bill-no",  PurchaseController.getPurchaseBillNo);
-router.get("/vehicle-sr-no", verifyEmployeeToken, PurchaseController.getVehicleSerialNo);
+router.get("/vehicle-sr-no",  PurchaseController.getVehicleSerialNo);
 router.get("/inventory", verifyEmployeeToken, PurchaseController.getTractorInventory);
 
 router.get("/:id", verifyEmployeeToken, PurchaseController.getPurchaseById);
