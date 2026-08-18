@@ -1,5 +1,5 @@
 import express from "express";
-import { verifyToken } from "../middleware/middleware.js";
+import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
 import {
   getLedgerReport,
   getLedgerDetails,
@@ -12,17 +12,19 @@ const router = express.Router();
 // Ledger Report
 router.get(
   "/report",
-  verifyToken,
+  verifyAnyToken,
   getLedgerReport
 );
 
 // Ledger Details
 router.get(
   "/details/:id",
-  verifyToken,
+  verifyAnyToken,
   getLedgerDetails
 );
-// routes
-router.get("/export", verifyToken, exportLedgerReport);
-router.get("/details/:id/export", exportLedgerDetails);
+
+// Export routes
+router.get("/export", verifyAnyToken, exportLedgerReport);
+router.get("/details/:id/export", verifyAnyToken, exportLedgerDetails);
+
 export default router;
