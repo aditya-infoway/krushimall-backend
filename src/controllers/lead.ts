@@ -248,7 +248,7 @@ export const createLead = async (req: Request, res: Response) => {
     delete data.showroomVariant;
     delete data.exWarranty23;
     delete data.exWarranty28;
-    console.log(data);
+  
     const quotationNo = await generateQuotationNo();
 
     data.quotationNo = quotationNo;
@@ -485,6 +485,155 @@ export const getLeads = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch leads",
+    });
+  }
+};
+// Add this function anywhere in leadController.ts (e.g. after getLeadsForCashReceipt)
+
+export const getLeadPayments = async (req: Request, res: Response) => {
+  try {
+    const leadId = Number(req.params.id);
+
+    if (!leadId || Number.isNaN(leadId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid lead ID",
+      });
+    }
+
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      select: {
+        id: true,
+        quotationGrandTotal: true,
+        order: {
+          select: { invoiceAmount: true },
+        },
+        quotationHistories: {
+          orderBy: { revisionNo: "desc" },
+          take: 1,
+          select: { grandTotal: true },
+        },
+      },
+    });
+
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
+
+    // ==========================================
+    // CASH + BANK RECEIPTS
+    // ==========================================
+    const cashReceipts = await prisma.cashReceipt.findMany({
+      where: { leadId },
+      orderBy: { date: "desc" },
+      select: {
+        id: true,
+        voucherNo: true,
+        date: true,
+        amount: true,
+        narration: true,
+        createdBy: true,
+        createdType: true,
+      },
+    });
+
+    const bankReceipts = await prisma.bankReceipt.findMany({
+      where: { leadId },
+      orderBy: { date: "desc" },
+      select: {
+        id: true,
+        voucherNo: true,
+        date: true,
+        amount: true,
+        paymentType: true,
+        chequeNo: true,
+        narration: true,
+        createdBy: true,
+        createdType: true,
+      },
+    });
+
+    // ==========================================
+    // NORMALIZE INTO ONE LIST (payment mode included)
+    // ==========================================
+        // ==========================================
+    // NORMALIZE INTO ONE LIST (payment mode + createdAt included)
+    // ==========================================
+    let combined = [
+      ...cashReceipts.map((r) => ({
+        id: `cash-${r.id}`,
+        voucherNo: r.voucherNo,
+        createdAt: r.date,
+        paidAmount: Number(r.amount) || 0,
+        paymentMode: "Cash",
+        narration: r.narration || "",
+        createdBy: r.createdBy || "-",
+        createdType: r.createdType || "-",
+      })),
+      ...bankReceipts.map((r) => ({
+        id: `bank-${r.id}`,
+        voucherNo: r.voucherNo,
+        createdAt: r.date,
+        paidAmount: Number(r.amount) || 0,
+        paymentMode: r.paymentType || "Bank Transfer",
+        narration: r.narration || "",
+        createdBy: r.createdBy || "-",
+        createdType: r.createdType || "-",
+      })),
+    ];
+
+    // Oldest first, taaki running balance sahi order mein calculate ho
+    combined = combined.sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+
+    const invoiceAmount = lead.order
+      ? Number(lead.order.invoiceAmount || 0)
+      : Number(
+          lead.quotationHistories?.[0]?.grandTotal ??
+            lead.quotationGrandTotal ??
+            0,
+        );
+
+    // ==========================================
+    // RUNNING pendingAmount PER ENTRY
+    // (har payment ke baad kitna baaki bacha)
+    // ==========================================
+    let runningPaid = 0;
+    const paymentsWithPending = combined.map((p) => {
+      runningPaid += p.paidAmount;
+      return {
+        ...p,
+        pendingAmount: Math.max(invoiceAmount - runningPaid, 0),
+      };
+    });
+
+    // Latest payment sabse upar dikhana hai (drawer mein newest-first)
+    const payments = [...paymentsWithPending].reverse();
+
+    const totalPaid = runningPaid;
+    const pendingAmount = Math.max(invoiceAmount - totalPaid, 0);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        leadId,
+        invoiceAmount,
+        totalPaid,
+        pendingAmount,
+        payments,
+      },
+    });
+  } catch (error) {
+    console.error("GET LEAD PAYMENTS ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch lead payments",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
