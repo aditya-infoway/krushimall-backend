@@ -456,7 +456,21 @@ export const createAccessoriesPurchase = async (
 };
 export const getAccessoriesPurchases = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+
+    // Admin / Superadmin ko sabhi purchases dikhengi
+    // Employee (ya branch) ko sirf apni khud ki banayi hui purchases dikhengi
+    const isAdmin = role === "ADMIN" || role === "SUPERADMIN";
+
+    const whereCondition = isAdmin
+      ? {}
+      : {
+          createdById: Number(user.id),
+        };
+
     const purchases = await prisma.accessoriesPurchase.findMany({
+      where: whereCondition,
       include: {
         account: true,
         items: true,

@@ -54,6 +54,8 @@ export const getLeads = async (
 };
 
 
+export const getLeadPayments =
+  LeadController.getLeadPayments;
 // ==========================================
 // GET LEADS FOR CASH RECEIPT
 // ==========================================

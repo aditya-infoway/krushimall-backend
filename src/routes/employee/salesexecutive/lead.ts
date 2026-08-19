@@ -24,7 +24,11 @@ router.get(
   verifyEmployeeToken,
   LeadController.getQuotationHistoryList,
 );
-
+router.get(
+  "/:id/payments",
+   verifyEmployeeToken,
+  LeadController.getLeadPayments
+);
 router.get(
   "/quotation/history/:id",
  verifyEmployeeToken,

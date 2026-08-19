@@ -10,7 +10,8 @@ import {
   getQuotationHistoryList,
   getQuotationHistoryByLeadId,
   getBookingBalance,
-  getLeadsForCashReceipt
+  getLeadsForCashReceipt,
+  getLeadPayments
 } from "../controllers/lead.js";
 import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
 
@@ -24,7 +25,7 @@ router.get("/",verifyAnyToken,  getLeads);
 router.get("/pending", verifyAnyToken, getLeadsForCashReceipt);
 
 router.get("/quotation-history",verifyAnyToken,  getQuotationHistoryList);
-
+router.get("/:id/payments", verifyAnyToken, getLeadPayments);
 router.get(
   "/quotation-history/:id",
 verifyAnyToken,

@@ -60,7 +60,11 @@ router.get(
    verifyBranchToken,
   LeadController.getBookingBalance
 );
-
+router.get(
+  "/:id/payments",
+   verifyBranchToken,
+  LeadController.getLeadPayments
+);
 
 // ==========================================
 // GET LEAD BY ID
