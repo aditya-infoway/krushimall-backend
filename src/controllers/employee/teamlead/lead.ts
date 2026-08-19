@@ -24,6 +24,8 @@ export const createLead = async (req: Request, res: Response) => {
 export const getLeads = async (req: Request, res: Response) => {
   return LeadController.getLeads(req, res);
 };
+export const getLeadPayments =
+  LeadController.getLeadPayments;
 export const getLeadsForCashReceipt = async (
   req: Request,
   res: Response,

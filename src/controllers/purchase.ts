@@ -4,6 +4,28 @@ import { generateBillNo } from "../utils/generatepurchaseBillNo.js";
 import { generateVehicleSerialNo } from "../utils/generateVehicleSerialNo.js";
 import { generateCashPaymentVoucher } from "../utils/generateCashPaymentVoucher.js";
 import { generateBankPaymentVoucher } from "../utils/generateBankPaymentVoucher.js";
+// Safely parses "dd-mm-yyyy" (frontend format) or "yyyy-mm-dd"/ISO into a valid Date
+const parseDate = (value: any): Date | null => {
+  if (!value) return null;
+
+  if (typeof value === "string" && value.includes("-")) {
+    const parts = value.split("-");
+
+    // Already yyyy-mm-dd (or ISO) — first part is the 4-digit year
+    if (parts[0].length === 4) {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    // dd-mm-yyyy -> convert to yyyy-mm-dd
+    const [day, month, year] = parts;
+    const d = new Date(`${year}-${month}-${day}`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+};
 export const createPurchase = async (req: Request, res: Response) => {
   try {
     const {
@@ -633,7 +655,23 @@ export const verifyPurchase = async (req: Request, res: Response) => {
 };
 export const getPurchases = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+
+    // Roles jinko SABHI purchases dikhni chahiye
+    const fullAccessRoles = ["ADMIN", "SUPERADMIN", "BRANCH"];
+
+    const hasFullAccess = fullAccessRoles.includes(role);
+
+    // Admin/Branch ko sab kuch, Employee ko sirf apni khud ki
+    const whereCondition = hasFullAccess
+      ? {}
+      : {
+          createdById: Number(user.id),
+        };
+
     const purchases = await prisma.purchase.findMany({
+      where: whereCondition,
       include: {
         account: true,
         items: true,
@@ -853,7 +891,7 @@ export const submitPurchaseItemInward = async (req: Request, res: Response) => {
       where: { id },
       data: {
         vehicleSrNo,
-        mfgDate: mfgDate ? new Date(mfgDate) : null,
+       mfgDate: parseDate(mfgDate),
         keyNo,
         batteryMake,
         batteryNo,
@@ -863,8 +901,8 @@ export const submitPurchaseItemInward = async (req: Request, res: Response) => {
         second2TyerNo,
         location,
         grnNumber,
-        grnDate: grnDate ? new Date(grnDate) : null,
-        grnRecordDate: grnRecordDate ? new Date(grnRecordDate) : null,
+        grnDate: parseDate(grnDate),
+    grnRecordDate: parseDate(grnRecordDate),
         status: "Inward",
 
         createdById: Number(user.id),
