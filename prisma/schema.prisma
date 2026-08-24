@@ -16,13 +16,13 @@ model User {
 }
 
 model Admin {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  role      String   @default("Admin")
-  password  String
-    activeToken String? 
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String   @unique
+  role        String   @default("Admin")
+  password    String
+  activeToken String?
+  createdAt   DateTime @default(now())
 }
 
 model Company {
@@ -582,7 +582,7 @@ model Employee {
   teamMembers Employee[] @relation("EmployeeTeamLead")
 
   accounts Account[] @relation("AccountCreatedBy")
-  
+
   teamLeadAccounts         Account[]                 @relation("AccountTeamLead")
   purchases                Purchase[]
   accessoriesPurchases     AccessoriesPurchase[]
@@ -1594,6 +1594,11 @@ model WebUser {
   phone    String  @unique
   password String
 
+  // NEW — tracks how this account was originally registered.
+  // "user"   -> can log in only via /webauth/login
+  // "vendor" -> can log in only via /vendor/login
+  registerType String @default("user")
+
   // Profile
   country  String?
   state    String?
@@ -1639,8 +1644,8 @@ model WebVendor {
   otp       String?
   otpExpiry DateTime?
 
-  avatar String?
-
+  avatar     String?
+  status     String    @default("PENDING")
   isVerified Boolean   @default(false)
   verifiedAt DateTime?
 
@@ -1719,8 +1724,8 @@ model TestDrive {
   createdBy   String?
   createdType String?
 
-  branchId Int? // ✅ NEW
-    teamLeadId Int?
+  branchId        Int? // ✅ NEW
+  teamLeadId      Int?
   // employee Employee? @relation("TestDriveEmployee", fields: [createdById], references: [id])  ❌ REMOVE
   lead            Lead            @relation(fields: [leadId], references: [id])
   model           Model           @relation(fields: [modelId], references: [id])
@@ -2016,4 +2021,175 @@ model UsedWebsiteVariant {
   // ==========================
   agreed               Boolean          @default(false)
   enquiries            WebsiteEnquiry[]
+}
+
+model VendorCategory {
+  id       Int         @id @default(autoincrement())
+  vendorId Int
+  vendor   VendorAdmin @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  categoryName  String
+  image         String?
+  status        String              @default("ACTIVE") // ACTIVE | INACTIVE
+  products      Product[]
+  subCategories VendorSubCategory[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+}
+
+model VendorAdmin {
+  id       Int     @id @default(autoincrement())
+  name     String?
+  email    String  @unique
+  password String
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  vendorBrands     VendorBrand[]
+  products         Product[]
+  vendorCategories VendorCategory[]
+}
+
+model VendorBrand {
+  id       Int         @id @default(autoincrement())
+  vendorId Int
+  vendor   VendorAdmin @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  brandName String
+  image     String?
+  status    String    @default("ACTIVE") // ACTIVE | INACTIVE
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model VendorSubCategory {
+  id               Int                    @id @default(autoincrement())
+  vendorId         Int
+  categoryId       Int
+  category         VendorCategory         @relation(fields: [categoryId], references: [id])
+  subCategoryName  String
+  image            String?
+  status           String                 @default("ACTIVE")
+  subSubCategories VendorSubSubCategory[]
+  products         Product[]
+  createdAt        DateTime               @default(now())
+}
+
+model VendorSubSubCategory {
+  id                 Int               @id @default(autoincrement())
+  vendorId           Int
+  subCategoryId      Int
+  subCategory        VendorSubCategory @relation(fields: [subCategoryId], references: [id])
+  subSubCategoryName String
+  image              String?
+  status             String            @default("ACTIVE")
+  products           Product[]
+  createdAt          DateTime          @default(now())
+}
+
+model Product {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Vendor
+  vendorId Int
+  vendor   VendorAdmin @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  // Category
+  categoryId Int
+  category   VendorCategory @relation(fields: [categoryId], references: [id])
+
+  // Sub Category
+  subCategoryId Int?
+  subCategory   VendorSubCategory? @relation(fields: [subCategoryId], references: [id])
+
+  // Sub Sub Category
+  subSubCategoryId Int?
+  subSubCategory   VendorSubSubCategory? @relation(fields: [subSubCategoryId], references: [id])
+
+  // Brand
+  brandId Int?
+  brand   VendorBrand? @relation(fields: [brandId], references: [id])
+
+  // Product
+  productName String
+  sku         String @unique
+
+  productType ProductType @default(SIMPLE)
+  stock       StockStatus @default(IN_STOCK)
+
+  keywords         String?
+  shortDescription String?
+  keyFeatures      Json?
+  videoUrl         String?
+
+  // Price
+  mrp          Decimal @db.Decimal(10, 2)
+  sellingPrice Decimal @db.Decimal(10, 2)
+  tax          Decimal @default(0) @db.Decimal(5, 2)
+  finalPrice   Decimal @db.Decimal(10, 2)
+
+  // Stock
+  stockQuantity    Int     @default(0)
+  barcode          String?
+  unit             String?
+  weight           String?
+  maxOrderQuantity Int     @default(1)
+
+  // Images
+  mainImage        String?
+  thumbnailImage   String?
+  additionalImages Json?
+
+  // Product Details
+  productCondition      ProductCondition @default(NEW)
+  manufacturingDate     DateTime?
+  expiryDate            DateTime?
+  returnPolicy          ReturnPolicy     @default(NONE)
+  estimatedDeliveryTime String?
+  freeShipping          Boolean          @default(false)
+  warrantyPeriod        String?
+  warrantyDetails       String?
+  specifications        Json?
+
+  // Verification
+  verificationStatus ProductVerificationStatus @default(PENDING)
+  rejectionReason    String?
+
+  @@index([vendorId])
+  @@index([categoryId])
+  @@index([subCategoryId])
+  @@index([subSubCategoryId])
+  @@index([brandId])
+  @@index([verificationStatus])
+}
+
+enum ProductType {
+  SIMPLE
+  VARIABLE
+}
+
+enum StockStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+}
+
+enum ProductCondition {
+  NEW
+  USED
+}
+
+enum ReturnPolicy {
+  NONE
+  DAYS_7
+  DAYS_15
+  DAYS_30
+}
+
+enum ProductVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

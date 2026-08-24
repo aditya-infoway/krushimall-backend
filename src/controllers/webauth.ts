@@ -11,12 +11,18 @@ const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// ==================== REGISTER ====================
+// ==================== REGISTER (UNIFIED: USER + VENDOR) ====================
 
-// Register new user
+// Register new user OR vendor in a single step.
+// registerType: "user" | "vendor"
+// If "vendor": vendorType is required ("Vehicle" | "Spare Parts" | "Service")
+//              vehicleType is required only when vendorType === "Vehicle" ("New" | "Used")
 export const register = async (req: Request, res: Response) => {
   try {
     const {
+      registerType, // "user" | "vendor"
+      vendorType, // "Vehicle" | "Spare Parts" | "Service"
+      vehicleType, // "New" | "Used"
       name,
       email,
       phone,
@@ -29,12 +35,38 @@ export const register = async (req: Request, res: Response) => {
       password,
     } = req.body;
 
-    // Validate input
+    const type = registerType === "vendor" ? "vendor" : "user";
+
+    // Base validation (Step 1 + Step 3)
     if (!name || !email || !phone || !password) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "All personal details are required",
       });
+    }
+
+    // Address validation (Step 2)
+    if (!country || !state || !district || !city || !address || !pincode) {
+      return res.status(400).json({
+        success: false,
+        message: "All address fields are required",
+      });
+    }
+
+    // Vendor specific validation
+    if (type === "vendor") {
+      if (!vendorType) {
+        return res.status(400).json({
+          success: false,
+          message: "Vendor type is required",
+        });
+      }
+      if (vendorType === "Vehicle" && !vehicleType) {
+        return res.status(400).json({
+          success: false,
+          message: "Vehicle type is required",
+        });
+      }
     }
 
     // Check if user already exists
@@ -51,45 +83,78 @@ export const register = async (req: Request, res: Response) => {
       });
     }
 
-    // Generate OTP
+    // Generate OTP (single OTP verifies both user + vendor)
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Hash password
+    // Hash password (reused for vendorPassword too, if vendor)
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
-    const user = await prisma.webUser.create({
-      data: {
-        name,
-        email,
-        phone,
-        password: hashedPassword,
+    const user = await prisma.$transaction(async (tx) => {
+      const newUser = await tx.webUser.create({
+        data: {
+          name,
+          email,
+          phone,
+          password: hashedPassword,
 
-        country,
-        state,
-        district,
-        city,
-        address,
-        pincode,
+          // Locks this account to the login flow it was created from —
+          // "user" -> /webauth/login only, "vendor" -> /vendor/login only
+          registerType: type,
 
-        otp,
-        otpExpiry,
-        isVerified: false,
-      },
+          country,
+          state,
+          district,
+          city,
+          address,
+          pincode,
+
+          otp,
+          otpExpiry,
+          isVerified: false,
+        },
+      });
+
+      if (type === "vendor") {
+        await tx.webVendor.create({
+          data: {
+            userId: newUser.id,
+            vendorType,
+            vehicleType: vendorType === "Vehicle" ? vehicleType : null,
+            name,
+            number: phone,
+            email,
+
+            country,
+            state,
+            district,
+            city,
+            address,
+            pincode,
+
+            vendorPassword: hashedPassword,
+            status: "PENDING",
+            isVerified: false,
+          },
+        });
+      }
+
+      return newUser;
     });
 
-    // In production, send OTP via email/SMS
-  // Send OTP to email
-await sendOTPEmail(email, otp);
+    // Send single OTP to email
+    await sendOTPEmail(email, otp);
 
     return res.status(201).json({
       success: true,
-      message: "User registered successfully. Please verify OTP.",
+      message: `${
+        type === "vendor" ? "Vendor" : "User"
+      } registered successfully. Please verify OTP.`,
       data: {
         userId: user.id,
         email: user.email,
         phone: user.phone,
+        registerType: type,
         // In development, return OTP for testing
         ...(process.env.NODE_ENV === "development" && { otp }),
       },
@@ -103,11 +168,12 @@ await sendOTPEmail(email, otp);
   }
 };
 
-// Verify OTP
+// Verify OTP — verifies WebUser, and syncs WebVendor.isVerified if a vendor
+// record was created alongside it in the unified register flow above.
 export const verifyOTP = async (req: Request, res: Response) => {
   try {
     const { email, otp } = req.body;
-    console.log("🔍 Received:", JSON.stringify({ email, otp }));
+  
 
     if (!email || !otp) {
       return res.status(400).json({
@@ -122,12 +188,7 @@ export const verifyOTP = async (req: Request, res: Response) => {
         vendor: true,
       },
     });
-    console.log(
-      "🔍 Stored OTP:",
-      JSON.stringify(user?.otp),
-      "| Expiry:",
-      user?.otpExpiry,
-    );
+   
 
     if (!user) {
       return res.status(404).json({
@@ -170,28 +231,48 @@ export const verifyOTP = async (req: Request, res: Response) => {
       },
     });
 
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        type: "web",
-      },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" },
-    );
+    // If a vendor record was created together with this user (unified
+    // register flow), mark it verified too. Admin approval (status field)
+    // stays untouched — vendor still needs status: "ACTIVE" to log in.
+    if (user.vendor) {
+      await prisma.webVendor.update({
+        where: { id: user.vendor.id },
+        data: {
+          isVerified: true,
+          verifiedAt: new Date(),
+        },
+      });
+    }
+
+    // Vendor-registered accounts must log in through /vendor/login, so we
+    // don't hand out a "web" JWT here for them — only user-type accounts
+    // get auto-logged-in right after OTP verification.
+    const token =
+      user.registerType === "vendor"
+        ? null
+        : jwt.sign(
+            {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              type: "web",
+            },
+            process.env.JWT_SECRET!,
+            { expiresIn: "7d" },
+          );
 
     return res.json({
       success: true,
       message: "OTP verified successfully",
-      token,
+      registerType: user.registerType,
+      ...(token && { token }),
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
         phone: user.phone,
         isVerified: true,
+        registerType: user.registerType,
         isVendor: user.vendor !== null,
         vendor: user.vendor,
       },
@@ -266,7 +347,8 @@ export const resendOTP = async (req: Request, res: Response) => {
 
 // ==================== LOGIN ====================
 
-// Login
+// User login — STRICTLY blocked for accounts that were registered as
+// "vendor". Those accounts must use /vendor/login instead.
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password, rememberMe } = req.body;
@@ -291,6 +373,19 @@ export const login = async (req: Request, res: Response) => {
         success: false,
         code: "USER_NOT_FOUND",
         message: "No account found with this email.",
+      });
+    }
+
+    // ==========================================
+    // STRICT SEPARATION: accounts registered as
+    // vendor cannot log in through the user flow.
+    // ==========================================
+    if (user.registerType === "vendor") {
+      return res.status(403).json({
+        success: false,
+        code: "USE_VENDOR_LOGIN",
+        message:
+          "This account is registered as a Vendor. Please log in using the Vendor option.",
       });
     }
 
@@ -329,9 +424,6 @@ export const login = async (req: Request, res: Response) => {
       { expiresIn },
     );
 
-    // Check if user is a vendor
-    const isVendor = user.vendor !== null;
-
     return res.json({
       success: true,
       message: "Login successful",
@@ -342,8 +434,8 @@ export const login = async (req: Request, res: Response) => {
         email: user.email,
         phone: user.phone,
         isVerified: user.isVerified,
-        isVendor: isVendor,
-        vendor: user.vendor,
+        isVendor: false,
+        vendor: null,
       },
     });
   } catch (error) {
@@ -515,6 +607,7 @@ export const getCurrentUser = async (req: WebAuthedRequest, res: Response) => {
         phone: user.phone,
         avatar: user.avatar,
         isVerified: user.isVerified,
+        registerType: user.registerType,
         isVendor: user.vendor !== null,
         vendor: user.vendor,
         // Profile data
@@ -580,6 +673,7 @@ export const updateProfile = async (req: WebAuthedRequest, res: Response) => {
         phone: updatedUser.phone,
         avatar: updatedUser.avatar,
         isVerified: updatedUser.isVerified,
+        registerType: updatedUser.registerType,
         isVendor: updatedUser.vendor !== null,
         vendor: updatedUser.vendor,
         country: updatedUser.country,

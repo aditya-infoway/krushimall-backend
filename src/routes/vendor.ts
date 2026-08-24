@@ -1,4 +1,5 @@
 import { Router } from "express";
+
 import {
   becomeVendor,
   verifyVendorOTP,
@@ -9,18 +10,14 @@ import {
   verifyVendor,
   getAllVendors,
   vendorLogin,
+  updateVendorStatus,
 } from "../controllers/vendor.js";
 
 import { verifyWebToken } from "../middleware/verifyWebToken.js";
 import { verifyVendorToken } from "../middleware/verifyVendorToken.js";
-
 import { upload } from "../middleware/upload.js";
 
-
-
 const router = Router();
-
-
 
 // =========================
 // Public
@@ -28,42 +25,66 @@ const router = Router();
 
 router.post("/login", vendorLogin);
 
-// OTP verification happens before the vendor is logged in, so these
-// stay public — identified by email+otp, same as /webauth/verify-otp
-// and /webauth/resend-otp.
 router.post("/verify-otp", verifyVendorOTP);
+
 router.post("/resend-otp", resendVendorOTP);
 
 // =========================
 // Website User
 // =========================
 
-// User is logged into the website and wants to become a vendor
-router.post("/become", verifyWebToken, becomeVendor);
+router.post(
+  "/become",
+  verifyWebToken,
+  becomeVendor,
+);
 
 // =========================
 // Vendor Dashboard
 // =========================
 
-router.get("/me", verifyVendorToken, getVendorData);
+router.get(
+  "/me",
+  verifyVendorToken,
+  getVendorData,
+);
 
 router.put(
   "/update",
   verifyVendorToken,
   upload.single("avatar"),
-  updateVendor
+  updateVendor,
 );
 
-router.put("/update-password", verifyVendorToken, updateVendorPassword);
+router.put(
+  "/update-password",
+  verifyVendorToken,
+  updateVendorPassword,
+);
 
 // =========================
 // Admin
 // =========================
 
-// Later these should use your admin verifyToken middleware,
-// not verifyVendorToken.
-router.put("/verify/:vendorId", verifyVendorToken, verifyVendor);
+// Vendor verification
+router.put(
+  "/verify/:vendorId",
+  verifyVendorToken,
+  verifyVendor,
+);
 
-router.get("/all", verifyVendorToken, getAllVendors);
+// Get all vendors
+router.get(
+  "/all",
+  getAllVendors,
+);
+
+// Update vendor status
+// PENDING <-> ACTIVE
+router.patch(
+  "/:vendorId/status",
+
+  updateVendorStatus,
+);
 
 export default router;
