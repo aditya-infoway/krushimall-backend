@@ -110,6 +110,7 @@ export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
           pincode,
           vendorPassword: hashedVendorPassword,
           isVerified: false,
+             status: "PENDING",
           otp,
           otpExpiry,
         },
@@ -442,7 +443,82 @@ export const updateVendor = async (req: WebAuthedRequest, res: Response) => {
     });
   }
 };
+// ==================== UPDATE VENDOR STATUS (ADMIN) ====================
 
+export const updateVendorStatus = async (
+  req: WebAuthedRequest,
+  res: Response,
+) => {
+  try {
+    const vendorId = Number(req.params.vendorId);
+    const { status } = req.body;
+
+    // Only these 2 statuses are allowed
+    const allowedStatuses = ["PENDING", "ACTIVE"];
+
+    // Validate vendor ID
+    if (!vendorId || Number.isNaN(vendorId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid vendor ID",
+      });
+    }
+
+    // Validate status
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be PENDING or ACTIVE",
+      });
+    }
+
+    // Find vendor
+    const vendor = await prisma.webVendor.findUnique({
+      where: {
+        id: vendorId,
+      },
+    });
+
+    if (!vendor) {
+      return res.status(404).json({
+        success: false,
+        message: "Vendor not found",
+      });
+    }
+
+    // Update vendor status
+    const updatedVendor = await prisma.webVendor.update({
+      where: {
+        id: vendorId,
+      },
+      data: {
+        status,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message:
+        status === "ACTIVE"
+          ? "Vendor activated successfully"
+          : "Vendor moved to pending successfully",
+      vendor: {
+        id: updatedVendor.id,
+        userId: updatedVendor.userId,
+        name: updatedVendor.name,
+        email: updatedVendor.email,
+        status: updatedVendor.status,
+      },
+    });
+  } catch (error) {
+    console.error("Update vendor status error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update vendor status",
+    });
+  }
+};
 // ==================== VENDOR PASSWORD ====================
 
 export const updateVendorPassword = async (
@@ -602,10 +678,94 @@ export const getAllVendors = async (req: WebAuthedRequest, res: Response) => {
 
 // ==================== VENDOR LOGIN ====================
 
-export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
+// export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     if (!email || !password) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Email and password are required",
+//       });
+//     }
+
+//     const vendor = await prisma.webVendor.findFirst({
+//       where: { email },
+//       include: { user: true },
+//     });
+
+//     if (!vendor) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Vendor not found",
+//       });
+//     }
+
+//     // Block login until vendor has verified their OTP
+//     if (!vendor.isVerified) {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Please verify your vendor account first. Check your OTP.",
+//         requiresVerification: true,
+//         email: vendor.email,
+//       });
+//     }
+
+//     const validPassword = await bcrypt.compare(password, vendor.vendorPassword);
+
+//     if (!validPassword) {
+//       return res.status(401).json({
+//         success: false,
+//         message: "Invalid password",
+//       });
+//     }
+
+//     const token = jwt.sign(
+//       {
+//         vendorId: vendor.id,
+//         userId: vendor.userId,
+//         email: vendor.email,
+//         role: "vendor",
+//       },
+//       process.env.JWT_SECRET!,
+//       {
+//         expiresIn: "1d",
+//       },
+//     );
+
+//     return res.json({
+//       success: true,
+//       message: "Vendor login successful",
+//       token,
+//       vendor: {
+//         id: vendor.id,
+//         userId: vendor.userId,
+//         vendorType: vendor.vendorType,
+//         vehicleType: vendor.vehicleType,
+//         isVerified: vendor.isVerified,
+//         name: vendor.name,
+//         email: vendor.email,
+//         number: vendor.number,
+//       },
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Vendor login failed",
+//     });
+//   }
+// };
+// ==================== VENDOR LOGIN ====================
+
+export const vendorLogin = async (
+  req: WebAuthedRequest,
+  res: Response,
+) => {
   try {
     const { email, password } = req.body;
 
+    // Validate input
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -613,9 +773,14 @@ export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
       });
     }
 
+    // Find vendor
     const vendor = await prisma.webVendor.findFirst({
-      where: { email },
-      include: { user: true },
+      where: {
+        email,
+      },
+      include: {
+        user: true,
+      },
     });
 
     if (!vendor) {
@@ -625,7 +790,10 @@ export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
       });
     }
 
-    // Block login until vendor has verified their OTP
+    // ==========================================
+    // 1. OTP VERIFICATION CHECK
+    // ==========================================
+
     if (!vendor.isVerified) {
       return res.status(403).json({
         success: false,
@@ -635,7 +803,27 @@ export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
       });
     }
 
-    const validPassword = await bcrypt.compare(password, vendor.vendorPassword);
+    // ==========================================
+    // 2. ADMIN STATUS CHECK
+    // Only ACTIVE vendors can login
+    // ==========================================
+
+    if (vendor.status !== "ACTIVE") {
+      return res.status(403).json({
+        success: false,
+        message: "Your vendor account is pending admin approval.",
+        status: vendor.status,
+      });
+    }
+
+    // ==========================================
+    // 3. PASSWORD CHECK
+    // ==========================================
+
+    const validPassword = await bcrypt.compare(
+      password,
+      vendor.vendorPassword,
+    );
 
     if (!validPassword) {
       return res.status(401).json({
@@ -643,6 +831,10 @@ export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
         message: "Invalid password",
       });
     }
+
+    // ==========================================
+    // 4. GENERATE TOKEN
+    // ==========================================
 
     const token = jwt.sign(
       {
@@ -657,6 +849,10 @@ export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
       },
     );
 
+    // ==========================================
+    // 5. LOGIN SUCCESS
+    // ==========================================
+
     return res.json({
       success: true,
       message: "Vendor login successful",
@@ -667,13 +863,15 @@ export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
         vendorType: vendor.vendorType,
         vehicleType: vendor.vehicleType,
         isVerified: vendor.isVerified,
+        status: vendor.status,
         name: vendor.name,
         email: vendor.email,
         number: vendor.number,
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error("Vendor login error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Vendor login failed",

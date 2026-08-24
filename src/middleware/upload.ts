@@ -54,13 +54,13 @@ const fileFilter = (
   const mimeOk = allowedMimeTypes.includes(file.mimetype);
   const extOk = allowedExtensions.includes(ext);
 
-  console.log("UPLOAD CHECK:", {
-    originalname: file.originalname,
-    mimetype: file.mimetype,
-    ext,
-    mimeOk,
-    extOk,
-  });
+  // console.log("UPLOAD CHECK:", {
+  //   originalname: file.originalname,
+  //   mimetype: file.mimetype,
+  //   ext,
+  //   mimeOk,
+  //   extOk,
+  // });
 
   if (mimeOk || extOk) {
     cb(null, true);
