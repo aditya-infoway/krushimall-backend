@@ -7,7 +7,9 @@ import modelRoutes from "./model.js";
 import modelYearRoutes from "./modelyear.js";
 import showroomVariantRoutes from "./showroomVariant.js";
 import variantRoutes from "./variant.js";
-
+import  VendorCategoryRoutes from "./vendorCategory.js";
+import VendorsubCategoryRoutes from "./vendorSubCategory.js"
+import VendorsubsubCategoryRoutes from "./vendorSubSubCategory.js"
 const router = Router();
 
 router.use("/brands", brandRoutes);
@@ -17,5 +19,7 @@ router.use("/models", modelRoutes);
 router.use("/model-years", modelYearRoutes);
 router.use("/showroom-variants", showroomVariantRoutes);
 router.use("/variants", variantRoutes);
-
+router.use("/VendorCategory", VendorCategoryRoutes);
+router.use("/VendorsubCategory", VendorsubCategoryRoutes);
+router.use("/Vendorsub-subCategory", VendorsubsubCategoryRoutes);
 export default router;

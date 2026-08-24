@@ -47,6 +47,8 @@ import teamleadRoutes from "./routes/employee/teamlead/index.js"
 import branchEmployeeRoutes from "./routes/branch/index.js";
 import webRoutes from "./routes/web/index.js";
 import tractorInventoryRoutes from "./routes/tractorInventory.js"
+import vendorAdminRoutes from "./routes/vendorAdmin.js";
+
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -97,4 +99,5 @@ router.use("/teamlead", teamleadRoutes);
 router.use("/branch-panel", branchEmployeeRoutes);
 router.use("/web", webRoutes);
 router.use("/tractor-inventory", tractorInventoryRoutes);
+router.use("/vendor-admin", vendorAdminRoutes);
 export default router;
