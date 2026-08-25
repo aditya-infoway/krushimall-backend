@@ -7,9 +7,9 @@ import {
   getProductById,
   updateProduct,
   deleteProduct,
-} from "../../controllers/vendor/product.js";
+} from "../../controllers/vendor-panel/product.js";
 
-import { verifyVendorToken } from "../../middleware/verifyVendorAdminToken.js";
+import { verifyVendorToken } from "../../middleware/verifyVendorToken.js";
 import { upload } from "../../middleware/upload.js";
 
 const router = Router();
