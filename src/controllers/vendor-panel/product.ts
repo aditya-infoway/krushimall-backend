@@ -1,8 +1,8 @@
 // src/controllers/vendor/vendorProduct.ts
 
-import { Response } from "express";
+import { Request, Response } from "express";
 import prisma from "../../lib/prisma.js";
-import { VendorAuthedRequest } from "../../middleware/verifyVendorAdminToken.js";
+import { VendorAuthedRequest } from "../../middleware/verifyVendorToken.js";
 
 // ==================== CREATE VENDOR PRODUCT ====================
 
@@ -23,6 +23,9 @@ export const createProduct = async (
     const {
       productName,
       sku,
+      partNumber,
+      oemNumber,
+      countryOfOrigin,
       categoryId,
       subCategoryId,
       subSubCategoryId,
@@ -122,6 +125,12 @@ export const createProduct = async (
         productName: productName.trim(),
 
         sku: sku || null,
+
+        partNumber: partNumber || null,
+
+        oemNumber: oemNumber || null,
+
+        countryOfOrigin: countryOfOrigin || null,
 
         categoryId: Number(categoryId),
 
@@ -284,7 +293,158 @@ export const getProducts = async (
     });
   }
 };
+// ==================== PUBLIC: LIST PRODUCTS (Storefront) ====================
 
+export const getPublicProducts = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const {
+      categoryId,
+      subCategoryId,
+      subSubCategoryId,
+      brandId,
+      search,
+      minPrice,
+      maxPrice,
+      inStock,
+      page = "1",
+      limit = "50",
+    } = req.query;
+
+    const pageNum = Math.max(Number(page) || 1, 1);
+    const limitNum = Math.min(Math.max(Number(limit) || 50, 1), 200);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = {
+  verificationStatus: "APPROVED", // 👈 apne enum ki exact value confirm kar lena
+};
+
+    if (categoryId) {
+      where.categoryId = Number(categoryId);
+    }
+
+    if (subCategoryId) {
+      where.subCategoryId = Number(subCategoryId);
+    }
+
+    if (subSubCategoryId) {
+      where.subSubCategoryId = Number(subSubCategoryId);
+    }
+
+    if (brandId) {
+      where.brandId = Number(brandId);
+    }
+
+    if (search && typeof search === "string" && search.trim()) {
+      where.OR = [
+        { productName: { contains: search.trim(), mode: "insensitive" } },
+        { sku: { contains: search.trim(), mode: "insensitive" } },
+        { keywords: { contains: search.trim(), mode: "insensitive" } },
+        { partNumber: { contains: search.trim(), mode: "insensitive" } },
+        { oemNumber: { contains: search.trim(), mode: "insensitive" } },
+      ];
+    }
+
+    if (minPrice || maxPrice) {
+      where.sellingPrice = {
+        ...(minPrice ? { gte: Number(minPrice) } : {}),
+        ...(maxPrice ? { lte: Number(maxPrice) } : {}),
+      };
+    }
+
+    if (inStock === "true") {
+      where.stock = "IN_STOCK";
+    }
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: {
+          category: true,
+          subCategory: true,
+          subSubCategory: true,
+          brand: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limitNum,
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    return res.json({
+      success: true,
+      data: products,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    });
+  } catch (error) {
+    console.error("Get public products error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get products",
+    });
+  }
+};
+
+// ==================== PUBLIC: GET SINGLE PRODUCT (Storefront) ====================
+
+export const getPublicProductById = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!id || Number.isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+
+    const product = await prisma.product.findFirst({
+      where: {
+    id,
+    verificationStatus: "APPROVED", // 👈 same yahan bhi
+  },
+      include: {
+        category: true,
+        subCategory: true,
+        subSubCategory: true,
+        brand: true,
+      },
+    });
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      product,
+    });
+  } catch (error) {
+    console.error("Get public product error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get product",
+    });
+  }
+};
 // ==================== GET SINGLE VENDOR PRODUCT ====================
 
 export const getProductById = async (
@@ -391,6 +551,9 @@ export const updateProduct = async (
     const {
       productName,
       sku,
+      partNumber,
+      oemNumber,
+      countryOfOrigin,
       categoryId,
       subCategoryId,
       subSubCategoryId,
@@ -412,7 +575,7 @@ export const updateProduct = async (
       maxOrderQuantity,
       mainImage,
       thumbnailImage,
-      additionalImages,
+      existingAdditionalImages,
       productCondition,
       manufacturingDate,
       expiryDate,
@@ -422,7 +585,48 @@ export const updateProduct = async (
       warrantyPeriod,
       warrantyDetails,
       specifications,
+        verificationStatus,
     } = req.body;
+
+    // ==================== FILES (newly uploaded on edit) ====================
+
+    const files = req.files as {
+      [fieldname: string]: Express.Multer.File[];
+    };
+
+    const mainImageFile = files?.mainImage?.[0];
+    const thumbnailImageFile = files?.thumbnailImage?.[0];
+    const additionalImageFiles = files?.additionalImages || [];
+
+    // new main image uploaded? use it. otherwise fall back to the
+    // string value that came in req.body (existing url, or "" if removed)
+    const resolvedMainImage = mainImageFile
+      ? `/uploads/${mainImageFile.filename}`
+      : mainImage;
+
+    const resolvedThumbnailImage = thumbnailImageFile
+      ? `/uploads/${thumbnailImageFile.filename}`
+      : thumbnailImage;
+
+    // additional images = images that were kept (existingAdditionalImages,
+    // sent as a JSON string array from the frontend) + any newly uploaded ones
+    let parsedExistingAdditionalImages: string[] = [];
+    try {
+      parsedExistingAdditionalImages = existingAdditionalImages
+        ? JSON.parse(existingAdditionalImages)
+        : [];
+    } catch {
+      parsedExistingAdditionalImages = [];
+    }
+
+    const newAdditionalImagePaths = additionalImageFiles.map(
+      (file) => `/uploads/${file.filename}`,
+    );
+
+    const resolvedAdditionalImages = [
+      ...parsedExistingAdditionalImages,
+      ...newAdditionalImagePaths,
+    ];
 
     const updated =
       await prisma.product.update({
@@ -437,6 +641,18 @@ export const updateProduct = async (
 
           ...(sku !== undefined && {
             sku: sku || null,
+          }),
+
+          ...(partNumber !== undefined && {
+            partNumber: partNumber || null,
+          }),
+
+          ...(oemNumber !== undefined && {
+            oemNumber: oemNumber || null,
+          }),
+
+          ...(countryOfOrigin !== undefined && {
+            countryOfOrigin: countryOfOrigin || null,
           }),
 
           ...(categoryId !== undefined && {
@@ -525,21 +741,19 @@ export const updateProduct = async (
 
           // ==================== IMAGES ====================
 
-          ...(mainImage !== undefined && {
-            mainImage: mainImage || null,
+          ...(resolvedMainImage !== undefined && {
+            mainImage: resolvedMainImage || null,
           }),
 
-          ...(thumbnailImage !== undefined && {
-            thumbnailImage:
-              thumbnailImage || null,
+          ...(resolvedThumbnailImage !== undefined && {
+            thumbnailImage: resolvedThumbnailImage || null,
           }),
 
-          ...(additionalImages !== undefined && {
-            additionalImages: Array.isArray(
-              additionalImages,
-            )
-              ? additionalImages
-              : [],
+          // additional images: always recompute when either new files were
+          // uploaded or the frontend sent an existingAdditionalImages list
+          ...((additionalImageFiles.length > 0 ||
+            existingAdditionalImages !== undefined) && {
+            additionalImages: resolvedAdditionalImages,
           }),
 
           // ==================== DETAILS ====================
@@ -590,6 +804,9 @@ export const updateProduct = async (
           ...(specifications !== undefined && {
             specifications,
           }),
+          ...(verificationStatus !== undefined && {
+  verificationStatus,
+}),
         },
       });
 

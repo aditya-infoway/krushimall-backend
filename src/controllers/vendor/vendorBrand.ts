@@ -1,6 +1,6 @@
 // src/controllers/vendor/vendorBrand.ts
 
-import { Response } from "express";
+import {Request, Response } from "express";
 import prisma from "../../lib/prisma.js";
 import { VendorAuthedRequest } from "../../middleware/verifyVendorAdminToken.js";
 
@@ -83,6 +83,8 @@ export const getVendorBrands = async (
     });
   }
 };
+// ==================== LIST — STOREFRONT/PANEL (public, sab vendors, sirf active) ====================
+
 
 // ==================== GET SINGLE VENDOR BRAND ====================
 
@@ -128,7 +130,25 @@ export const getVendorBrandById = async (
     });
   }
 };
+export const getPublicVendorBrands = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const brands = await prisma.vendorBrand.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+    });
 
+    return res.json({ success: true, data: brands });
+  } catch (error) {
+    console.error("Get public vendor brands error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get brands",
+    });
+  }
+};
 // ==================== UPDATE VENDOR BRAND ====================
 
 export const updateVendorBrand = async (

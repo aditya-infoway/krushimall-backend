@@ -1653,7 +1653,7 @@ model WebVendor {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
+  products Product[]
   usedWebsiteVariants UsedWebsiteVariant[]
 }
 
@@ -2046,7 +2046,7 @@ model VendorAdmin {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   vendorBrands     VendorBrand[]
-  products         Product[]
+ 
   vendorCategories VendorCategory[]
 }
 
@@ -2093,9 +2093,8 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Vendor
-  vendorId Int
-  vendor   VendorAdmin @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+   vendorId Int
+  vendor   WebVendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   // Category
   categoryId Int
@@ -2137,7 +2136,9 @@ model Product {
   unit             String?
   weight           String?
   maxOrderQuantity Int     @default(1)
-
+  partNumber       String?
+  oemNumber        String?
+  countryOfOrigin  String?
   // Images
   mainImage        String?
   thumbnailImage   String?
