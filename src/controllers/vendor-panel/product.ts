@@ -397,7 +397,64 @@ export const getPublicProducts = async (
 };
 
 // ==================== PUBLIC: GET SINGLE PRODUCT (Storefront) ====================
+// ==================== PUBLIC: RELATED PRODUCTS ====================
 
+export const getRelatedProducts = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const id = Number(req.params.id);
+    const limit = Math.min(Number(req.query.limit) || 6, 20);
+
+    if (!id || Number.isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+
+    // Pehle current product ki categoryId nikaalo
+    const currentProduct = await prisma.product.findUnique({
+      where: { id },
+      select: { categoryId: true },
+    });
+
+    if (!currentProduct) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    const relatedProducts = await prisma.product.findMany({
+      where: {
+        categoryId: currentProduct.categoryId,
+        verificationStatus: "APPROVED",
+        id: { not: id },   // ✅ backend hi current product exclude karega
+      },
+      include: {
+        category: true,
+        brand: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: limit,
+    });
+
+    return res.json({
+      success: true,
+      data: relatedProducts,
+    });
+  } catch (error) {
+    console.error("Get related products error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get related products",
+    });
+  }
+};
 export const getPublicProductById = async (
   req: Request,
   res: Response,

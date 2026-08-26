@@ -9,7 +9,7 @@ import {
   forgotPassword,
   resetPassword,
   getCurrentUser,
-  updateProfile
+  updateProfile,
 } from "../controllers/webauth.js";
 import { upload } from "../middleware/upload.js";
 const router = Router();
@@ -21,13 +21,7 @@ router.post("/resend-otp", resendOTP);
 router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
-// Protected routes
-router.get("/me",  verifyWebToken, getCurrentUser);
-router.put(
-  "/profile",
-  verifyWebToken,
-  upload.single("avatar"),
-  updateProfile
-);
+router.get("/me", verifyWebToken, getCurrentUser);
+router.put("/profile", verifyWebToken, upload.single("avatar"), updateProfile);
 
 export default router;
