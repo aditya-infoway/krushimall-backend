@@ -1,0 +1,225 @@
+// src/controllers/order.controller.ts
+
+import { Response } from "express";
+import prisma from "../../lib/prisma.js";
+import { WebAuthedRequest } from "../../type/webAuthRequest.js";
+import { buildCartResponse } from "./cart.js";
+
+const generateOrderNumber = () => {
+  return "ORD-" + Date.now().toString(36).toUpperCase() + "-" + Math.floor(100 + Math.random() * 900);
+};
+
+// ---------- POST /api/orders/place ----------
+// body: { fullName, phone, email, address, city, state, pincode, landmark, paymentMethod }
+export const placeOrder = async (req: WebAuthedRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const {
+      fullName,
+      phone,
+      email,
+      address,
+      city,
+      state,
+      pincode,
+      landmark,
+      paymentMethod = "COD",
+    } = req.body;
+
+    if (!fullName || !phone || !email || !address || !city || !state || !pincode) {
+      return res.status(400).json({ success: false, message: "All shipping fields are required" });
+    }
+
+    // ⚠️ Abhi sirf COD. Razorpay/PayU integrate karoge tab yahan
+    // gateway-order-create + verify step add hoga, paymentStatus
+    // PENDING -> PAID webhook/verify ke baad set hoga.
+    if (paymentMethod !== "COD") {
+      return res.status(400).json({ success: false, message: "Only Cash on Delivery is available right now" });
+    }
+
+    const cart = await prisma.cart.findUnique({
+      where: { webUserId: userId },
+      include: { items: { include: { product: true } } },
+    });
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ success: false, message: "Your cart is empty" });
+    }
+
+    // server-side dobara calculate — frontend numbers par bharosa mat karo
+    const calculated = await buildCartResponse(cart);
+
+    const order = await prisma.$transaction(async (tx) => {
+      const newOrder = await tx.webOrder.create({
+        data: {
+          orderNumber: generateOrderNumber(),
+          webUserId: userId,
+          subtotal: calculated.subtotal,
+          cgst: calculated.cgst,
+          sgst: calculated.sgst,
+          shippingCharge: calculated.shippingCharge,
+          discountAmount: calculated.discountAmount,
+          couponCode: calculated.appliedCoupon?.code || null,
+          totalAmount: calculated.total,
+          paymentMethod: "COD",
+          paymentStatus: "PENDING",
+          orderStatus: "PLACED",
+          fullName,
+          phone,
+          email,
+          address,
+          city,
+          state,
+          pincode,
+          landmark: landmark || null,
+          items: {
+            create: calculated.items.map((item) => ({
+              productId: item.id,
+              productName: item.name,
+              partNumber: item.partNumber,
+              price: item.price,
+              quantity: item.quantity,
+            })),
+          },
+        },
+        include: { items: true },
+      });
+
+      // stock ghatao har product ka
+      for (const item of calculated.items) {
+        await tx.product.update({
+          where: { id: item.id },
+          data: { stockQuantity: { decrement: item.quantity } },
+        });
+      }
+
+      // order confirm hote hi cart clear + coupon reset
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+      await tx.cart.update({ where: { id: cart.id }, data: { couponCode: null } });
+
+      return newOrder;
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Order placed successfully",
+      order: {
+        orderId: order.orderNumber,
+        totalAmount: Number(order.totalAmount),
+        paymentMethod: order.paymentMethod,
+        orderStatus: order.orderStatus,
+      },
+    });
+  } catch (error) {
+    console.error("placeOrder error:", error);
+    return res.status(500).json({ success: false, message: "Failed to place order" });
+  }
+};
+
+// ---------- GET /api/orders/my-orders ----------
+export const getMyOrders = async (
+  req: WebAuthedRequest,
+  res: Response,
+) => {
+  try {
+    const userId = req.user!.id;
+
+    const orders = await prisma.webOrder.findMany({
+      where: {
+        webUserId: userId,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                mainImage: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const formattedOrders = orders.map((order) => ({
+      ...order,
+      items: order.items.map((item) => ({
+        ...item,
+        image: item.product?.mainImage || null,
+      })),
+    }));
+
+    return res.status(200).json({
+      success: true,
+      orders: formattedOrders,
+    });
+  } catch (error) {
+    console.error("getMyOrders error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch orders",
+    });
+  }
+};
+
+// ---------- GET /api/orders/:orderNumber ----------
+// ---------- GET /api/orders/:orderNumber ----------
+export const getOrderByNumber = async (
+  req: WebAuthedRequest,
+  res: Response,
+) => {
+  try {
+    const userId = req.user!.id;
+    const { orderNumber } = req.params;
+
+    const order = await prisma.webOrder.findFirst({
+      where: {
+        orderNumber,
+        webUserId: userId,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                mainImage: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Convert product.mainImage -> item.image
+    const formattedOrder = {
+      ...order,
+      items: order.items.map((item) => ({
+        ...item,
+        image: item.product?.mainImage || null,
+      })),
+    };
+
+    return res.status(200).json({
+      success: true,
+      order: formattedOrder,
+    });
+  } catch (error) {
+    console.error("getOrderByNumber error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch order",
+    });
+  }
+};
