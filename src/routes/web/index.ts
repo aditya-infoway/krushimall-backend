@@ -11,6 +11,8 @@ import  VendorCategoryRoutes from "./vendorCategory.js";
 import VendorsubCategoryRoutes from "./vendorSubCategory.js"
 import VendorsubsubCategoryRoutes from "./vendorSubSubCategory.js"
 import productRoutes from "./product.js"
+import cartRoutes from "./cart.js"
+import orderRoutes from "./order.js"
 const router = Router();
 
 router.use("/brands", brandRoutes);
@@ -24,4 +26,6 @@ router.use("/VendorCategory", VendorCategoryRoutes);
 router.use("/VendorsubCategory", VendorsubCategoryRoutes);
 router.use("/Vendorsub-subCategory", VendorsubsubCategoryRoutes);
 router.use("/product", productRoutes);
+router.use("/cart", cartRoutes);
+router.use("/orders", orderRoutes);
 export default router;
