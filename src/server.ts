@@ -24,8 +24,8 @@ app.use(
 // All routes
 app.use("/api", router);
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
-app.listen(5001, '0.0.0.0', () => {
+app.listen(5000, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
