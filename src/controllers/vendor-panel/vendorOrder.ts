@@ -112,7 +112,11 @@ export const getVendorOrders = async (
           partNumber: item.partNumber,
           price: item.price,
           quantity: item.quantity,
-
+ itemStatus: item.itemStatus,
+  cancelReason: item.cancelReason,
+  cancelDescription: item.cancelDescription,
+  cancelImages: item.cancelImages,
+  cancelRequestedAt: item.cancelRequestedAt,
           product: item.product
             ? {
                 id: item.product.id,
