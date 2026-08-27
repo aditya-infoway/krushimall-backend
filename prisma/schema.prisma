@@ -2314,7 +2314,6 @@ enum WebOrderStatus {
   DELIVERED
   CANCELLED
 }
-<<<<<<< HEAD
 
 
 
@@ -2495,9 +2494,4 @@ model EquipmentVariant {
   highlight3    String?
   highlight4    String?
   highlight5    String?
-=======
-enum WebOrderItemStatus {
-  PLACED
-  CANCELLED
->>>>>>> 11500637 (cart,order)
 }
