@@ -2307,3 +2307,184 @@ enum WebOrderStatus {
   DELIVERED
   CANCELLED
 }
+
+
+
+model EquipmentVariant {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  currentStep Int     @default(1)
+  status      String  @default("DRAFT")
+  isCompleted Boolean @default(false)
+
+  vendorId Int?
+  // No relation for now - just store the IDs
+
+  createdById Int?
+  createdBy   String?
+  createdType String?
+  productName String?
+
+  // ==========================
+  // Equipment Classification (Store IDs only, no relations)
+  // ==========================
+  categoryId  Int?
+  brandId     Int?
+  modelId     Int?
+  modelYearId Int?
+  variantId   Int?
+
+  // Store selected names as backup
+  brand   String?
+  model   String?
+  variant String?
+
+  // ==========================
+  // Equipment Details
+  // ==========================
+  equipmentType        String?
+  manufacturingYear    String?
+  purchaseYear         String?
+  equipmentCondition   String?
+  serialNumber         String?
+  productCode          String?
+  color                String?
+
+  // ==========================
+  // Location
+  // ==========================
+  country     String?
+  state       String?
+  district    String?
+  taluka      String?
+  village     String?
+
+  // ==========================
+  // Equipment Specifications
+  // ==========================
+  powerSource           String?
+  ptoRequirement        String?
+  requiredTractorHp     Int?
+  workingWidth          String?
+  workingCapacity       String?
+  workingSpeed          String?
+  weight                Float?
+  length                Float?
+  width                 Float?
+  height                Float?
+  productionCapacity    String?
+  fuelConsumption       String?
+  rpm                   Int?
+  numberOfBlades        Int?
+  numberOfRows          Int?
+  tankCapacity          Float?
+  workingDepth          String?
+
+  // Thresher Specific
+  threshingCapacity     String?
+  cropType              String?
+  drumSize              String?
+  fanType               String?
+  cleaningSystem        String?
+
+  // Rotavator Specific
+  rotorRpm              Int?
+
+  // Sprayer Specific
+  sprayWidth            String?
+  pumpType              String?
+  nozzleCount           Int?
+  pressure              String?
+
+  // ==========================
+  // Equipment Condition
+  // ==========================
+  overallCondition      String?
+  oilLeakage            String?
+  workingCondition      String?
+
+  mechanical            Json?  // Store as JSON
+  electrical            Json?  // Store as JSON
+
+  // ==========================
+  // Parts & Attachments
+  // ==========================
+  partsCondition        Json?  // Store as JSON
+  attachments           Json?  // Store as JSON
+  otherAttachmentName   String?
+  lastServiceDate       DateTime?
+  majorRepair           String?
+  partsReplaced         Json?  // Store as JSON
+  accidentDamage        String?
+  floodDamage           String?
+
+  // ==========================
+  // Price & Location
+  // ==========================
+  expectedPrice         Float?
+  negotiable            String?
+  exchangeAvailable     String?
+  financeAvailable      String?
+  pincode               String?
+  landmark              String?
+  latitude              Float?
+  longitude             Float?
+
+  // ==========================
+  // Seller Details
+  // ==========================
+  sellerType              String?
+  ownerType               String?
+  ownershipProofAvailable Boolean @default(false)
+  usage                   String?
+
+  // ==========================
+  // Media - Images
+  // ==========================
+  frontView     String?
+  leftView      String?
+  rightView     String?
+  rearView      String?
+  mainEquipment String?
+  workingMechanism String?
+  controlPanel  String?
+  serialNumberImage String?
+  attachmentsImage String?
+  tyresWheels   String?
+
+  // ==========================
+  // Videos
+  // ==========================
+  walkaroundVideo      String?
+  workingVideo         String?
+  machineStartVideo    String?
+  ptoWorkingVideo      String?
+  hydraulicWorkingVideo String?
+
+  // ==========================
+  // Documents
+  // ==========================
+  purchaseInvoice  String?
+  ownershipProof   String?
+  warrantyDocument String?
+  insurance        String?
+  serviceRecords   String?
+  otherDocuments   String?
+
+  // ==========================
+  // Preview & Submit
+  // ==========================
+  agreed        Boolean @default(false)
+  enquiryCount  Int     @default(0)
+
+  // ==========================
+  // Highlights (if needed)
+  // ==========================
+  highlight1    String?
+  highlight2    String?
+  highlight3    String?
+  highlight4    String?
+  highlight5    String?
+}
