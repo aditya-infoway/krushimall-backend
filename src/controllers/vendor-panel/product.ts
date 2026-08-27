@@ -39,6 +39,7 @@ export const createProduct = async (
       mrp,
       sellingPrice,
       tax,
+      discount,
       finalPrice,
       stockQuantity,
       barcode,
@@ -99,9 +100,7 @@ export const createProduct = async (
     let parsedKeyFeatures: string[] = [];
 
     try {
-      parsedKeyFeatures = keyFeatures
-        ? JSON.parse(keyFeatures)
-        : [];
+      parsedKeyFeatures = keyFeatures ? JSON.parse(keyFeatures) : [];
     } catch {
       parsedKeyFeatures = [];
     }
@@ -109,9 +108,7 @@ export const createProduct = async (
     let parsedSpecifications: any[] = [];
 
     try {
-      parsedSpecifications = specifications
-        ? JSON.parse(specifications)
-        : [];
+      parsedSpecifications = specifications ? JSON.parse(specifications) : [];
     } catch {
       parsedSpecifications = [];
     }
@@ -134,17 +131,11 @@ export const createProduct = async (
 
         categoryId: Number(categoryId),
 
-        subCategoryId: subCategoryId
-          ? Number(subCategoryId)
-          : null,
+        subCategoryId: subCategoryId ? Number(subCategoryId) : null,
 
-        subSubCategoryId: subSubCategoryId
-          ? Number(subSubCategoryId)
-          : null,
+        subSubCategoryId: subSubCategoryId ? Number(subSubCategoryId) : null,
 
-        brandId: brandId
-          ? Number(brandId)
-          : null,
+        brandId: brandId ? Number(brandId) : null,
 
         productType: productType || "SIMPLE",
 
@@ -158,25 +149,15 @@ export const createProduct = async (
 
         videoUrl: videoUrl || null,
 
-        mrp: mrp
-          ? Number(mrp)
-          : 0,
+        mrp: mrp ? Number(mrp) : 0,
 
-        sellingPrice: sellingPrice
-          ? Number(sellingPrice)
-          : 0,
+        sellingPrice: sellingPrice ? Number(sellingPrice) : 0,
 
-        tax: tax
-          ? Number(tax)
-          : 0,
+        tax: tax ? Number(tax) : 0,
+        discount: discount ? Number(discount) : 0,
+        finalPrice: finalPrice ? Number(finalPrice) : 0,
 
-        finalPrice: finalPrice
-          ? Number(finalPrice)
-          : 0,
-
-        stockQuantity: stockQuantity
-          ? Number(stockQuantity)
-          : 0,
+        stockQuantity: stockQuantity ? Number(stockQuantity) : 0,
 
         barcode: barcode || null,
 
@@ -184,9 +165,7 @@ export const createProduct = async (
 
         weight: weight || null,
 
-        maxOrderQuantity: maxOrderQuantity
-          ? Number(maxOrderQuantity)
-          : 1,
+        maxOrderQuantity: maxOrderQuantity ? Number(maxOrderQuantity) : 1,
 
         // ==================== IMAGES ====================
 
@@ -198,37 +177,25 @@ export const createProduct = async (
 
         // ==================== ADDITIONAL ====================
 
-        productCondition:
-          productCondition || "NEW",
+        productCondition: productCondition || "NEW",
 
-        manufacturingDate:
-          manufacturingDate
-            ? new Date(manufacturingDate)
-            : null,
+        manufacturingDate: manufacturingDate
+          ? new Date(manufacturingDate)
+          : null,
 
-        expiryDate:
-          expiryDate
-            ? new Date(expiryDate)
-            : null,
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
 
-        returnPolicy:
-          returnPolicy || "NONE",
+        returnPolicy: returnPolicy || "NONE",
 
-        estimatedDeliveryTime:
-          estimatedDeliveryTime || null,
+        estimatedDeliveryTime: estimatedDeliveryTime || null,
 
-        freeShipping:
-          freeShipping === true ||
-          freeShipping === "true",
+        freeShipping: freeShipping === true || freeShipping === "true",
 
-        warrantyPeriod:
-          warrantyPeriod || null,
+        warrantyPeriod: warrantyPeriod || null,
 
-        warrantyDetails:
-          warrantyDetails || null,
+        warrantyDetails: warrantyDetails || null,
 
-        specifications:
-          parsedSpecifications,
+        specifications: parsedSpecifications,
       },
     });
 
@@ -248,10 +215,7 @@ export const createProduct = async (
 };
 // ==================== LIST VENDOR PRODUCTS ====================
 
-export const getProducts = async (
-  req: VendorAuthedRequest,
-  res: Response,
-) => {
+export const getProducts = async (req: VendorAuthedRequest, res: Response) => {
   try {
     const vendorId = req.vendor?.vendorId;
 
@@ -282,10 +246,7 @@ export const getProducts = async (
       data: products,
     });
   } catch (error) {
-    console.error(
-      "Get vendor products error:",
-      error,
-    );
+    console.error("Get vendor products error:", error);
 
     return res.status(500).json({
       success: false,
@@ -295,10 +256,7 @@ export const getProducts = async (
 };
 // ==================== PUBLIC: LIST PRODUCTS (Storefront) ====================
 
-export const getPublicProducts = async (
-  req: Request,
-  res: Response,
-) => {
+export const getPublicProducts = async (req: Request, res: Response) => {
   try {
     const {
       categoryId,
@@ -318,8 +276,8 @@ export const getPublicProducts = async (
     const skip = (pageNum - 1) * limitNum;
 
     const where: any = {
-  verificationStatus: "APPROVED", // 👈 apne enum ki exact value confirm kar lena
-};
+      verificationStatus: "APPROVED", // 👈 apne enum ki exact value confirm kar lena
+    };
 
     if (categoryId) {
       where.categoryId = Number(categoryId);
@@ -399,10 +357,7 @@ export const getPublicProducts = async (
 // ==================== PUBLIC: GET SINGLE PRODUCT (Storefront) ====================
 // ==================== PUBLIC: RELATED PRODUCTS ====================
 
-export const getRelatedProducts = async (
-  req: Request,
-  res: Response,
-) => {
+export const getRelatedProducts = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
     const limit = Math.min(Number(req.query.limit) || 6, 20);
@@ -431,7 +386,7 @@ export const getRelatedProducts = async (
       where: {
         categoryId: currentProduct.categoryId,
         verificationStatus: "APPROVED",
-        id: { not: id },   // ✅ backend hi current product exclude karega
+        id: { not: id }, // ✅ backend hi current product exclude karega
       },
       include: {
         category: true,
@@ -455,10 +410,7 @@ export const getRelatedProducts = async (
     });
   }
 };
-export const getPublicProductById = async (
-  req: Request,
-  res: Response,
-) => {
+export const getPublicProductById = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
@@ -471,9 +423,9 @@ export const getPublicProductById = async (
 
     const product = await prisma.product.findFirst({
       where: {
-    id,
-    verificationStatus: "APPROVED", // 👈 same yahan bhi
-  },
+        id,
+        verificationStatus: "APPROVED", // 👈 same yahan bhi
+      },
       include: {
         category: true,
         subCategory: true,
@@ -527,19 +479,18 @@ export const getProductById = async (
       });
     }
 
-    const product =
-      await prisma.product.findFirst({
-        where: {
-          id,
-          vendorId,
-        },
-        include: {
-          category: true,
-          subCategory: true,
-          subSubCategory: true,
-          brand: true,
-        },
-      });
+    const product = await prisma.product.findFirst({
+      where: {
+        id,
+        vendorId,
+      },
+      include: {
+        category: true,
+        subCategory: true,
+        subSubCategory: true,
+        brand: true,
+      },
+    });
 
     if (!product) {
       return res.status(404).json({
@@ -553,10 +504,7 @@ export const getProductById = async (
       product,
     });
   } catch (error) {
-    console.error(
-      "Get vendor product error:",
-      error,
-    );
+    console.error("Get vendor product error:", error);
 
     return res.status(500).json({
       success: false,
@@ -590,13 +538,12 @@ export const updateProduct = async (
       });
     }
 
-    const existing =
-      await prisma.product.findFirst({
-        where: {
-          id,
-          vendorId,
-        },
-      });
+    const existing = await prisma.product.findFirst({
+      where: {
+        id,
+        vendorId,
+      },
+    });
 
     if (!existing) {
       return res.status(404).json({
@@ -624,6 +571,7 @@ export const updateProduct = async (
       mrp,
       sellingPrice,
       tax,
+      discount,
       finalPrice,
       stockQuantity,
       barcode,
@@ -642,7 +590,7 @@ export const updateProduct = async (
       warrantyPeriod,
       warrantyDetails,
       specifications,
-        verificationStatus,
+      verificationStatus,
     } = req.body;
 
     // ==================== FILES (newly uploaded on edit) ====================
@@ -685,187 +633,171 @@ export const updateProduct = async (
       ...newAdditionalImagePaths,
     ];
 
-    const updated =
-      await prisma.product.update({
-        where: {
-          id,
-        },
+    const updated = await prisma.product.update({
+      where: {
+        id,
+      },
 
-        data: {
-          ...(productName !== undefined && {
-            productName: productName.trim(),
-          }),
+      data: {
+        ...(productName !== undefined && {
+          productName: productName.trim(),
+        }),
 
-          ...(sku !== undefined && {
-            sku: sku || null,
-          }),
+        ...(sku !== undefined && {
+          sku: sku || null,
+        }),
 
-          ...(partNumber !== undefined && {
-            partNumber: partNumber || null,
-          }),
+        ...(partNumber !== undefined && {
+          partNumber: partNumber || null,
+        }),
 
-          ...(oemNumber !== undefined && {
-            oemNumber: oemNumber || null,
-          }),
+        ...(oemNumber !== undefined && {
+          oemNumber: oemNumber || null,
+        }),
 
-          ...(countryOfOrigin !== undefined && {
-            countryOfOrigin: countryOfOrigin || null,
-          }),
+        ...(countryOfOrigin !== undefined && {
+          countryOfOrigin: countryOfOrigin || null,
+        }),
 
-          ...(categoryId !== undefined && {
-            categoryId: Number(categoryId),
-          }),
+        ...(categoryId !== undefined && {
+          categoryId: Number(categoryId),
+        }),
 
-          ...(subCategoryId !== undefined && {
-            subCategoryId: subCategoryId
-              ? Number(subCategoryId)
-              : null,
-          }),
+        ...(subCategoryId !== undefined && {
+          subCategoryId: subCategoryId ? Number(subCategoryId) : null,
+        }),
 
-          ...(subSubCategoryId !== undefined && {
-            subSubCategoryId: subSubCategoryId
-              ? Number(subSubCategoryId)
-              : null,
-          }),
+        ...(subSubCategoryId !== undefined && {
+          subSubCategoryId: subSubCategoryId ? Number(subSubCategoryId) : null,
+        }),
 
-          ...(brandId !== undefined && {
-            brandId: brandId
-              ? Number(brandId)
-              : null,
-          }),
+        ...(brandId !== undefined && {
+          brandId: brandId ? Number(brandId) : null,
+        }),
 
-          ...(productType !== undefined && {
-            productType,
-          }),
+        ...(productType !== undefined && {
+          productType,
+        }),
 
-          ...(stock !== undefined && {
-            stock,
-          }),
+        ...(stock !== undefined && {
+          stock,
+        }),
 
-          ...(keywords !== undefined && {
-            keywords: keywords || null,
-          }),
+        ...(keywords !== undefined && {
+          keywords: keywords || null,
+        }),
 
-          ...(shortDescription !== undefined && {
-            shortDescription:
-              shortDescription || null,
-          }),
+        ...(shortDescription !== undefined && {
+          shortDescription: shortDescription || null,
+        }),
 
-          ...(keyFeatures !== undefined && {
-            keyFeatures,
-          }),
+        ...(keyFeatures !== undefined && {
+          keyFeatures,
+        }),
 
-          ...(videoUrl !== undefined && {
-            videoUrl: videoUrl || null,
-          }),
+        ...(videoUrl !== undefined && {
+          videoUrl: videoUrl || null,
+        }),
 
-          ...(mrp !== undefined && {
-            mrp: Number(mrp),
-          }),
+        ...(mrp !== undefined && {
+          mrp: Number(mrp),
+        }),
 
-          ...(sellingPrice !== undefined && {
-            sellingPrice: Number(sellingPrice),
-          }),
+        ...(sellingPrice !== undefined && {
+          sellingPrice: Number(sellingPrice),
+        }),
 
-          ...(tax !== undefined && {
-            tax: Number(tax),
-          }),
+        ...(tax !== undefined && {
+          tax: Number(tax),
+        }),
+        ...(discount !== undefined && {
+          discount: Number(discount),
+        }),
+        ...(finalPrice !== undefined && {
+          finalPrice: Number(finalPrice),
+        }),
 
-          ...(finalPrice !== undefined && {
-            finalPrice: Number(finalPrice),
-          }),
+        ...(stockQuantity !== undefined && {
+          stockQuantity: Number(stockQuantity),
+        }),
 
-          ...(stockQuantity !== undefined && {
-            stockQuantity: Number(stockQuantity),
-          }),
+        ...(barcode !== undefined && {
+          barcode: barcode || null,
+        }),
 
-          ...(barcode !== undefined && {
-            barcode: barcode || null,
-          }),
+        ...(unit !== undefined && {
+          unit: unit || null,
+        }),
 
-          ...(unit !== undefined && {
-            unit: unit || null,
-          }),
+        ...(weight !== undefined && {
+          weight: weight || null,
+        }),
 
-          ...(weight !== undefined && {
-            weight: weight || null,
-          }),
+        ...(maxOrderQuantity !== undefined && {
+          maxOrderQuantity: Number(maxOrderQuantity),
+        }),
 
-          ...(maxOrderQuantity !== undefined && {
-            maxOrderQuantity:
-              Number(maxOrderQuantity),
-          }),
+        // ==================== IMAGES ====================
 
-          // ==================== IMAGES ====================
+        ...(resolvedMainImage !== undefined && {
+          mainImage: resolvedMainImage || null,
+        }),
 
-          ...(resolvedMainImage !== undefined && {
-            mainImage: resolvedMainImage || null,
-          }),
+        ...(resolvedThumbnailImage !== undefined && {
+          thumbnailImage: resolvedThumbnailImage || null,
+        }),
 
-          ...(resolvedThumbnailImage !== undefined && {
-            thumbnailImage: resolvedThumbnailImage || null,
-          }),
+        // additional images: always recompute when either new files were
+        // uploaded or the frontend sent an existingAdditionalImages list
+        ...((additionalImageFiles.length > 0 ||
+          existingAdditionalImages !== undefined) && {
+          additionalImages: resolvedAdditionalImages,
+        }),
 
-          // additional images: always recompute when either new files were
-          // uploaded or the frontend sent an existingAdditionalImages list
-          ...((additionalImageFiles.length > 0 ||
-            existingAdditionalImages !== undefined) && {
-            additionalImages: resolvedAdditionalImages,
-          }),
+        // ==================== DETAILS ====================
 
-          // ==================== DETAILS ====================
+        ...(productCondition !== undefined && {
+          productCondition,
+        }),
 
-          ...(productCondition !== undefined && {
-            productCondition,
-          }),
+        ...(manufacturingDate !== undefined && {
+          manufacturingDate: manufacturingDate
+            ? new Date(manufacturingDate)
+            : null,
+        }),
 
-          ...(manufacturingDate !== undefined && {
-            manufacturingDate:
-              manufacturingDate
-                ? new Date(manufacturingDate)
-                : null,
-          }),
+        ...(expiryDate !== undefined && {
+          expiryDate: expiryDate ? new Date(expiryDate) : null,
+        }),
 
-          ...(expiryDate !== undefined && {
-            expiryDate: expiryDate
-              ? new Date(expiryDate)
-              : null,
-          }),
+        ...(returnPolicy !== undefined && {
+          returnPolicy: returnPolicy || null,
+        }),
 
-          ...(returnPolicy !== undefined && {
-            returnPolicy:
-              returnPolicy || null,
-          }),
+        ...(estimatedDeliveryTime !== undefined && {
+          estimatedDeliveryTime: estimatedDeliveryTime || null,
+        }),
 
-          ...(estimatedDeliveryTime !== undefined && {
-            estimatedDeliveryTime:
-              estimatedDeliveryTime || null,
-          }),
+        ...(freeShipping !== undefined && {
+          freeShipping: freeShipping === true || freeShipping === "true",
+        }),
 
-          ...(freeShipping !== undefined && {
-            freeShipping:
-              freeShipping === true ||
-              freeShipping === "true",
-          }),
+        ...(warrantyPeriod !== undefined && {
+          warrantyPeriod: warrantyPeriod || null,
+        }),
 
-          ...(warrantyPeriod !== undefined && {
-            warrantyPeriod:
-              warrantyPeriod || null,
-          }),
+        ...(warrantyDetails !== undefined && {
+          warrantyDetails: warrantyDetails || null,
+        }),
 
-          ...(warrantyDetails !== undefined && {
-            warrantyDetails:
-              warrantyDetails || null,
-          }),
-
-          ...(specifications !== undefined && {
-            specifications,
-          }),
-          ...(verificationStatus !== undefined && {
-  verificationStatus,
-}),
-        },
-      });
+        ...(specifications !== undefined && {
+          specifications,
+        }),
+        ...(verificationStatus !== undefined && {
+          verificationStatus,
+        }),
+      },
+    });
 
     return res.json({
       success: true,
@@ -873,10 +805,7 @@ export const updateProduct = async (
       product: updated,
     });
   } catch (error) {
-    console.error(
-      "Update vendor product error:",
-      error,
-    );
+    console.error("Update vendor product error:", error);
 
     return res.status(500).json({
       success: false,
@@ -910,13 +839,12 @@ export const deleteProduct = async (
       });
     }
 
-    const existing =
-      await prisma.product.findFirst({
-        where: {
-          id,
-          vendorId,
-        },
-      });
+    const existing = await prisma.product.findFirst({
+      where: {
+        id,
+        vendorId,
+      },
+    });
 
     if (!existing) {
       return res.status(404).json({
@@ -936,10 +864,7 @@ export const deleteProduct = async (
       message: "Product deleted successfully",
     });
   } catch (error) {
-    console.error(
-      "Delete vendor product error:",
-      error,
-    );
+    console.error("Delete vendor product error:", error);
 
     return res.status(500).json({
       success: false,

@@ -2131,10 +2131,12 @@ model Product {
   videoUrl         String?
 
   // Price
-  mrp          Decimal @db.Decimal(10, 2)
-  sellingPrice Decimal @db.Decimal(10, 2)
-  tax          Decimal @default(0) @db.Decimal(5, 2)
-  finalPrice   Decimal @db.Decimal(10, 2)
+// Price
+mrp          Decimal @db.Decimal(10, 2)
+sellingPrice Decimal @db.Decimal(10, 2)
+tax          Decimal @default(0) @db.Decimal(5, 2)
+discount     Decimal @default(0) @db.Decimal(5, 2)
+finalPrice   Decimal @db.Decimal(10, 2)
 
   // Stock
   stockQuantity    Int     @default(0)
@@ -2285,6 +2287,11 @@ model WebOrderItem {
   partNumber  String?
   price       Decimal  @db.Decimal(10, 2) // snapshot finalPrice at order time
   quantity    Int
+  itemStatus        WebOrderItemStatus @default(PLACED)
+  cancelReason       String?
+  cancelDescription  String?           @db.Text
+  cancelImages       Json?             // array of image URLs, e.g. ["/uploads/order-cancellations/xyz.jpg"]
+  cancelRequestedAt  DateTime?
 }
 
 enum WebPaymentMethod {
@@ -2307,6 +2314,7 @@ enum WebOrderStatus {
   DELIVERED
   CANCELLED
 }
+<<<<<<< HEAD
 
 
 
@@ -2487,4 +2495,9 @@ model EquipmentVariant {
   highlight3    String?
   highlight4    String?
   highlight5    String?
+=======
+enum WebOrderItemStatus {
+  PLACED
+  CANCELLED
+>>>>>>> 11500637 (cart,order)
 }
