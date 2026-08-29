@@ -2266,6 +2266,7 @@ model WebOrder {
   phone    String
   email    String
   address  String
+ country  String  @default("India")
   city     String
   state    String
   pincode  String
@@ -2314,7 +2315,15 @@ enum WebOrderStatus {
   DELIVERED
   CANCELLED
 }
-
+enum WebOrderItemStatus { 
+  PLACED 
+  CONFIRMED 
+  PACKAGING 
+  OUT_FOR_DELIVERY 
+  SHIPPED 
+  DELIVERED 
+  CANCELLED 
+}
 
 enum WebOrderItemStatus {
   PLACED
