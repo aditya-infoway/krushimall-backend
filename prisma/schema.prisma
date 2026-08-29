@@ -2315,15 +2315,7 @@ enum WebOrderStatus {
   DELIVERED
   CANCELLED
 }
-enum WebOrderItemStatus { 
-  PLACED 
-  CONFIRMED 
-  PACKAGING 
-  OUT_FOR_DELIVERY 
-  SHIPPED 
-  DELIVERED 
-  CANCELLED 
-}
+
 
 enum WebOrderItemStatus {
   PLACED
