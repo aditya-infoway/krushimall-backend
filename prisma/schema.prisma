@@ -2316,15 +2316,31 @@ enum WebOrderStatus {
 }
 
 
+enum WebOrderItemStatus {
+  PLACED
+  CONFIRMED
+  PACKAGING
+  OUT_FOR_DELIVERY
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+
 
 model EquipmentVariant {
   id        Int      @id @default(autoincrement())
+
+   enquiries EquipmentEnquiry[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   currentStep Int     @default(1)
   status      String  @default("DRAFT")
   isCompleted Boolean @default(false)
+
+  displayName String?
 
   vendorId Int?
   // No relation for now - just store the IDs
@@ -2494,4 +2510,48 @@ model EquipmentVariant {
   highlight3    String?
   highlight4    String?
   highlight5    String?
+}
+
+
+
+model EquipmentEnquiry {
+  id          Int      @id @default(autoincrement())
+
+  equipmentId Int?
+  fullName    String
+  email       String
+  mobile      String
+  state       String
+  city        String
+  address     String?
+  pincode     String?
+
+  status      String   @default("NEW")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  equipment EquipmentVariant? @relation(fields: [equipmentId], references: [id], onDelete: SetNull)
+
+  followups EquipmentEnquiryFollowup[]
+
+  @@index([equipmentId])
+  @@index([mobile])
+  @@index([status])
+  @@map("equipment_enquiry")
+}
+
+model EquipmentEnquiryFollowup {
+  id                Int      @id @default(autoincrement())
+  enquiryId         Int
+  nextScheduledDate DateTime?
+  callTime          String?
+  callResponse      String
+  discussion        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  enquiry EquipmentEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@index([enquiryId])
 }
