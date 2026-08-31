@@ -266,9 +266,22 @@ export const updateEquipmentVariant = async (
       });
     }
 
+    // IMPORTANT: get ID from URL
+    const equipmentId = Number(req.params.id);
+
+    console.log("UPDATE PARAMS:", req.params);
+    console.log("UPDATE EQUIPMENT ID:", equipmentId);
+
+    if (!Number.isInteger(equipmentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid equipment ID",
+      });
+    }
+
     const variant = await prisma.equipmentVariant.findFirst({
       where: {
-        id: Number(req.params.id),
+        id: equipmentId,
         vendorId: vendor.id,
       },
     });
@@ -282,7 +295,7 @@ export const updateEquipmentVariant = async (
 
     const updatedVariant = await prisma.equipmentVariant.update({
       where: {
-        id: Number(req.params.id),
+        id: equipmentId,
       },
       data: {
         ...req.body,

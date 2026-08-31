@@ -154,7 +154,12 @@ export const updateVendorOrderStatus = async (
 ) => {
   try {
     const vendorId = req.vendor?.vendorId;
-    const { orderNumber } = req.params;
+
+    const orderNumberParam = req.params.orderNumber;
+    const orderNumber = Array.isArray(orderNumberParam)
+      ? orderNumberParam[0]
+      : orderNumberParam;
+
     const { status } = req.body;
 
     if (!vendorId) {
@@ -195,7 +200,7 @@ export const updateVendorOrderStatus = async (
      */
     const order = await prisma.webOrder.findFirst({
       where: {
-        orderNumber,
+        orderNumber: orderNumber,
         items: {
           some: {
             product: {
@@ -213,12 +218,24 @@ export const updateVendorOrderStatus = async (
       });
     }
 
+    // COD order jab DELIVERED ho jaye,
+    // payment automatically PAID mark karo
+    const shouldMarkPaid =
+      status === "DELIVERED" &&
+      order.paymentMethod === "COD" &&
+      order.paymentStatus !== "PAID";
+
     const updatedOrder = await prisma.webOrder.update({
       where: {
         id: order.id,
       },
       data: {
         orderStatus: status,
+        ...(shouldMarkPaid
+          ? {
+              paymentStatus: "PAID",
+            }
+          : {}),
       },
     });
 
