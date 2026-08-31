@@ -11,9 +11,7 @@ import { sendOTPEmail } from "../utils/sendEmail.js";
 const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
-const isSpareParts = (vendorType?: string | null): boolean => {
-  return (vendorType || "").toLowerCase().replace(/[-_\s]+/g, "") === "spareparts";
-};
+
 // ==================== BECOME VENDOR ====================
 
 export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
@@ -792,13 +790,6 @@ export const vendorLogin = async (
       });
     }
 
-    if (!isSpareParts(vendor.vendorType)) {
-      return res.status(403).json({
-        success: false,
-        code: "VENDOR_TYPE_NOT_ALLOWED",
-        message: "Only Spare Parts vendors can log in to the vendor panel.",
-      });
-    }
     // ==========================================
     // 1. OTP VERIFICATION CHECK
     // ==========================================
