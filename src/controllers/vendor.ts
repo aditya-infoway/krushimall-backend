@@ -11,8 +11,83 @@ import { sendOTPEmail } from "../utils/sendEmail.js";
 const generateOTP = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
+const isSpareParts = (vendorType?: string | null): boolean => {
+  return (vendorType || "").toLowerCase().replace(/[-_\s]+/g, "") === "spareparts";
+};
 
-// ==================== BECOME VENDOR ====================
+
+const runVendorLoginChecks = async (
+  req: WebAuthedRequest,
+  res: Response,
+  opts: { restrictToSpareParts: boolean },
+) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json({
+      success: false,
+      message: "Email and password are required",
+    });
+    return null;
+  }
+
+  const vendor = await prisma.webVendor.findFirst({
+    where: { email },
+    include: { user: true },
+  });
+
+  if (!vendor) {
+    res.status(404).json({
+      success: false,
+      message: "Vendor not found",
+    });
+    return null;
+  }
+
+  if (opts.restrictToSpareParts && !isSpareParts(vendor.vendorType)) {
+    res.status(403).json({
+      success: false,
+      code: "VENDOR_TYPE_NOT_ALLOWED",
+      message: "Only Spare Parts vendors can log in to the vendor panel.",
+    });
+    return null;
+  }
+
+
+  if (!vendor.isVerified) {
+    res.status(403).json({
+      success: false,
+      message: "Please verify your vendor account first. Check your OTP.",
+      requiresVerification: true,
+      email: vendor.email,
+    });
+    return null;
+  }
+
+  if (vendor.status !== "ACTIVE") {
+    res.status(403).json({
+      success: false,
+      message: "Your vendor account is pending admin approval.",
+      status: vendor.status,
+    });
+    return null;
+  }
+
+
+  const validPassword = await bcrypt.compare(password, vendor.vendorPassword);
+
+  if (!validPassword) {
+    res.status(401).json({
+      success: false,
+      message: "Invalid password",
+    });
+    return null;
+  }
+
+  return vendor;
+};
+
+
 
 export const becomeVendor = async (req: WebAuthedRequest, res: Response) => {
   try {
@@ -676,166 +751,24 @@ export const getAllVendors = async (req: WebAuthedRequest, res: Response) => {
   }
 };
 
-// ==================== VENDOR LOGIN ====================
-
-// export const vendorLogin = async (req: WebAuthedRequest, res: Response) => {
-//   try {
-//     const { email, password } = req.body;
-
-//     if (!email || !password) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Email and password are required",
-//       });
-//     }
-
-//     const vendor = await prisma.webVendor.findFirst({
-//       where: { email },
-//       include: { user: true },
-//     });
-
-//     if (!vendor) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Vendor not found",
-//       });
-//     }
-
-//     // Block login until vendor has verified their OTP
-//     if (!vendor.isVerified) {
-//       return res.status(403).json({
-//         success: false,
-//         message: "Please verify your vendor account first. Check your OTP.",
-//         requiresVerification: true,
-//         email: vendor.email,
-//       });
-//     }
-
-//     const validPassword = await bcrypt.compare(password, vendor.vendorPassword);
-
-//     if (!validPassword) {
-//       return res.status(401).json({
-//         success: false,
-//         message: "Invalid password",
-//       });
-//     }
-
-//     const token = jwt.sign(
-//       {
-//         vendorId: vendor.id,
-//         userId: vendor.userId,
-//         email: vendor.email,
-//         role: "vendor",
-//       },
-//       process.env.JWT_SECRET!,
-//       {
-//         expiresIn: "1d",
-//       },
-//     );
-
-//     return res.json({
-//       success: true,
-//       message: "Vendor login successful",
-//       token,
-//       vendor: {
-//         id: vendor.id,
-//         userId: vendor.userId,
-//         vendorType: vendor.vendorType,
-//         vehicleType: vendor.vehicleType,
-//         isVerified: vendor.isVerified,
-//         name: vendor.name,
-//         email: vendor.email,
-//         number: vendor.number,
-//       },
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Vendor login failed",
-//     });
-//   }
-// };
-// ==================== VENDOR LOGIN ====================
+// ==================== VENDOR LOGIN (MAIN WEBSITE) ====================
+// Used by the main KrushiMall website's "Login As: Vendor" form (localhost:5173).
+// ANY vendor type (tractor, vehicle, equipment, spare parts, etc.) can log in here.
+// No vendorType restriction.
 
 export const vendorLogin = async (
   req: WebAuthedRequest,
   res: Response,
 ) => {
   try {
-    const { email, password } = req.body;
-
-    // Validate input
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
-      });
-    }
-
-    // Find vendor
-    const vendor = await prisma.webVendor.findFirst({
-      where: {
-        email,
-      },
-      include: {
-        user: true,
-      },
+    const vendor = await runVendorLoginChecks(req, res, {
+      restrictToSpareParts: false,
     });
-
-    if (!vendor) {
-      return res.status(404).json({
-        success: false,
-        message: "Vendor not found",
-      });
-    }
+    if (!vendor) return; // response already sent by runVendorLoginChecks
 
     // ==========================================
-    // 1. OTP VERIFICATION CHECK
+    // GENERATE TOKEN
     // ==========================================
-
-    if (!vendor.isVerified) {
-      return res.status(403).json({
-        success: false,
-        message: "Please verify your vendor account first. Check your OTP.",
-        requiresVerification: true,
-        email: vendor.email,
-      });
-    }
-
-    // ==========================================
-    // 2. ADMIN STATUS CHECK
-    // Only ACTIVE vendors can login
-    // ==========================================
-
-    if (vendor.status !== "ACTIVE") {
-      return res.status(403).json({
-        success: false,
-        message: "Your vendor account is pending admin approval.",
-        status: vendor.status,
-      });
-    }
-
-    // ==========================================
-    // 3. PASSWORD CHECK
-    // ==========================================
-
-    const validPassword = await bcrypt.compare(
-      password,
-      vendor.vendorPassword,
-    );
-
-    if (!validPassword) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid password",
-      });
-    }
-
-    // ==========================================
-    // 4. GENERATE TOKEN
-    // ==========================================
-
     const token = jwt.sign(
       {
         vendorId: vendor.id,
@@ -848,10 +781,6 @@ export const vendorLogin = async (
         expiresIn: "1d",
       },
     );
-
-    // ==========================================
-    // 5. LOGIN SUCCESS
-    // ==========================================
 
     return res.json({
       success: true,
@@ -871,6 +800,64 @@ export const vendorLogin = async (
     });
   } catch (error) {
     console.error("Vendor login error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Vendor login failed",
+    });
+  }
+};
+
+// ==================== VENDOR LOGIN (DEDICATED VENDOR PANEL) ====================
+// Used by the separate Vendor Panel app (localhost:5174/krushimall-admin/login).
+// ONLY Spare Parts vendors are allowed to log in here — everyone else gets
+// VENDOR_TYPE_NOT_ALLOWED. Point the Vendor Panel frontend's login call at this
+// endpoint (e.g. POST /vendor/panel-login) instead of /vendor/login.
+
+export const vendorPanelLogin = async (
+  req: WebAuthedRequest,
+  res: Response,
+) => {
+  try {
+    const vendor = await runVendorLoginChecks(req, res, {
+      restrictToSpareParts: true,
+    });
+    if (!vendor) return; // response already sent by runVendorLoginChecks
+
+    // ==========================================
+    // GENERATE TOKEN
+    // ==========================================
+    const token = jwt.sign(
+      {
+        vendorId: vendor.id,
+        userId: vendor.userId,
+        email: vendor.email,
+        role: "vendor",
+      },
+      process.env.JWT_SECRET!,
+      {
+        expiresIn: "1d",
+      },
+    );
+
+    return res.json({
+      success: true,
+      message: "Vendor login successful",
+      token,
+      vendor: {
+        id: vendor.id,
+        userId: vendor.userId,
+        vendorType: vendor.vendorType,
+        vehicleType: vendor.vehicleType,
+        isVerified: vendor.isVerified,
+        status: vendor.status,
+        name: vendor.name,
+        email: vendor.email,
+        number: vendor.number,
+      },
+    });
+  } catch (error) {
+    console.error("Vendor panel login error:", error);
 
     return res.status(500).json({
       success: false,
