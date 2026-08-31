@@ -10,6 +10,7 @@ import {
   verifyVendor,
   getAllVendors,
   vendorLogin,
+  vendorPanelLogin,
   updateVendorStatus,
 } from "../controllers/vendor.js";
 
@@ -19,19 +20,16 @@ import { upload } from "../middleware/upload.js";
 
 const router = Router();
 
-// =========================
-// Public
-// =========================
 
 router.post("/login", vendorLogin);
+
+
+router.post("/panel-login", vendorPanelLogin);
 
 router.post("/verify-otp", verifyVendorOTP);
 
 router.post("/resend-otp", resendVendorOTP);
 
-// =========================
-// Website User
-// =========================
 
 router.post(
   "/become",
@@ -39,9 +37,7 @@ router.post(
   becomeVendor,
 );
 
-// =========================
-// Vendor Dashboard
-// =========================
+
 
 router.get(
   "/me",
@@ -62,25 +58,20 @@ router.put(
   updateVendorPassword,
 );
 
-// =========================
-// Admin
-// =========================
 
-// Vendor verification
 router.put(
   "/verify/:vendorId",
   verifyVendorToken,
   verifyVendor,
 );
 
-// Get all vendors
+
 router.get(
   "/all",
   getAllVendors,
 );
 
-// Update vendor status
-// PENDING <-> ACTIVE
+
 router.patch(
   "/:vendorId/status",
 

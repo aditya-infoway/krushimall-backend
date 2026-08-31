@@ -142,6 +142,7 @@ export const getEmployees = async (req: Request, res: Response) => {
         createdType: true,
         createdBy: true,
         branchId: true,
+          profileImage: true, 
       },
       orderBy: {
         id: "desc",
@@ -190,6 +191,7 @@ export const getEmployeeById = async (req: Request, res: Response) => {
         createdType: true,
         createdBy: true,
         branchId: true,
+          profileImage: true, 
       },
     });
 
@@ -499,6 +501,93 @@ export const employeeLogin = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Login Failed",
+    });
+  }
+};
+// ========================================
+// EMPLOYEE SELF-UPDATE PROFILE
+// Employee token required — employee can only update their OWN profile
+// ========================================
+export const updateEmployeeProfile = async (req: Request, res: Response) => {
+  try {
+    const loggedInUser = (req as any).user;
+    const id = Number(req.params.id);
+
+    // Security: employee sirf apna hi profile update kar sake
+    if (Number(loggedInUser.id) !== id) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to update this profile",
+      });
+    }
+
+    const { mobileNumber, alternateNumber, email } = req.body;
+
+    // Duplicate check (self ko exclude karke)
+    if (email || mobileNumber) {
+      const existingEmployee = await prisma.employee.findFirst({
+        where: {
+          AND: [
+            { id: { not: id } },
+            {
+              OR: [
+                ...(email ? [{ email }] : []),
+                ...(mobileNumber ? [{ mobileNumber }] : []),
+              ],
+            },
+          ],
+        },
+      });
+
+      if (existingEmployee) {
+        return res.status(400).json({
+          success: false,
+          message:
+            existingEmployee.email === email
+              ? "Email already exists"
+              : "Mobile number already exists",
+        });
+      }
+    }
+
+    const updateData: any = {};
+
+    if (mobileNumber !== undefined) updateData.mobileNumber = mobileNumber;
+    if (alternateNumber !== undefined) updateData.alternateNumber = alternateNumber;
+    if (email !== undefined) updateData.email = email;
+
+    // Image OPTIONAL hai — naya file aaya tabhi update hoga
+    if (req.file) {
+      updateData.profileImage = `uploads/${req.file.filename}`;
+    }
+
+    const employee = await prisma.employee.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        department: true,
+        branch: true,
+        role: true,
+        employeeName: true,
+        mobileNumber: true,
+        alternateNumber: true,
+        email: true,
+        status: true,
+        profileImage: true,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: employee,
+      message: "Profile updated successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
     });
   }
 };
