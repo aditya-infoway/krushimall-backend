@@ -9,6 +9,8 @@ import vendorSubCategoryRoutes from "./vendorSubCategory.js";
 
 import vendorSubSubCategoryRoutes from "./vendorSubSubCategory.js";
 import  EquipmentVariantRoutes  from "./equipmentVariant.js";
+import equipmentEnquiryRoutes from "./equipmentEnquiry.js";
+import equipmentEnquiryFollowupRoutes from "./equipmentEnquiryFollowup.js"
 
 const router = Router();
 
@@ -21,5 +23,7 @@ router.use("/brand", vendorBrandRoutes);
 router.use("/subcategory", vendorSubCategoryRoutes);
 router.use("/subsubcategory", vendorSubSubCategoryRoutes);
 router.use("/equipmentvariant", EquipmentVariantRoutes);
+router.use("/equipmentenquiry", equipmentEnquiryRoutes);
+router.use("/equipmentenquiryfollowup", equipmentEnquiryFollowupRoutes);
 
 export default router; 
