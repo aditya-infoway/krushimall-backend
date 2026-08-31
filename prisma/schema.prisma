@@ -562,7 +562,7 @@ model Employee {
   alternateNumber String?
   email           String  @unique
   password        String
-
+  profileImage    String?
   status String @default("ACTIVE")
 
   createdAt DateTime @default(now())
