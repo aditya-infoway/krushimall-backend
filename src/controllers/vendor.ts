@@ -431,6 +431,7 @@ export const getVendorData = async (req: WebAuthedRequest, res: Response) => {
         city: vendor.city,
         address: vendor.address,
         pincode: vendor.pincode,
+        status:vendor.status,
         isVerified: vendor.isVerified,
         verifiedAt: vendor.verifiedAt,
         createdAt: vendor.createdAt,
