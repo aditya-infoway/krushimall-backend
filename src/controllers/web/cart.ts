@@ -25,24 +25,57 @@ export const buildCartResponse = async (cart: any) => {
   const subtotal = items.reduce((sum: number, i: any) => sum + i.price * i.quantity, 0);
 
   let discountAmount = 0;
-  let appliedCoupon: { code: string; type: string; discount: number } | null = null;
+  let appliedCoupon: {
+    code: string;
+    title: string;
+    type: string;
+    discount: number;
+    displayMessage: string | null;
+  } | null = null;
 
   if (cart.couponCode) {
-    const coupon = await prisma.coupon.findUnique({ where: { code: cart.couponCode } });
+    const coupon = await prisma.coupon.findUnique({
+      where: { code: cart.couponCode },
+      include: { products: true },
+    });
 
-    if (coupon && coupon.isActive && subtotal >= Number(coupon.minAmount)) {
+    const now = new Date();
+
+    // Re-validate everything on every cart fetch — a coupon can go stale
+    // (expired, deactivated, hit its usage limit) between when it was
+    // applied and now, and the cart should silently drop it in that case
+    // rather than keep discounting.
+    const isStillValid =
+      coupon &&
+      coupon.status === "ACTIVE" &&
+      now >= coupon.startDate &&
+      now <= coupon.endDate &&
+      subtotal >= Number(coupon.minOrderValue) &&
+      (coupon.usageLimit === null || coupon.usedCount < coupon.usageLimit) &&
+      (coupon.applyOn !== "SPECIFIC_PRODUCTS" ||
+        coupon.products.some((p) => items.some((i: any) => i.id === p.productId)));
+
+    if (isStillValid && coupon) {
       appliedCoupon = {
         code: coupon.code,
+        title: coupon.title,
         type: coupon.type,
-        discount: Number(coupon.discount),
+        discount: Number(coupon.discountValue),
+        displayMessage: coupon.displayMessage,
       };
+
       discountAmount =
         coupon.type === "PERCENTAGE"
-          ? (subtotal * Number(coupon.discount)) / 100
-          : Number(coupon.discount);
+          ? (subtotal * Number(coupon.discountValue)) / 100
+          : Number(coupon.discountValue);
+
+      if (coupon.type === "PERCENTAGE" && coupon.maxDiscountAmount !== null) {
+        discountAmount = Math.min(discountAmount, Number(coupon.maxDiscountAmount));
+      }
+
       discountAmount = Math.min(discountAmount, subtotal);
     } else {
-      appliedCoupon = null; // coupon ab valid nahi (expire/inactive/minAmount fail)
+      appliedCoupon = null; // coupon ab valid nahi (expire/inactive/minOrderValue fail/etc)
     }
   }
 
@@ -200,12 +233,34 @@ export const applyCoupon = async (req: WebAuthedRequest, res: Response) => {
       return res.status(400).json({ success: false, message: "Please enter a coupon code" });
     }
 
-    const coupon = await prisma.coupon.findUnique({ where: { code: code.trim().toUpperCase() } });
-    if (!coupon || !coupon.isActive) {
+    const coupon = await prisma.coupon.findUnique({
+      where: { code: code.trim().toUpperCase() },
+      include: { products: true },
+    });
+
+    if (!coupon) {
       return res.status(400).json({ success: false, message: "Invalid coupon code" });
     }
-    if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+
+    if (coupon.status !== "ACTIVE") {
+      return res.status(400).json({ success: false, message: "This coupon is inactive" });
+    }
+
+    const now = new Date();
+
+    if (now < coupon.startDate) {
+      return res.status(400).json({ success: false, message: "This coupon is not active yet" });
+    }
+
+    if (now > coupon.endDate) {
       return res.status(400).json({ success: false, message: "This coupon has expired" });
+    }
+
+    if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+      return res.status(400).json({
+        success: false,
+        message: "This coupon has reached its usage limit",
+      });
     }
 
     const cart = await prisma.cart.findUnique({
@@ -218,13 +273,28 @@ export const applyCoupon = async (req: WebAuthedRequest, res: Response) => {
 
     const subtotal = cart.items.reduce(
       (sum, i) => sum + Number(i.product.finalPrice) * i.quantity,
-      0
+      0,
     );
-    if (subtotal < Number(coupon.minAmount)) {
+
+    if (subtotal < Number(coupon.minOrderValue)) {
       return res.status(400).json({
         success: false,
-        message: `Minimum order of ₹${coupon.minAmount} required for this coupon`,
+        message: `Minimum order value is ₹${Number(coupon.minOrderValue).toLocaleString("en-IN")}`,
       });
+    }
+
+    if (coupon.applyOn === "SPECIFIC_PRODUCTS") {
+      const allowedProductIds = coupon.products.map((p) => p.productId);
+      const hasEligibleProduct = cart.items.some((item) =>
+        allowedProductIds.includes(item.productId),
+      );
+
+      if (!hasEligibleProduct) {
+        return res.status(400).json({
+          success: false,
+          message: "This coupon is not applicable to products in your cart",
+        });
+      }
     }
 
     await prisma.cart.update({ where: { id: cart.id }, data: { couponCode: coupon.code } });
