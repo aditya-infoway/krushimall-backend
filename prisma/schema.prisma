@@ -1656,6 +1656,7 @@ model WebVendor {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   products Product[]
+  coupons Coupon[]
   usedWebsiteVariants UsedWebsiteVariant[]
 }
 
@@ -2168,6 +2169,7 @@ finalPrice   Decimal @db.Decimal(10, 2)
   verificationStatus ProductVerificationStatus @default(PENDING)
   rejectionReason    String?
  wishlistedBy Wishlist[] 
+  couponProducts CouponProduct[] 
   @@index([vendorId])
   @@index([categoryId])
   @@index([subCategoryId])
@@ -2227,19 +2229,65 @@ model CartItem {
 }
 
 model Coupon {
-  id        Int        @id @default(autoincrement())
-  code      String     @unique
-  type      CouponType
-  discount  Decimal    @db.Decimal(10, 2)
-  minAmount Decimal    @default(0) @db.Decimal(10, 2)
-  isActive  Boolean    @default(true)
-  expiresAt DateTime?
-  createdAt DateTime   @default(now())
+  id       Int       @id @default(autoincrement())
+  vendorId Int
+  vendor   WebVendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  title String
+  code  String @unique
+
+  type          CouponType
+  discountValue Decimal    @db.Decimal(10, 2)
+  maxDiscountAmount Decimal? @db.Decimal(10, 2)
+  minOrderValue Decimal    @default(0) @db.Decimal(10, 2)
+
+  usageLimit   Int?
+  usedCount    Int  @default(0)
+  perUserLimit Int  @default(1)
+
+  applyOn        CouponApplyOn @default(ALL_PRODUCTS)
+  products       CouponProduct[]   // only populated when applyOn = SPECIFIC_PRODUCTS
+  displayMessage String?
+
+  startDate DateTime
+  endDate   DateTime
+
+  status CouponStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([status])
+}
+
+model CouponProduct {
+  id        Int     @id @default(autoincrement())
+  couponId  Int
+  coupon    Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([couponId, productId])
+  @@index([couponId])
+  @@index([productId])
 }
 
 enum CouponType {
   PERCENTAGE
   FIXED
+}
+
+enum CouponApplyOn {
+  ALL_PRODUCTS
+  SPECIFIC_PRODUCTS
+}
+
+enum CouponStatus {
+  ACTIVE
+  INACTIVE
 }
 
 model WebOrder {
