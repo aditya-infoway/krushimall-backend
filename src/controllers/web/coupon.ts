@@ -1,24 +1,8 @@
-// src/controllers/web/coupon.ts
-//
-// applyCoupon used to live here, but it never touched the Cart record —
-// it only validated + calculated a discount. That's why the frontend
-// (which expects a full `cart` object back, matching CartContext's
-// EMPTY_CART shape) wasn't actually seeing the coupon "stick".
-//
-// Apply logic now lives in cart.controller.ts's applyCoupon, which
-// persists cart.couponCode and returns the full recalculated cart —
-// the shape CartContext.jsx actually needs. This file now only handles
-// the "browse available offers" list, which doesn't need to touch the
-// Cart record at all.
 
 import { Request, Response } from "express";
 import prisma from "../../lib/prisma.js";
 
-// ==================== AVAILABLE COUPONS (storefront display) ====================
-// Shows currently valid, active coupons to the customer — e.g. on the cart
-// page as an "Available Offers" list — with an eligibility flag computed
-// against the current cart, so the frontend can grey out / explain coupons
-// that don't apply yet instead of the customer having to guess codes.
+
 
 export const getAvailableCoupons = async (req: Request, res: Response) => {
   try {
@@ -57,17 +41,39 @@ export const getAvailableCoupons = async (req: Request, res: Response) => {
         );
       })
       .map((c) => {
+        // minOrderValue ka base: SPECIFIC_PRODUCTS coupon ke liye sirf
+        // eligible items ka subtotal check hota hai, poore cart subtotal
+        // ka nahi — warna koi unrelated item add karke threshold "unlock"
+        // ho jaata hai jabki discount usko milta hi nahi (same fix jo
+        // cart.controller.ts mein applyCoupon/buildCartResponse mein hai).
+        let minOrderBase = orderSubtotal;
+        if (c.applyOn === "SPECIFIC_PRODUCTS") {
+          const allowedProductIds = c.products.map((p) => p.productId);
+          minOrderBase = (cartItems || [])
+            .filter((item: any) =>
+              allowedProductIds.includes(Number(item.productId ?? item.id)),
+            )
+            .reduce(
+              (sum: number, item: any) =>
+                sum + Number(item.price || 0) * Number(item.quantity || 1),
+              0,
+            );
+        }
+
         let isEligible = true;
         let reason: string | null = null;
 
-        if (orderSubtotal < Number(c.minOrderValue)) {
+        if (minOrderBase < Number(c.minOrderValue)) {
           isEligible = false;
           reason = `Add ₹${(
-            Number(c.minOrderValue) - orderSubtotal
-          ).toLocaleString("en-IN")} more to use this coupon`;
+            Number(c.minOrderValue) - minOrderBase
+          ).toLocaleString("en-IN")} more ${
+            c.applyOn === "SPECIFIC_PRODUCTS" ? "of eligible products " : ""
+          }to use this coupon`;
         }
-        // SPECIFIC_PRODUCTS eligibility is already guaranteed by the
-        // filter above, so no further applyOn check is needed here.
+        // SPECIFIC_PRODUCTS eligibility (kya cart mein eligible product hai)
+        // is already guaranteed by the filter above, so no further applyOn
+        // check is needed here.
 
         return {
           code: c.code,
