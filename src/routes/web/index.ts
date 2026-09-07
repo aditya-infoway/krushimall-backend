@@ -14,6 +14,7 @@ import productRoutes from "./product.js"
 import cartRoutes from "./cart.js"
 import orderRoutes from "./order.js"
 import couponRoutes from "./../web/coupon.js";
+import vendorbrandRoutes from "./vendorbrand.js"
 const router = Router();
 
 router.use("/brands", brandRoutes);
@@ -30,4 +31,5 @@ router.use("/product", productRoutes);
 router.use("/cart", cartRoutes);
 router.use("/orders", orderRoutes);
 router.use("/coupons", couponRoutes);
+router.use("/Vendorbrand", vendorbrandRoutes);
 export default router;
