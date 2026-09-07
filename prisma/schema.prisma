@@ -1741,19 +1741,22 @@ model TestDrive {
 }
 
 model Wishlist {
-  id        Int      @id @default(autoincrement())
-  webUserId Int
-  variantId Int?          // ✅ ab optional
-  productId Int?          // ✅ naya field
+  id             Int      @id @default(autoincrement())
+  webUserId      Int
+  variantId      Int?
+  productId      Int?
+  usedVariantId  Int?     // ✅ NAYA
 
   createdAt DateTime @default(now())
 
-  webUser WebUser         @relation(fields: [webUserId], references: [id], onDelete: Cascade)
-  variant WebsiteVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  product Product?        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  webUser     WebUser              @relation(fields: [webUserId], references: [id], onDelete: Cascade)
+  variant     WebsiteVariant?      @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  product     Product?             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  usedVariant UsedWebsiteVariant?  @relation(fields: [usedVariantId], references: [id], onDelete: Cascade)
 
   @@unique([webUserId, variantId])
   @@unique([webUserId, productId])
+  @@unique([webUserId, usedVariantId])
   @@index([webUserId])
 }
 
@@ -2028,6 +2031,7 @@ model UsedWebsiteVariant {
   // ==========================
   agreed               Boolean          @default(false)
   enquiries            WebsiteEnquiry[]
+    wishlistedBy Wishlist[] 
 }
 
 model VendorCategory {

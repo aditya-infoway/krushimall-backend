@@ -41,6 +41,30 @@ export const buildCartResponse = async (cart: any) => {
 
     const now = new Date();
 
+    // SPECIFIC_PRODUCTS coupon ke case mein discount ka base sirf un
+    // items ka subtotal hona chahiye jo coupon.products list mein hain —
+    // poora cart subtotal nahi. Isse "brake pads only" coupon apply hone
+    // par bosch bearing jaisa unrelated item discount nahi paayega.
+    const eligibleProductIds =
+      coupon?.applyOn === "SPECIFIC_PRODUCTS"
+        ? new Set(coupon.products.map((p) => p.productId))
+        : null;
+
+    const eligibleSubtotal = eligibleProductIds
+      ? items.reduce(
+          (sum: number, i: any) =>
+            eligibleProductIds.has(i.id) ? sum + i.price * i.quantity : sum,
+          0,
+        )
+      : subtotal;
+
+    // minOrderValue ka base: SPECIFIC_PRODUCTS coupon ke liye sirf eligible
+    // items ka subtotal check hoga, warna poora cart subtotal. Isse koi
+    // unrelated cheap item add karke specific-product coupon ka threshold
+    // "unlock" nahi kiya ja sakta.
+    const minOrderBase =
+      coupon?.applyOn === "SPECIFIC_PRODUCTS" ? eligibleSubtotal : subtotal;
+
     // Re-validate everything on every cart fetch — a coupon can go stale
     // (expired, deactivated, hit its usage limit) between when it was
     // applied and now, and the cart should silently drop it in that case
@@ -50,10 +74,9 @@ export const buildCartResponse = async (cart: any) => {
       coupon.status === "ACTIVE" &&
       now >= coupon.startDate &&
       now <= coupon.endDate &&
-      subtotal >= Number(coupon.minOrderValue) &&
+      minOrderBase >= Number(coupon.minOrderValue) &&
       (coupon.usageLimit === null || coupon.usedCount < coupon.usageLimit) &&
-      (coupon.applyOn !== "SPECIFIC_PRODUCTS" ||
-        coupon.products.some((p) => items.some((i: any) => i.id === p.productId)));
+      (coupon.applyOn !== "SPECIFIC_PRODUCTS" || eligibleSubtotal > 0);
 
     if (isStillValid && coupon) {
       appliedCoupon = {
@@ -64,18 +87,22 @@ export const buildCartResponse = async (cart: any) => {
         displayMessage: coupon.displayMessage,
       };
 
+      // Discount ab eligibleSubtotal pe calculate hoga — SPECIFIC_PRODUCTS
+      // ke case mein ye sirf matching items ka sum hai, warna poora cart subtotal.
       discountAmount =
         coupon.type === "PERCENTAGE"
-          ? (subtotal * Number(coupon.discountValue)) / 100
+          ? (eligibleSubtotal * Number(coupon.discountValue)) / 100
           : Number(coupon.discountValue);
 
       if (coupon.type === "PERCENTAGE" && coupon.maxDiscountAmount !== null) {
         discountAmount = Math.min(discountAmount, Number(coupon.maxDiscountAmount));
       }
 
-      discountAmount = Math.min(discountAmount, subtotal);
+      // Cap bhi eligibleSubtotal se lagana hai (poore cart subtotal se nahi),
+      // taaki fixed-amount coupon bhi eligible items ki value se zyada discount na de.
+      discountAmount = Math.min(discountAmount, eligibleSubtotal);
     } else {
-      appliedCoupon = null; // coupon ab valid nahi (expire/inactive/minOrderValue fail/etc)
+      appliedCoupon = null; // coupon ab valid nahi (expire/inactive/minOrderValue fail/no eligible item/etc)
     }
   }
 
@@ -276,25 +303,40 @@ export const applyCoupon = async (req: WebAuthedRequest, res: Response) => {
       0,
     );
 
-    if (subtotal < Number(coupon.minOrderValue)) {
-      return res.status(400).json({
-        success: false,
-        message: `Minimum order value is ₹${Number(coupon.minOrderValue).toLocaleString("en-IN")}`,
-      });
-    }
-
+    // SPECIFIC_PRODUCTS coupon ke liye eligible items ka alag subtotal
+    // nikalo — minOrderValue isi base pe check hoga, poore cart subtotal
+    // pe nahi. Warna ek unrelated item add karke min-order threshold
+    // "unlock" ho jaata hai jabki discount usko milta hi nahi.
+    let eligibleSubtotal = subtotal;
     if (coupon.applyOn === "SPECIFIC_PRODUCTS") {
       const allowedProductIds = coupon.products.map((p) => p.productId);
-      const hasEligibleProduct = cart.items.some((item) =>
+      const eligibleItems = cart.items.filter((item) =>
         allowedProductIds.includes(item.productId),
       );
 
-      if (!hasEligibleProduct) {
+      if (eligibleItems.length === 0) {
         return res.status(400).json({
           success: false,
           message: "This coupon is not applicable to products in your cart",
         });
       }
+
+      eligibleSubtotal = eligibleItems.reduce(
+        (sum, i) => sum + Number(i.product.finalPrice) * i.quantity,
+        0,
+      );
+    }
+
+    if (eligibleSubtotal < Number(coupon.minOrderValue)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          coupon.applyOn === "SPECIFIC_PRODUCTS"
+            ? `Add ₹${(
+                Number(coupon.minOrderValue) - eligibleSubtotal
+              ).toLocaleString("en-IN")} more of eligible products to use this coupon`
+            : `Minimum order value is ₹${Number(coupon.minOrderValue).toLocaleString("en-IN")}`,
+      });
     }
 
     await prisma.cart.update({ where: { id: cart.id }, data: { couponCode: coupon.code } });
