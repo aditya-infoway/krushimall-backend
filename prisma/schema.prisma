@@ -1620,6 +1620,7 @@ model WebUser {
   wishlist Wishlist[]
   cart      Cart?
    webOrders WebOrder[]
+    couponUsages CouponUsage[]
 }
 
 model WebVendor {
@@ -1657,6 +1658,7 @@ model WebVendor {
   updatedAt DateTime @updatedAt
   products Product[]
   coupons Coupon[]
+ 
   usedWebsiteVariants UsedWebsiteVariant[]
 }
 
@@ -2250,7 +2252,8 @@ model Coupon {
   perUserLimit Int  @default(1)
 
   applyOn        CouponApplyOn @default(ALL_PRODUCTS)
-  products       CouponProduct[]   // only populated when applyOn = SPECIFIC_PRODUCTS
+  products       CouponProduct[]
+   usages CouponUsage[]   
   displayMessage String?
 
   startDate DateTime
@@ -2323,7 +2326,7 @@ model WebOrder {
   state    String
   pincode  String
   landmark String?
-
+  couponUsage    CouponUsage? 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2379,7 +2382,26 @@ enum WebOrderItemStatus {
   CANCELLED
 }
 
+model CouponUsage {
+  id Int @id @default(autoincrement())
 
+  couponId Int
+  coupon   Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  webUserId Int
+  webUser   WebUser @relation(fields: [webUserId], references: [id], onDelete: Cascade)
+
+  // one usage row per order — also stops the SAME order from ever
+  // double-counting if placeOrder somehow retries
+  orderId Int?      @unique
+  order   WebOrder? @relation(fields: [orderId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([couponId])
+  @@index([webUserId])
+  @@index([couponId, webUserId])
+}
 
 model EquipmentVariant {
   id        Int      @id @default(autoincrement())

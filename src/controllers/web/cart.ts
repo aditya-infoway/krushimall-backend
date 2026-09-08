@@ -65,6 +65,15 @@ export const buildCartResponse = async (cart: any) => {
     const minOrderBase =
       coupon?.applyOn === "SPECIFIC_PRODUCTS" ? eligibleSubtotal : subtotal;
 
+    // Per-user limit check — kitni baar isi user ne ye coupon pehle
+    // (successfully placed orders mein) use kiya hai. cart.webUserId
+    // Cart model ka scalar field hai, cart fetch karte waqt already aata hai.
+    const userUsageCount = coupon
+      ? await prisma.couponUsage.count({
+          where: { couponId: coupon.id, webUserId: cart.webUserId },
+        })
+      : 0;
+
     // Re-validate everything on every cart fetch — a coupon can go stale
     // (expired, deactivated, hit its usage limit) between when it was
     // applied and now, and the cart should silently drop it in that case
@@ -76,6 +85,7 @@ export const buildCartResponse = async (cart: any) => {
       now <= coupon.endDate &&
       minOrderBase >= Number(coupon.minOrderValue) &&
       (coupon.usageLimit === null || coupon.usedCount < coupon.usageLimit) &&
+      userUsageCount < coupon.perUserLimit &&
       (coupon.applyOn !== "SPECIFIC_PRODUCTS" || eligibleSubtotal > 0);
 
     if (isStillValid && coupon) {
@@ -287,6 +297,18 @@ export const applyCoupon = async (req: WebAuthedRequest, res: Response) => {
       return res.status(400).json({
         success: false,
         message: "This coupon has reached its usage limit",
+      });
+    }
+
+    // Per-user limit — kitni baar isi user ne ye coupon pehle
+    // (successfully placed orders mein) use kiya hai.
+    const userUsageCount = await prisma.couponUsage.count({
+      where: { couponId: coupon.id, webUserId: userId },
+    });
+    if (userUsageCount >= coupon.perUserLimit) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already used this coupon the maximum number of times",
       });
     }
 
