@@ -125,6 +125,48 @@ export const placeOrder = async (req: WebAuthedRequest, res: Response) => {
         });
       }
 
+      // coupon use ho gaya — usedCount badhao aur per-user usage record banao.
+      // Ye yahan (order placement, transaction ke andar) hota hai, cart.controller.ts
+      // ke applyCoupon mein nahi, kyunki sirf "apply" karne se coupon consume
+      // nahi hona chahiye — customer cart abandon bhi kar sakta hai. Order
+      // confirm hote hi hi count permanently badhna chahiye. Re-check yahan
+      // transaction ke andar dobara hota hai (race condition se bachne ke
+      // liye — do parallel requests ek saath per-user limit bypass na kar saken).
+      if (calculated.appliedCoupon) {
+        const coupon = await tx.coupon.findUnique({
+          where: { code: calculated.appliedCoupon.code },
+        });
+
+        if (!coupon) {
+          throw new Error("COUPON_NO_LONGER_VALID");
+        }
+
+        const userUsageCount = await tx.couponUsage.count({
+          where: { couponId: coupon.id, webUserId: userId },
+        });
+
+        if (userUsageCount >= coupon.perUserLimit) {
+          throw new Error("COUPON_LIMIT_REACHED");
+        }
+
+        if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+          throw new Error("COUPON_LIMIT_REACHED");
+        }
+
+        await tx.coupon.update({
+          where: { id: coupon.id },
+          data: { usedCount: { increment: 1 } },
+        });
+
+        await tx.couponUsage.create({
+          data: {
+            couponId: coupon.id,
+            webUserId: userId,
+            orderId: newOrder.id,
+          },
+        });
+      }
+
       // order confirm hote hi cart clear + coupon reset
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
       await tx.cart.update({
@@ -145,8 +187,24 @@ export const placeOrder = async (req: WebAuthedRequest, res: Response) => {
         orderStatus: order.orderStatus,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("placeOrder error:", error);
+
+    // Transaction ke andar coupon re-validation fail hui — customer ko
+    // 500 ki jagah samajhne wala 400 message do.
+    if (error?.message === "COUPON_LIMIT_REACHED") {
+      return res.status(400).json({
+        success: false,
+        message: "This coupon can no longer be used — its usage limit was reached",
+      });
+    }
+    if (error?.message === "COUPON_NO_LONGER_VALID") {
+      return res.status(400).json({
+        success: false,
+        message: "The applied coupon is no longer valid",
+      });
+    }
+
     return res
       .status(500)
       .json({ success: false, message: "Failed to place order" });
