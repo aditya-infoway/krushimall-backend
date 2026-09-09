@@ -1743,11 +1743,12 @@ model TestDrive {
 }
 
 model Wishlist {
-  id             Int      @id @default(autoincrement())
-  webUserId      Int
-  variantId      Int?
-  productId      Int?
-  usedVariantId  Int?     // ✅ NAYA
+  id            Int      @id @default(autoincrement())
+  webUserId     Int
+  variantId     Int?
+  productId     Int?
+  usedVariantId Int?
+  equipmentId   Int?     
 
   createdAt DateTime @default(now())
 
@@ -1755,10 +1756,12 @@ model Wishlist {
   variant     WebsiteVariant?      @relation(fields: [variantId], references: [id], onDelete: Cascade)
   product     Product?             @relation(fields: [productId], references: [id], onDelete: Cascade)
   usedVariant UsedWebsiteVariant?  @relation(fields: [usedVariantId], references: [id], onDelete: Cascade)
+  equipment   EquipmentVariant?    @relation(fields: [equipmentId], references: [id], onDelete: Cascade)   
 
   @@unique([webUserId, variantId])
   @@unique([webUserId, productId])
   @@unique([webUserId, usedVariantId])
+  @@unique([webUserId, equipmentId]) 
   @@index([webUserId])
 }
 
@@ -2585,6 +2588,7 @@ model EquipmentVariant {
   highlight3    String?
   highlight4    String?
   highlight5    String?
+    wishlistedBy Wishlist[]
 }
 
 
