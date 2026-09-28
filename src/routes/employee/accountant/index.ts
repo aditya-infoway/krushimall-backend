@@ -5,7 +5,7 @@ import  accessoriesPurchaseRoutes from "./accessoriesPurchase.js"
 import cashPaymentRoutes from "./cashPayment.js"
 import bankPaymentRoutes from "./bankPayment.js";
 import cashReceiptRoutes from "./cashReceipt.js";
-
+import accessoryRoutes from "./accessories.js"
 import bankReceiptRoutes from "./bankReceipt.js";
 import contraRoutes from "./contra.js";
 
@@ -21,4 +21,5 @@ router.use("/bank-payment", bankPaymentRoutes);
 router.use("/cash-receipt", cashReceiptRoutes);
 router.use("/bank-receipt", bankReceiptRoutes);
 router.use("/contra", contraRoutes);
+router.use("/accessories", accessoryRoutes);
 export default router;
