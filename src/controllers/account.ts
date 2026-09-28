@@ -125,102 +125,110 @@ export const createAccount = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
 
-    const role = user?.role
-      ?.toUpperCase()
-      .replace(/\s+/g, "_");
+    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
 
-    // ==========================================
-    // GET LOGGED-IN EMPLOYEE
-    // ==========================================
-
-    const employee = await prisma.employee.findUnique({
-      where: {
-        id: Number(user.id),
-      },
-      select: {
-        id: true,
-        employeeName: true,
-        role: true,
-        teamLeadId: true,
-        branchId: true,
-      },
-    });
-
-    if (!employee) {
-      return res.status(401).json({
-        success: false,
-        message: "Employee not found",
-      });
-    }
-
-    // ==========================================
-    // CREATED BY
-    // ==========================================
-
-    const createdById = employee.id;
-
-    // ==========================================
-    // TEAM LEAD
-    // ==========================================
-
+    let createdById: number | null = null;
+    let createdBy = "";
     let teamLeadId: number | null = null;
+    let branchId: number | null = null;
 
-    if (role === "TEAM_LEAD") {
-      teamLeadId = employee.id;
+    // ==========================================
+    // ADMIN  → Admin table se naam lo
+    // ==========================================
+    if (role === "ADMIN") {
+      const admin: any = await prisma.admin.findUnique({
+        where: { id: Number(user.id) },
+      });
+
+      if (!admin) {
+        return res.status(401).json({
+          success: false,
+          message: "Admin not found",
+        });
+      }
+
+      createdBy =
+        admin.name || admin.adminName || admin.username || user?.name || "Admin";
+      // createdById null rahega (FK sirf Employee ko point karta hai)
     }
 
     // ==========================================
-    // SALES EXECUTIVE
+    // BRANCH → Branch table se naam lo
     // ==========================================
+    else if (role === "BRANCH") {
+      const branch = await prisma.branch.findUnique({
+        where: { id: Number(user.branchId || user.id) },
+        select: { id: true, branchName: true },
+      });
 
-    else if (role === "SALES_EXECUTIVE") {
-      teamLeadId = employee.teamLeadId
-        ? Number(employee.teamLeadId)
-        : null;
-
-      if (!teamLeadId) {
-        return res.status(400).json({
+      if (!branch) {
+        return res.status(401).json({
           success: false,
-          message: "Team Lead is not assigned to this Sales Executive",
+          message: "Branch not found",
         });
+      }
+
+      createdBy = branch.branchName;
+      branchId = branch.id;
+      // createdById null rahega
+    }
+
+    // ==========================================
+    // EMPLOYEE ROLES (Team Lead, Sales Executive, Accountant...)
+    // ==========================================
+    else {
+      const employee = await prisma.employee.findUnique({
+        where: { id: Number(user.id) },
+        select: {
+          id: true,
+          employeeName: true,
+          role: true,
+          teamLeadId: true,
+          branchId: true,
+        },
+      });
+
+      if (!employee) {
+        return res.status(401).json({
+          success: false,
+          message: "Employee not found",
+        });
+      }
+
+      createdById = employee.id;
+      createdBy = employee.employeeName;
+      branchId = employee.branchId ? Number(employee.branchId) : null;
+
+      if (role === "TEAM_LEAD") {
+        teamLeadId = employee.id;
+      } else if (role === "SALES_EXECUTIVE") {
+        teamLeadId = employee.teamLeadId ? Number(employee.teamLeadId) : null;
+
+        if (!teamLeadId) {
+          return res.status(400).json({
+            success: false,
+            message: "Team Lead is not assigned to this Sales Executive",
+          });
+        }
       }
     }
 
     // ==========================================
-    // BRANCH
-    // ==========================================
-
-    const branchId = employee.branchId
-      ? Number(employee.branchId)
-      : null;
-
-    // ==========================================
     // CREATE ACCOUNT
     // ==========================================
-
     const payload = {
       ...req.body,
 
       openingBalance: Number(req.body.openingBalance || 0),
       closingBalance: Number(req.body.openingBalance || 0),
 
-      birthday: req.body.birthday
-        ? new Date(req.body.birthday)
-        : null,
-
-      anniversary: req.body.anniversary
-        ? new Date(req.body.anniversary)
-        : null,
+      birthday: req.body.birthday ? new Date(req.body.birthday) : null,
+      anniversary: req.body.anniversary ? new Date(req.body.anniversary) : null,
 
       createdType: role,
-
-      createdBy: employee.employeeName,
-
+      createdBy,
       createdById,
-
       teamLeadId,
-
-      // Automatically taken from Employee
       branchId,
     };
 
@@ -233,7 +241,6 @@ export const createAccount = async (req: Request, res: Response) => {
       data: account,
       message: "Account created successfully",
     });
-
   } catch (error) {
     console.log("Create Account Error:", error);
 
