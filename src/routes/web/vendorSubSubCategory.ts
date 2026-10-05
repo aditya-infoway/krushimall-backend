@@ -3,7 +3,7 @@ import {
  
   getPublicVendorSubSubCategories,
 
-} from "../../controllers/vendor/vendorSubSubCategory.js";
+} from "../../controllers/venodr-admin/vendorSubSubCategory.js";
 
 
 const router = Router();

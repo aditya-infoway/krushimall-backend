@@ -52,7 +52,7 @@ export const createWebsiteVariant = async (req: Request, res: Response) => {
 
 export const getWebsiteVariants = async (req: Request, res: Response) => {
   try {
-    const { status, isUpcoming } = req.query;
+    const { status, isUpcoming, publicOnly } = req.query;
 
     const where: any = {};
 
@@ -63,6 +63,11 @@ export const getWebsiteVariants = async (req: Request, res: Response) => {
     // Only filter if the query parameter is provided
     if (isUpcoming !== undefined) {
       where.isUpcoming = isUpcoming === "true";
+    }
+
+    // Public website: vendor admin ke templates hide karo
+    if (publicOnly === "true") {
+      where.vendorAdminId = null;
     }
 
     const variants = await prisma.websiteVariant.findMany({
@@ -97,9 +102,11 @@ export const getWebsiteVariantById = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
-    const current = await prisma.websiteVariant.findUnique({
+    // vendor admin ke templates public me nahi dikhenge
+    const current = await prisma.websiteVariant.findFirst({
       where: {
         id,
+        vendorAdminId: null,
       },
       include: {
         brand: true,
@@ -128,6 +135,7 @@ export const getWebsiteVariantById = async (req: Request, res: Response) => {
           not: current.id,
         },
         status: "ACTIVE",
+        vendorAdminId: null,
         categoryId: current.categoryId,
         brandId: current.brandId,
       },
@@ -150,6 +158,7 @@ export const getWebsiteVariantById = async (req: Request, res: Response) => {
             ],
           },
           status: "ACTIVE",
+          vendorAdminId: null,
           categoryId: current.categoryId,
         },
         include: {
@@ -173,6 +182,7 @@ export const getWebsiteVariantById = async (req: Request, res: Response) => {
           not: current.id,
         },
         status: "ACTIVE",
+        vendorAdminId: null,
         categoryId: current.categoryId,
       },
       include: {
@@ -202,7 +212,6 @@ export const getWebsiteVariantById = async (req: Request, res: Response) => {
     });
   }
 };
-
 export const updateWebsiteVariant = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
@@ -393,6 +402,7 @@ export const getLatestWebsiteVariants = async (req: Request, res: Response) => {
     const variants = await prisma.websiteVariant.findMany({
       where: {
         status: "ACTIVE",
+          vendorAdminId: null,
           isUpcoming: false,
         AND: [
           { frontView: { not: null } },
@@ -444,6 +454,7 @@ export const getPopularWebsiteVariants = async (
     const variants = await prisma.websiteVariant.findMany({
       where: {
         status: "ACTIVE",
+          vendorAdminId: null,
           isUpcoming: false,
         AND: [
           { frontView: { not: null } },
@@ -511,6 +522,7 @@ export const getUpcomingWebsiteVariants = async (
     const variants = await prisma.websiteVariant.findMany({
       where: {
         status: "ACTIVE",
+          vendorAdminId: null,
         isUpcoming: true,
         AND: [
           { frontView: { not: null } },

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
 getPublicVendorSubCategories
-} from "../../controllers/vendor/vendorSubCategory.js";
+} from "../../controllers/venodr-admin/vendorSubCategory.js";
 
 
 const router = Router();

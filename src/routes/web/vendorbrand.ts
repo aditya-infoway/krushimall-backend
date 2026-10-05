@@ -5,7 +5,7 @@ import {
 
   getPublicVendorBrands
 
-} from "../../controllers/vendor/vendorBrand.js";
+} from "../../controllers/venodr-admin/vendorBrand.js";
 
 
 const router = Router();

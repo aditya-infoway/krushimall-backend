@@ -8,9 +8,7 @@ export const createWebsiteVariant = async (req: Request, res: Response) => {
     const vendorAuth = (req as any).vendor;
 
     const vendor = await prisma.webVendor.findUnique({
-      where: {
-        id: vendorAuth.vendorId,
-      },
+      where: { id: vendorAuth.vendorId },
     });
 
     if (!vendor) {
@@ -20,9 +18,38 @@ export const createWebsiteVariant = async (req: Request, res: Response) => {
       });
     }
 
+    // Auto mode: clonedFromId sach me vendor admin ka completed record hona chahiye
+    if (req.body.entryMode === "AUTO" && req.body.clonedFromId) {
+      const source = await prisma.websiteVariant.findFirst({
+        where: {
+          id: Number(req.body.clonedFromId),
+          vendorAdminId: { not: null },
+          isCompleted: true,
+        },
+        select: { id: true },
+      });
+
+      if (!source) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid source variant",
+        });
+      }
+
+      req.body.clonedFromId = source.id;
+      req.body.entryMode = "AUTO";
+    } else {
+      // Manual: client ki bheji hui values ignore karo
+      req.body.entryMode = "MANUAL";
+      delete req.body.clonedFromId;
+    }
+
+    // Client in fields ko badal na sake
+    delete req.body.vendorAdminId;
+
     req.body.vendorId = vendor.id;
     req.body.createdById = vendorAuth.userId;
-    req.body.createdBy = vendor.name; // or vendor.vendorName
+    req.body.createdBy = vendor.name;
     req.body.createdType = "VENDOR";
 
     return WebsiteVariantController.createWebsiteVariant(req, res);
@@ -44,6 +71,7 @@ export const getWebsiteVariants = async (req: Request, res: Response) => {
     const vendor = await prisma.webVendor.findUnique({
       where: {
         id: vendorAuth.vendorId,
+        
       },
     });
 
@@ -83,7 +111,37 @@ export const getWebsiteVariants = async (req: Request, res: Response) => {
     });
   }
 };
+// Auto mode dropdown ke liye: sirf is vendor ke apne, completed variants
+export const getSelectableWebsiteVariants = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const variants = await prisma.websiteVariant.findMany({
+      where: {
+        vendorAdminId: { not: null }, // sirf vendor admin ke bane hue
+        isCompleted: true,
+      },
+      include: {
+        category: true,
+        brand: true,
+        model: true,
+        variant: true,
+        modelYear: true,
+      },
+      orderBy: { id: "desc" },
+    });
 
+    return res.status(200).json({ success: true, data: variants });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch selectable Website Variants",
+    });
+  }
+};
 // Get By Id
 export const getWebsiteVariantById = async (req: Request, res: Response) => {
   try {
