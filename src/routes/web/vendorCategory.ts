@@ -5,7 +5,7 @@ import {
 
   getPublicVendorCategories
 
-} from "../../controllers/vendor/vendorCategory.js";
+} from "../../controllers/venodr-admin/vendorCategory.js";
 
 
 const router = Router();

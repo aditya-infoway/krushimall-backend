@@ -6,7 +6,7 @@ import {
   getVendorSubSubCategoryById,
   updateVendorSubSubCategory,
   deleteVendorSubSubCategory,
-} from "../../controllers/vendor/vendorSubSubCategory.js";
+} from "../../controllers/venodr-admin/vendorSubSubCategory.js";
 import { verifyVendorToken } from "../../middleware/verifyVendorAdminToken.js";
 import { upload } from "../../middleware/upload.js";
 

@@ -7,7 +7,7 @@ import {
   getVendorBrandById,
   updateVendorBrand,
   deleteVendorBrand,
-} from "../../controllers/vendor/vendorBrand.js";
+} from "../../controllers/venodr-admin/vendorBrand.js";
 import { verifyVendorToken } from "../../middleware/verifyVendorAdminToken.js";
 import { upload } from "../../middleware/upload.js";
 

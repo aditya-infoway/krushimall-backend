@@ -247,6 +247,8 @@ model WebsiteVariant {
   updatedAt                 DateTime         @updatedAt
   vendorId                  Int?
   vendor                    WebVendor?       @relation(fields: [vendorId], references: [id])
+  vendorAdminId             Int?
+  vendorAdmin               VendorAdmin?     @relation(fields: [vendorAdminId], references: [id])
   createdById               Int?
   createdBy                 String?
   createdType               String?
@@ -382,6 +384,8 @@ model WebsiteVariant {
   agreed                    Boolean          @default(false)
   productName               String?
   launchYear                DateTime?
+    entryMode                 String           @default("MANUAL") // "MANUAL" | "AUTO"
+  clonedFromId              Int?
   brand                     Brand?           @relation(fields: [brandId], references: [id])
   category                  Category?        @relation(fields: [categoryId], references: [id])
   model                     Model?           @relation(fields: [modelId], references: [id])
@@ -391,6 +395,8 @@ model WebsiteVariant {
   isUpcoming                Boolean          @default(false)
   enquiryCount              Int              @default(0)
   wishlistedBy              Wishlist[]
+    @@index([vendorAdminId])
+      @@index([clonedFromId])
 }
 
 model Colour {
@@ -2064,6 +2070,7 @@ model VendorAdmin {
   vendorBrands     VendorBrand[]
  
   vendorCategories VendorCategory[]
+    websiteVariants  WebsiteVariant[]
 }
 
 model VendorBrand {

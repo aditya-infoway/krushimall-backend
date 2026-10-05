@@ -3,18 +3,18 @@ import {
   createWebsiteVariant,
   getWebsiteVariants,
   getWebsiteVariantById,
+  getSelectableWebsiteVariants,
+  // getSelectableWebsiteVariantById,
   updateWebsiteVariant,
   saveStep,
   submitWebsiteVariant,
-  toggleWebsiteVariantStatus,
+   toggleWebsiteVariantStatus,
   deleteWebsiteVariant,
-  getLatestWebsiteVariants,
-  getPopularWebsiteVariants,
-  getUpcomingWebsiteVariants,
-} from "../controllers/websiteVariant.js";
+} from "../../controllers/venodr-admin/websiteVariant.js";
 
-import { upload } from "../middleware/upload.js";
-import { verifyToken } from "../middleware/middleware.js";
+import { upload } from "../../middleware/upload.js";
+import { verifyVendorToken } from "../../middleware/verifyVendorAdminToken.js";
+
 const router = Router();
 
 const mediaUpload = upload.fields([
@@ -47,37 +47,33 @@ const mediaUpload = upload.fields([
   { name: "others", maxCount: 1 },
 ]);
 
+// Saare routes vendor admin token ke peeche
+router.use(verifyVendorToken);
+
+// Selectable (Add Product form ka "Select Variant"):
+// "/:id" se PEHLE rakhna, warna "selectable" ko id samajh lega
+router.get("/selectable", getSelectableWebsiteVariants);
+// router.get("/selectable/:id", getSelectableWebsiteVariantById);
+
 // Create
-router.post("/", verifyToken, mediaUpload, createWebsiteVariant);
+router.post("/", mediaUpload, createWebsiteVariant);
 
-router.get("/popular", getPopularWebsiteVariants);
+// Get All (sirf apne)
+router.get("/", getWebsiteVariants);
 
-router.get("/latest", getLatestWebsiteVariants);
-router.get("/upcoming", getUpcomingWebsiteVariants);
-// Get All
-router.get(
-  "/",
-
-  getWebsiteVariants,
-);
-
-// Get By Id
-router.get(
-  "/:id",
-
-  getWebsiteVariantById,
-);
+// Get By Id (sirf apna)
+router.get("/:id", getWebsiteVariantById);
 
 // Update Full Record
-router.put("/:id", verifyToken, mediaUpload, updateWebsiteVariant);
+router.put("/:id", mediaUpload, updateWebsiteVariant);
 
 // Save Step
-router.put("/:id/save-step", verifyToken, mediaUpload, saveStep);
+router.put("/:id/save-step", mediaUpload, saveStep);
 
 // Final Submit
-router.put("/:id/submit", verifyToken, submitWebsiteVariant);
-router.patch("/:id/toggle-status", verifyToken, toggleWebsiteVariantStatus);
+router.put("/:id/submit", submitWebsiteVariant);
+router.patch("/:id/toggle-status", toggleWebsiteVariantStatus);
 // Delete
-router.delete("/:id", verifyToken, deleteWebsiteVariant);
+router.delete("/:id", deleteWebsiteVariant);
 
 export default router;

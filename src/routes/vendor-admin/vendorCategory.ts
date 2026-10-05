@@ -7,7 +7,7 @@ import {
   getVendorCategoryById,
   updateVendorCategory,
   deleteVendorCategory,
-} from "../../controllers/vendor/vendorCategory.js";
+} from "../../controllers/venodr-admin/vendorCategory.js";
 import { verifyVendorToken } from "../../middleware/verifyVendorAdminToken.js";
 import { upload } from "../../middleware/upload.js";
 
