@@ -43,11 +43,14 @@ router.get(
   verifyVendorToken,
   WebsiteVariantController.getWebsiteVariants
 );
+
 router.get(
   "/selectable",
   verifyVendorToken,
   WebsiteVariantController.getSelectableWebsiteVariants
 );
+
+
 router.get(
   "/:id",
   verifyVendorToken,
