@@ -5,6 +5,8 @@ import {
   getWebsiteVariantById,
   getSelectableWebsiteVariants,
   // getSelectableWebsiteVariantById,
+  getImportOptions,
+  importWebsiteVariants,
   updateWebsiteVariant,
   saveStep,
   submitWebsiteVariant,
@@ -49,12 +51,16 @@ const mediaUpload = upload.fields([
 
 // Saare routes vendor admin token ke peeche
 router.use(verifyVendorToken);
-
+router.get("/import-options", getImportOptions);
 // Selectable (Add Product form ka "Select Variant"):
 // "/:id" se PEHLE rakhna, warna "selectable" ko id samajh lega
 router.get("/selectable", getSelectableWebsiteVariants);
 // router.get("/selectable/:id", getSelectableWebsiteVariantById);
-
+router.post(
+  "/import",
+ // jo middleware baaki routes pe laga hai wahi
+  importWebsiteVariants,
+);
 // Create
 router.post("/", mediaUpload, createWebsiteVariant);
 
