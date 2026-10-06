@@ -11,6 +11,7 @@ import {
   getLatestWebsiteVariants,
   getPopularWebsiteVariants,
   getUpcomingWebsiteVariants,
+  getWebsiteVariantByIdAdmin
 } from "../controllers/websiteVariant.js";
 
 import { upload } from "../middleware/upload.js";
@@ -54,6 +55,7 @@ router.get("/popular", getPopularWebsiteVariants);
 
 router.get("/latest", getLatestWebsiteVariants);
 router.get("/upcoming", getUpcomingWebsiteVariants);
+router.get("/admin/:id", verifyToken, getWebsiteVariantByIdAdmin);
 // Get All
 router.get(
   "/",

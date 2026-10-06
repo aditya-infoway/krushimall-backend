@@ -50,9 +50,56 @@ export const createWebsiteVariant = async (req: Request, res: Response) => {
   }
 };
 
+// export const getWebsiteVariants = async (req: Request, res: Response) => {
+//   try {
+//     const { status, isUpcoming, publicOnly } = req.query;
+
+//     const where: any = {};
+
+//     if (status) {
+//       where.status = status;
+//     }
+
+//     // Only filter if the query parameter is provided
+//     if (isUpcoming !== undefined) {
+//       where.isUpcoming = isUpcoming === "true";
+//     }
+
+//     // Public website: vendor admin ke templates hide karo
+//     if (publicOnly === "true") {
+//       where.vendorAdminId = null;
+//     }
+
+//     const variants = await prisma.websiteVariant.findMany({
+//       where,
+//       include: {
+//         category: true,
+//         brand: true,
+//         model: true,
+//         variant: true,
+//         modelYear: true,
+//       },
+//       orderBy: {
+//         id: "desc",
+//       },
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       data: variants,
+//     });
+//   } catch (error) {
+//     console.error(error);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch Website Variants",
+//     });
+//   }
+// };
 export const getWebsiteVariants = async (req: Request, res: Response) => {
   try {
-    const { status, isUpcoming, publicOnly } = req.query;
+    const { status, isUpcoming, publicOnly, hideVendorAdmin } = req.query;
 
     const where: any = {};
 
@@ -60,13 +107,17 @@ export const getWebsiteVariants = async (req: Request, res: Response) => {
       where.status = status;
     }
 
-    // Only filter if the query parameter is provided
     if (isUpcoming !== undefined) {
       where.isUpcoming = isUpcoming === "true";
     }
 
-    // Public website: vendor admin ke templates hide karo
+    // Public website: hide vendor admin templates
     if (publicOnly === "true") {
+      where.vendorAdminId = null;
+    }
+
+    // Super admin list: hide vendor admin templates, vendor products stay visible
+    if (hideVendorAdmin === "true") {
       where.vendorAdminId = null;
     }
 
@@ -97,7 +148,42 @@ export const getWebsiteVariants = async (req: Request, res: Response) => {
     });
   }
 };
+// Admin panel: returns any variant (including vendor admin templates)
+export const getWebsiteVariantByIdAdmin  = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
 
+    const variant = await prisma.websiteVariant.findUnique({
+      where: { id },
+      include: {
+        brand: true,
+        category: true,
+        model: true,
+        variant: true,
+        modelYear: true,
+      },
+    });
+
+    if (!variant) {
+      return res.status(404).json({
+        success: false,
+        message: "Website Variant not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: variant,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch Website Variant",
+    });
+  }
+};
 export const getWebsiteVariantById = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
