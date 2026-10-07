@@ -94,7 +94,24 @@ export const verifyAnyToken = async (
       };
       return next();
     }
+    // ── Vendor Admin: same check jo verifyVendorToken karta hai ──
+    if (role === "VENDORADMIN") {
+      (req as any).user = {
+        ...decoded,
+        vendorId: decoded.id,
+        email: decoded.email,
+        name: decoded.name,
+      };
 
+      // verifyVendorToken wale controllers ke saath compatible rehne ke liye
+      (req as any).vendor = {
+        vendorId: decoded.id,
+        email: decoded.email,
+        name: decoded.name,
+      };
+
+      return next();
+    }
     // ── Employee (Sales Executive / Team Lead / etc.): same check
     //    jo verifyEmployeeToken karta hai ──
     const employee = await prisma.employee.findUnique({
