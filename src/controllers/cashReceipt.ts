@@ -8,6 +8,8 @@ import { getFileUrl } from "../utils/getFileUrl.js";
 // ==========================
 // Get All Cash Payments
 // ==========================
+
+const NON_EMPLOYEE_ROLES = ["ADMIN", "SUPERADMIN", "BRANCH"];
 export const getcashReceipt = async (
   req: Request,
   res: Response,
@@ -42,11 +44,11 @@ export const getcashReceipt = async (
           },
         },
         employee: {
-  select: {
-    id: true,
-    employeeName: true,
-  },
-},
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -80,11 +82,11 @@ export const getcashReceiptById = async (
         oppAccount: true,
         lead: true,
         employee: {
-  select: {
-    id: true,
-    employeeName: true,
-  },
-},
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -127,10 +129,11 @@ export const createCashReceipt = async (
       return;
     }
 
-   const user = (req as any).user;
-const role = user?.role?.toUpperCase();
-const name = user?.employeeName || user?.name || "Admin";
-
+    const user = (req as any).user;
+    const role = user?.role?.toUpperCase();
+    const name = user?.employeeName || user?.name || "Admin";
+    const isEmployee =
+      !!role && !NON_EMPLOYEE_ROLES.includes(role.replace(/\s+/g, "_"));
     if (role === "BRANCH" && !user?.branchId) {
       res.status(400).json({
         success: false,
@@ -139,10 +142,10 @@ const name = user?.employeeName || user?.name || "Admin";
       return;
     }
 
-const voucherNo = await generateCashReceiptVoucher(
-  Number(companyId),
-  Number(financialYearId)
-);
+    const voucherNo = await generateCashReceiptVoucher(
+      Number(companyId),
+      Number(financialYearId),
+    );
 
     const receipt = await prisma.$transaction(async (tx) => {
       const data = await tx.cashReceipt.create({
@@ -157,9 +160,9 @@ const voucherNo = await generateCashReceiptVoucher(
           leadId: leadId ? Number(leadId) : null,
           amount: Number(amount),
           narration,
-          createdById: Number(user.id),
-createdBy: name,
-createdType: role,
+          createdById: isEmployee ? Number(user.id) : null,
+          createdBy: name,
+          createdType: role,
           branchId: user?.branchId ? Number(user.branchId) : null,
         },
       });
@@ -262,7 +265,7 @@ export const deleteCashReceipt = async (
 };
 export const getCashReceiptVoucher = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { companyId, financialYearId } = req.query;
@@ -277,7 +280,7 @@ export const getCashReceiptVoucher = async (
 
     const voucherNo = await generateCashReceiptVoucher(
       Number(companyId),
-      Number(financialYearId)
+      Number(financialYearId),
     );
 
     res.status(200).json({
@@ -314,10 +317,10 @@ export const exportCashReceiptExcel = async (
           },
         },
         employee: {
-  select: {
-    employeeName: true,
-  },
-},
+          select: {
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -352,7 +355,7 @@ export const exportCashReceiptExcel = async (
         amount: Number(item.amount),
         narration: item.narration || "",
         createdType: item.createdType || "",
-       createdBy: item.employee?.employeeName || item.createdBy || "",
+        createdBy: item.employee?.employeeName || item.createdBy || "",
       });
     });
 
@@ -496,7 +499,7 @@ export const printCashReceipt = async (
     const amount = Number(receipt.amount);
     const amountInWords = numberToWords(Math.round(amount));
     const formattedDate = new Date(receipt.date).toLocaleDateString("en-GB");
-const logoUrl = getFileUrl(company?.logo);
+    const logoUrl = getFileUrl(company?.logo);
 
     const renderCopy = (copyLabel: "Customer Copy" | "Company Copy") => `
   <div class="voucher">
@@ -744,23 +747,23 @@ const logoUrl = getFileUrl(company?.logo);
 
     const page = await browser.newPage();
 
-await page.setContent(html, {
-  waitUntil: "domcontentloaded",
-});
+    await page.setContent(html, {
+      waitUntil: "domcontentloaded",
+    });
 
-// Extra safety: ensure all <img> tags are actually loaded (or failed) before PDF
-await page.evaluate(async () => {
-  const images = Array.from(document.images);
-  await Promise.all(
-    images.map((img) => {
-      if (img.complete) return Promise.resolve();
-      return new Promise((resolve) => {
-        img.addEventListener("load", resolve);
-        img.addEventListener("error", resolve); // don't hang forever on broken image
-      });
-    })
-  );
-});
+    // Extra safety: ensure all <img> tags are actually loaded (or failed) before PDF
+    await page.evaluate(async () => {
+      const images = Array.from(document.images);
+      await Promise.all(
+        images.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.addEventListener("load", resolve);
+            img.addEventListener("error", resolve); // don't hang forever on broken image
+          });
+        }),
+      );
+    });
 
     const pdf = await page.pdf({
       format: "A4",

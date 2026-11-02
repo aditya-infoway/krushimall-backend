@@ -5,6 +5,8 @@ import ExcelJS from "exceljs";
 // ==========================
 // Get All Cash Payments
 // ==========================
+
+const NON_EMPLOYEE_ROLES = ["ADMIN", "SUPERADMIN", "BRANCH"];
 export const getCashPayments = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = (req as any).user;
@@ -126,7 +128,8 @@ export const createCashPayment = async (req: Request, res: Response): Promise<vo
    const user = (req as any).user;
 const role = user?.role?.toUpperCase();
 const name = user?.employeeName || user?.name || "Admin";
-
+const isEmployee =
+  !!role && !NON_EMPLOYEE_ROLES.includes(role.replace(/\s+/g, "_"));
     if (role === "BRANCH" && !user?.branchId) {
       res.status(400).json({
         success: false,
@@ -154,7 +157,7 @@ const name = user?.employeeName || user?.name || "Admin";
           leadId: leadId ? Number(leadId) : null,
           amount: Number(amount),
           narration,
-       createdById: Number(user.id),
+createdById: isEmployee ? Number(user.id) : null,
 createdType: role,
 createdBy: name,
          branchId: user?.branchId ? Number(user.branchId) : null,

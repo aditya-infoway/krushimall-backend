@@ -5,11 +5,8 @@ import ExcelJS from "exceljs";
 /* ===========================================================
    Generate Contra Voucher
 =========================================================== */
-
-export const getNextContraVoucher = async (
-  req: Request,
-  res: Response
-) => {
+const NON_EMPLOYEE_ROLES = ["ADMIN", "SUPERADMIN", "BRANCH"];
+export const getNextContraVoucher = async (req: Request, res: Response) => {
   try {
     const companyId = Number(req.query.companyId);
     const financialYearId = Number(req.query.financialYearId);
@@ -21,10 +18,7 @@ export const getNextContraVoucher = async (
       });
     }
 
-    const voucherNo = await generateContraVoucher(
-      companyId,
-      financialYearId
-    );
+    const voucherNo = await generateContraVoucher(companyId, financialYearId);
 
     return res.json({
       success: true,
@@ -81,8 +75,9 @@ export const createContra = async (req: Request, res: Response) => {
 
     const user = (req as any).user;
     const role = user?.role?.toUpperCase();
-   const name = user?.employeeName || user?.name || "Admin";
-
+    const name = user?.employeeName || user?.name || "Admin";
+    const isEmployee =
+      !!role && !NON_EMPLOYEE_ROLES.includes(role.replace(/\s+/g, "_"));
     if (role === "BRANCH" && !user?.branchId) {
       return res.status(400).json({
         success: false,
@@ -90,10 +85,10 @@ export const createContra = async (req: Request, res: Response) => {
       });
     }
 
-   const voucherNo = await generateContraVoucher(
-  Number(companyId),
-  Number(financialYearId)
-);
+    const voucherNo = await generateContraVoucher(
+      Number(companyId),
+      Number(financialYearId),
+    );
 
     const cashBank = await prisma.account.findUnique({
       where: { id: Number(cashBankAccountId) },
@@ -124,10 +119,10 @@ export const createContra = async (req: Request, res: Response) => {
           oppAccountId: Number(oppAccountId),
           amount: amountValue,
           narration,
-         createdById: Number(user.id),
-createdBy: name,
-createdType: role,
-branchId: user?.branchId ? Number(user.branchId) : null,
+          createdById: isEmployee ? Number(user.id) : null,
+          createdBy: name,
+          createdType: role,
+          branchId: user?.branchId ? Number(user.branchId) : null,
         },
       });
 
@@ -171,7 +166,10 @@ branchId: user?.branchId ? Number(user.branchId) : null,
   }
 };
 
-export const getContras = async (req: Request, res: Response): Promise<void> => {
+export const getContras = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const user = (req as any).user;
     const role = user?.role?.toUpperCase();
@@ -214,11 +212,11 @@ export const getContras = async (req: Request, res: Response): Promise<void> => 
           },
         },
         employee: {
-    select: {
-      id: true,
-      employeeName: true,
-    },
-  },
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -232,7 +230,10 @@ export const getContras = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const getContraById = async (req: Request, res: Response): Promise<void> => {
+export const getContraById = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const id = Number(req.params.id);
     const user = (req as any).user;
@@ -251,11 +252,11 @@ export const getContraById = async (req: Request, res: Response): Promise<void> 
         cashBankAccount: true,
         oppAccount: true,
         employee: {
-    select: {
-      id: true,
-      employeeName: true,
-    },
-  },
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -278,7 +279,7 @@ export const getContraById = async (req: Request, res: Response): Promise<void> 
 
 export const exportContraExcel = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const contras = await prisma.contra.findMany({
@@ -296,11 +297,11 @@ export const exportContraExcel = async (
             accountName: true,
           },
         },
-         employee: {
-    select: {
-      employeeName: true,
-    },
-  },
+        employee: {
+          select: {
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -327,9 +328,7 @@ export const exportContraExcel = async (
     contras.forEach((item, index) => {
       worksheet.addRow({
         sr: index + 1,
-        date: item.date
-          ? new Date(item.date).toLocaleDateString("en-GB")
-          : "",
+        date: item.date ? new Date(item.date).toLocaleDateString("en-GB") : "",
         voucherNo: item.voucherNo,
         type: item.type,
         cashBankAccount: item.cashBankAccount?.accountName || "",
@@ -337,18 +336,18 @@ export const exportContraExcel = async (
         amount: Number(item.amount),
         narration: item.narration || "",
         createdType: item.createdType || "",
-       createdBy: item.employee?.employeeName || item.createdBy || "",
+        createdBy: item.employee?.employeeName || item.createdBy || "",
       });
     });
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
     res.setHeader(
       "Content-Disposition",
-      'attachment; filename="ContraRegister.xlsx"'
+      'attachment; filename="ContraRegister.xlsx"',
     );
 
     await workbook.xlsx.write(res);

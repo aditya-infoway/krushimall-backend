@@ -1,20 +1,15 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 
-export const createColour = async (
-  req: Request,
-  res: Response
-) => {
+export const createColour = async (req: Request, res: Response) => {
   try {
     const colour = await prisma.colour.create({
       data: {
         modelId: Number(req.body.modelId),
-       variantId: req.body.variantId
-  ? Number(req.body.variantId)
-  : null,
-          showroomVariantId: req.body.showroomVariantId
-      ? Number(req.body.showroomVariantId)
-      : null,
+        variantId: req.body.variantId ? Number(req.body.variantId) : null,
+        showroomVariantId: req.body.showroomVariantId
+          ? Number(req.body.showroomVariantId)
+          : null,
         colourName: req.body.colourName,
         colourCode: req.body.colourCode,
         status: req.body.status || "ACTIVE",
@@ -36,10 +31,7 @@ export const createColour = async (
   }
 };
 
-export const getColours = async (
-  req: Request,
-  res: Response
-) => {
+export const getColours = async (req: Request, res: Response) => {
   try {
     const colours = await prisma.colour.findMany({
       include: {
@@ -66,10 +58,7 @@ export const getColours = async (
   }
 };
 
-export const getColourById = async (
-  req: Request,
-  res: Response
-) => {
+export const getColourById = async (req: Request, res: Response) => {
   try {
     const colour = await prisma.colour.findUnique({
       where: {
@@ -78,7 +67,7 @@ export const getColourById = async (
       include: {
         model: true,
         variant: true,
-           showroomVariant: true,
+        showroomVariant: true,
       },
     });
 
@@ -88,36 +77,41 @@ export const getColourById = async (
     });
   } catch (error) {
     console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch colour",
+    });
   }
 };
 
-export const updateColour = async (
-  req: Request,
-  res: Response
-) => {
+export const updateColour = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
     const updateData: any = {};
 
-    if (req.body.modelId)
-      updateData.modelId = Number(req.body.modelId);
+    if (req.body.modelId) updateData.modelId = Number(req.body.modelId);
 
-    if (req.body.variantId)
-      updateData.variantId = Number(req.body.variantId);
-if (req.body.showroomVariantId !== undefined)
-  updateData.showroomVariantId =
-    req.body.showroomVariantId
-      ? Number(req.body.showroomVariantId)
-      : null;
+    // undefined = field not sent (e.g. status toggle / colour code change)
+    // empty / null = clear the value
+    if (req.body.variantId !== undefined)
+      updateData.variantId = req.body.variantId
+        ? Number(req.body.variantId)
+        : null;
+
+    if (req.body.showroomVariantId !== undefined)
+      updateData.showroomVariantId = req.body.showroomVariantId
+        ? Number(req.body.showroomVariantId)
+        : null;
+
     if (req.body.colourName !== undefined)
       updateData.colourName = req.body.colourName;
 
     if (req.body.colourCode !== undefined)
       updateData.colourCode = req.body.colourCode;
 
-    if (req.body.status !== undefined)
-      updateData.status = req.body.status;
+    if (req.body.status !== undefined) updateData.status = req.body.status;
 
     const colour = await prisma.colour.update({
       where: { id },
@@ -139,10 +133,7 @@ if (req.body.showroomVariantId !== undefined)
   }
 };
 
-export const deleteColour = async (
-  req: Request,
-  res: Response
-) => {
+export const deleteColour = async (req: Request, res: Response) => {
   try {
     await prisma.colour.delete({
       where: {
@@ -163,10 +154,8 @@ export const deleteColour = async (
     });
   }
 };
-export const toggleColourStatus = async (
-  req: Request,
-  res: Response
-) => {
+
+export const toggleColourStatus = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
@@ -186,10 +175,7 @@ export const toggleColourStatus = async (
     const updatedColour = await prisma.colour.update({
       where: { id },
       data: {
-        status:
-          colour.status === "ACTIVE"
-            ? "INACTIVE"
-            : "ACTIVE",
+        status: colour.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
       },
     });
 
@@ -207,10 +193,8 @@ export const toggleColourStatus = async (
     });
   }
 };
-export const updateColourCode = async (
-  req: Request,
-  res: Response
-) => {
+
+export const updateColourCode = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
     const { colourCode } = req.body;
