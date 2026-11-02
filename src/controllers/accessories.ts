@@ -1,12 +1,68 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 
+// export const createAccessory = async (req: Request, res: Response) => {
+//   try {
+//     const user = (req as any).user;
+
+//     const role = user?.role?.toUpperCase();
+//     const name = user?.employeeName || user?.name;
+
+//     const accessory = await prisma.accessory.create({
+//       data: {
+//         type: req.body.type,
+//         itemName: req.body.itemName,
+//         codeNo: req.body.codeNo,
+//         shortName: req.body.shortName,
+//         hsnCode: req.body.hsnCode,
+//         unit: req.body.unit,
+//         taxSlab: req.body.taxSlab,
+//         group: req.body.group,
+
+//         purchasePrice: req.body.purchasePrice
+//           ? Number(req.body.purchasePrice)
+//           : null,
+
+//         salesPrice: req.body.salesPrice ? Number(req.body.salesPrice) : null,
+
+//         mrp: req.body.mrp ? Number(req.body.mrp) : null,
+
+//         opStock: req.body.opStock ? Number(req.body.opStock) : 0,
+
+//         barCode: req.body.barCode,
+//         showroomVariants: req.body.showroomVariants || [],
+
+//         status: req.body.status || "ACTIVE",
+
+//         createdById: Number(user.id),
+//         createdBy: name,
+//         createdType: role,
+//       },
+//     });
+
+//     return res.status(201).json({
+//       success: true,
+//       data: accessory,
+//     });
+//   } catch (error) {
+//     console.error(error);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to create item",
+//     });
+//   }
+// };
 export const createAccessory = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
 
     const role = user?.role?.toUpperCase();
     const name = user?.employeeName || user?.name;
+
+    // FK sirf Employee table ko point karta hai,
+    // isliye admin/branch ki id yahan nahi daalni
+    const isEmployee = role === "EMPLOYEE";
 
     const accessory = await prisma.accessory.create({
       data: {
@@ -34,7 +90,7 @@ export const createAccessory = async (req: Request, res: Response) => {
 
         status: req.body.status || "ACTIVE",
 
-        createdById: Number(user.id),
+        createdById: isEmployee ? Number(user.id) : null,
         createdBy: name,
         createdType: role,
       },
@@ -53,7 +109,6 @@ export const createAccessory = async (req: Request, res: Response) => {
     });
   }
 };
-
 export const getAccessories = async (req: Request, res: Response) => {
   try {
     const accessories = await prisma.accessory.findMany({

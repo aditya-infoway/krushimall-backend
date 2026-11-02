@@ -3,6 +3,24 @@ import prisma from "../lib/prisma.js";
 import { generateAccessoriesPurchaseBillNo } from "../utils/accessoriesPurchase.js";
 import { generateCashPaymentVoucher } from "../utils/generateCashPaymentVoucher.js";
 import { generateBankPaymentVoucher } from "../utils/generateBankPaymentVoucher.js";
+
+// Roles jinki id Employee table mein NAHI hoti (alag tables se login)
+const NON_EMPLOYEE_ROLES = ["ADMIN", "SUPERADMIN", "BRANCH"];
+
+// createdById / inwardById sirf tab set hoga jab user Employee table ka ho,
+// warna FK (-> Employee.id) violate hota hai.
+const getCreatorInfo = (user: any) => {
+  const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+  const name = user?.employeeName || user?.name || "Admin";
+  const isEmployee = !!role && !NON_EMPLOYEE_ROLES.includes(role);
+
+  return {
+    role,
+    name,
+    createdById: isEmployee && user?.id ? Number(user.id) : null,
+  };
+};
+
 export const createAccessoriesPurchase = async (
   req: Request,
   res: Response,
@@ -158,8 +176,7 @@ export const createAccessoriesPurchase = async (
       Number(financialYearId),
     );
     const user = (req as any).user;
-    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
-    const name = user?.employeeName || user?.name || "Admin";
+    const { role, name, createdById } = getCreatorInfo(user);
     const purchase = await prisma.accessoriesPurchase.create({
       data: {
         companyId: Number(companyId),
@@ -168,7 +185,7 @@ export const createAccessoriesPurchase = async (
         billNo,
 
         accountId: Number(accountId),
-        createdById: Number(user.id),
+        createdById,
         createdBy: name,
         createdType: role,
         purchaseBillNo,
@@ -459,9 +476,9 @@ export const getAccessoriesPurchases = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
 
-    // Admin / Superadmin ko sabhi purchases dikhengi
-    // Employee (ya branch) ko sirf apni khud ki banayi hui purchases dikhengi
-    const isAdmin = role === "ADMIN" || role === "SUPERADMIN";
+    // Admin / Superadmin / Branch ko sabhi purchases dikhengi
+    // Employee ko sirf apni khud ki banayi hui purchases dikhengi
+    const isAdmin = NON_EMPLOYEE_ROLES.includes(role);
 
     const whereCondition = isAdmin
       ? {}
@@ -830,8 +847,11 @@ export const updateAccessoriesPurchaseItemStatus = async (
     const { status } = req.body;
 
     const user = (req as any).user;
-    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
-    const name = user?.employeeName || user?.name || "Admin";
+    const {
+      role,
+      name,
+      createdById: inwardById,
+    } = getCreatorInfo(user);
 
     const updateData: any = {
       status,
@@ -839,7 +859,7 @@ export const updateAccessoriesPurchaseItemStatus = async (
 
     // Save inward audit only when status becomes Inward
     if (status === "Inward") {
-      updateData.inwardById = Number(user.id);
+      updateData.inwardById = inwardById;
       updateData.inwardBy = name;
       updateData.inwardType = role;
       updateData.inwardDate = new Date();
