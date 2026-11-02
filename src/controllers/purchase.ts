@@ -4,6 +4,25 @@ import { generateBillNo } from "../utils/generatepurchaseBillNo.js";
 import { generateVehicleSerialNo } from "../utils/generateVehicleSerialNo.js";
 import { generateCashPaymentVoucher } from "../utils/generateCashPaymentVoucher.js";
 import { generateBankPaymentVoucher } from "../utils/generateBankPaymentVoucher.js";
+
+// Roles jinki id Employee table mein NAHI hoti (alag tables se login)
+const NON_EMPLOYEE_ROLES = ["ADMIN", "SUPERADMIN", "BRANCH"];
+
+// Token se creator ki details nikalta hai.
+// createdById sirf tab set hoga jab creator Employee table ka ho,
+// warna FK (createdById -> Employee.id) violate hota hai.
+const getCreatorInfo = (user: any) => {
+  const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
+  const name = user?.employeeName || user?.name || "Admin";
+  const isEmployee = !!role && !NON_EMPLOYEE_ROLES.includes(role);
+
+  return {
+    role,
+    name,
+    createdById: isEmployee && user?.id ? Number(user.id) : null,
+  };
+};
+
 // Safely parses "dd-mm-yyyy" (frontend format) or "yyyy-mm-dd"/ISO into a valid Date
 const parseDate = (value: any): Date | null => {
   if (!value) return null;
@@ -26,6 +45,7 @@ const parseDate = (value: any): Date | null => {
   const d = new Date(value);
   return isNaN(d.getTime()) ? null : d;
 };
+
 export const createPurchase = async (req: Request, res: Response) => {
   try {
     const {
@@ -57,6 +77,7 @@ export const createPurchase = async (req: Request, res: Response) => {
       grandTotal,
       items,
     } = req.body;
+
     // ======================================================
     // CHECK CASH / BANK ACCOUNT BALANCE BEFORE PURCHASE SAVE
     // ======================================================
@@ -165,15 +186,17 @@ export const createPurchase = async (req: Request, res: Response) => {
         });
       }
     }
+
     const billNo = await generateBillNo(
       "PURCHASE",
       "purchase",
       Number(companyId),
       Number(financialYearId),
     );
+
     const user = (req as any).user;
-    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
-    const name = user?.employeeName || user?.name || "Admin";
+    const { role, name, createdById } = getCreatorInfo(user);
+
     const purchase = await prisma.purchase.create({
       data: {
         companyId: Number(companyId),
@@ -183,8 +206,8 @@ export const createPurchase = async (req: Request, res: Response) => {
         purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
         purchaseBillNo,
         purchaseLocation,
-        createdById: Number(user.id),
-        createdBy: user.employeeName || user.name,
+        createdById,
+        createdBy: name,
         createdType: role,
         dueDate: dueDate ? new Date(dueDate) : null,
         terms,
@@ -246,6 +269,7 @@ export const createPurchase = async (req: Request, res: Response) => {
         items: true,
       },
     });
+
     if (terms?.toLowerCase() === "credit" && accountId) {
       const account = await prisma.account.findUnique({
         where: { id: Number(accountId) },
@@ -253,18 +277,18 @@ export const createPurchase = async (req: Request, res: Response) => {
 
       if (account) {
         const currentBalance = Number(account.closingBalance || 0);
-        const purchaseAmount = Number(grandTotal || 0);
+        const creditAmount = Number(grandTotal || 0);
 
         let closingBalance = currentBalance;
         let balanceType = account.drCr;
 
         if (balanceType === "Cr") {
-          closingBalance += purchaseAmount;
+          closingBalance += creditAmount;
         } else {
-          if (currentBalance >= purchaseAmount) {
-            closingBalance -= purchaseAmount;
+          if (currentBalance >= creditAmount) {
+            closingBalance -= creditAmount;
           } else {
-            closingBalance = purchaseAmount - currentBalance;
+            closingBalance = creditAmount - currentBalance;
             balanceType = "Cr";
           }
         }
@@ -284,52 +308,18 @@ export const createPurchase = async (req: Request, res: Response) => {
 
       if (account) {
         const currentBalance = Number(account.closingBalance || 0);
-        const purchaseAmount = Number(grandTotal || 0);
+        const cashAmount = Number(grandTotal || 0);
 
         await prisma.account.update({
           where: {
             id: Number(cashAccountId),
           },
           data: {
-            closingBalance: currentBalance - purchaseAmount,
+            closingBalance: currentBalance - cashAmount,
             drCr: "Dr",
           },
         });
       }
-
-      // // Supplier (+)
-      // if (accountId) {
-      //   const supplier = await prisma.account.findUnique({
-      //     where: { id: Number(accountId) },
-      //   });
-
-      //   if (supplier) {
-      //     const currentBalance = Number(supplier.closingBalance || 0);
-      //     const purchaseAmount = Number(grandTotal || 0);
-
-      //     let closingBalance = currentBalance;
-      //     let balanceType = supplier.drCr;
-
-      //     if (balanceType === "Cr") {
-      //       closingBalance += purchaseAmount;
-      //     } else {
-      //       if (currentBalance >= purchaseAmount) {
-      //         closingBalance -= purchaseAmount;
-      //       } else {
-      //         closingBalance = purchaseAmount - currentBalance;
-      //         balanceType = "Cr";
-      //       }
-      //     }
-
-      //     await prisma.account.update({
-      //       where: { id: Number(accountId) },
-      //       data: {
-      //         closingBalance,
-      //         drCr: balanceType,
-      //       },
-      //     });
-      //   }
-      // }
     }
 
     // BANK PURCHASE
@@ -340,53 +330,20 @@ export const createPurchase = async (req: Request, res: Response) => {
 
       if (account) {
         const currentBalance = Number(account.closingBalance || 0);
-        const purchaseAmount = Number(grandTotal || 0);
+        const bankAmount = Number(grandTotal || 0);
 
         await prisma.account.update({
           where: {
             id: Number(bankAccountId),
           },
           data: {
-            closingBalance: currentBalance - purchaseAmount,
+            closingBalance: currentBalance - bankAmount,
             drCr: "Dr",
           },
         });
       }
-
-      // // Supplier (+)
-      // if (accountId) {
-      //   const supplier = await prisma.account.findUnique({
-      //     where: { id: Number(accountId) },
-      //   });
-
-      //   if (supplier) {
-      //     const currentBalance = Number(supplier.closingBalance || 0);
-      //     const purchaseAmount = Number(grandTotal || 0);
-
-      //     let closingBalance = currentBalance;
-      //     let balanceType = supplier.drCr;
-
-      //     if (balanceType === "Cr") {
-      //       closingBalance += purchaseAmount;
-      //     } else {
-      //       if (currentBalance >= purchaseAmount) {
-      //         closingBalance -= purchaseAmount;
-      //       } else {
-      //         closingBalance = purchaseAmount - currentBalance;
-      //         balanceType = "Cr";
-      //       }
-      //     }
-
-      //     await prisma.account.update({
-      //       where: { id: Number(accountId) },
-      //       data: {
-      //         closingBalance,
-      //         drCr: balanceType,
-      //       },
-      //     });
-      //   }
-      // }
     }
+
     if (terms?.toLowerCase() === "cash" && cashAccountId) {
       const voucherNo = await generateCashPaymentVoucher(
         Number(companyId),
@@ -421,6 +378,7 @@ export const createPurchase = async (req: Request, res: Response) => {
         },
       });
     }
+
     if (terms?.toLowerCase() === "bank" && bankAccountId) {
       const voucherNo = await generateBankPaymentVoucher(
         Number(companyId),
@@ -460,6 +418,7 @@ export const createPurchase = async (req: Request, res: Response) => {
         },
       });
     }
+
     return res.status(201).json({
       success: true,
       data: purchase,
@@ -498,6 +457,7 @@ export const createPurchase = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const updatePurchase = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
@@ -629,6 +589,7 @@ export const updatePurchase = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const verifyPurchase = async (req: Request, res: Response) => {
   try {
     await prisma.purchase.update({
@@ -653,15 +614,14 @@ export const verifyPurchase = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const getPurchases = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
 
     // Roles jinko SABHI purchases dikhni chahiye
-    const fullAccessRoles = ["ADMIN", "SUPERADMIN", "BRANCH"];
-
-    const hasFullAccess = fullAccessRoles.includes(role);
+    const hasFullAccess = NON_EMPLOYEE_ROLES.includes(role);
 
     // Admin/Branch ko sab kuch, Employee ko sirf apni khud ki
     const whereCondition = hasFullAccess
@@ -720,6 +680,7 @@ export const getPurchases = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const getPendingPurchasesForCashPayment = async (
   req: Request,
   res: Response,
@@ -778,6 +739,7 @@ export const getPendingPurchasesForCashPayment = async (
     });
   }
 };
+
 export const getPurchaseById = async (req: Request, res: Response) => {
   try {
     const purchase = await prisma.purchase.findUnique({
@@ -823,6 +785,7 @@ export const getPurchaseById = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const deletePurchase = async (req: Request, res: Response) => {
   try {
     await prisma.purchase.delete({
@@ -844,6 +807,7 @@ export const deletePurchase = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const getPurchaseBillNo = async (req: Request, res: Response) => {
   try {
     const { companyId, financialYearId } = req.query;
@@ -863,13 +827,13 @@ export const getPurchaseBillNo = async (req: Request, res: Response) => {
       .json({ success: false, message: "Failed to generate bill no" });
   }
 };
+
 export const submitPurchaseItemInward = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
     const user = (req as any).user;
-    const role = user?.role?.toUpperCase().replace(/\s+/g, "_");
-    const name = user?.employeeName || user?.name;
+    const { role, name, createdById } = getCreatorInfo(user);
 
     const {
       vehicleSrNo,
@@ -891,7 +855,7 @@ export const submitPurchaseItemInward = async (req: Request, res: Response) => {
       where: { id },
       data: {
         vehicleSrNo,
-       mfgDate: parseDate(mfgDate),
+        mfgDate: parseDate(mfgDate),
         keyNo,
         batteryMake,
         batteryNo,
@@ -902,10 +866,10 @@ export const submitPurchaseItemInward = async (req: Request, res: Response) => {
         location,
         grnNumber,
         grnDate: parseDate(grnDate),
-    grnRecordDate: parseDate(grnRecordDate),
+        grnRecordDate: parseDate(grnRecordDate),
         status: "Inward",
 
-        createdById: Number(user.id),
+        createdById,
         createdBy: name,
         createdType: role,
       },
@@ -925,6 +889,7 @@ export const submitPurchaseItemInward = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const getVehicleSerialNo = async (req: Request, res: Response) => {
   try {
     const vehicleSrNo = await generateVehicleSerialNo();
@@ -942,6 +907,7 @@ export const getVehicleSerialNo = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const saveTransport = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
@@ -971,6 +937,7 @@ export const saveTransport = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const getTransport = async (req: Request, res: Response) => {
   try {
     const purchase = await prisma.purchase.findUnique({
@@ -996,6 +963,7 @@ export const getTransport = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const getTractorInventory = async (req: Request, res: Response) => {
   try {
     const purchases = await prisma.purchase.findMany({
@@ -1089,7 +1057,7 @@ export const getTractorInventory = async (req: Request, res: Response) => {
           inWardTime: item.updatedAt,
           purchasePriceNoGST: tractor?.purchasePriceNoGST ?? 0,
           purchasePriceTaxable: tractor?.purchasePriceTaxable ?? 0,
-          ageDay, // <-- Add this
+          ageDay,
         };
       }),
     );
@@ -1107,6 +1075,7 @@ export const getTractorInventory = async (req: Request, res: Response) => {
     });
   }
 };
+
 export const getModelWiseInventoryAnalysis = async (
   req: Request,
   res: Response,
@@ -1125,7 +1094,7 @@ export const getModelWiseInventoryAnalysis = async (
     const purchases = await prisma.purchase.findMany({
       where: {
         status: "VERIFY",
-        ...(Object.keys(dateFilter).length > 0 && { purchaseDate: dateFilter }), // ✅ createdAt → purchaseDate
+        ...(Object.keys(dateFilter).length > 0 && { purchaseDate: dateFilter }),
       },
       include: { items: true },
     });
@@ -1200,6 +1169,7 @@ export const getModelWiseInventoryAnalysis = async (
     });
   }
 };
+
 export const getInventoryDetails = async (req: Request, res: Response) => {
   try {
     // ==========================================
@@ -1218,7 +1188,7 @@ export const getInventoryDetails = async (req: Request, res: Response) => {
     const purchases = await prisma.purchase.findMany({
       where: {
         status: "VERIFY",
-        ...(Object.keys(dateFilter).length > 0 && { purchaseDate: dateFilter }), // ✅ createdAt → purchaseDate
+        ...(Object.keys(dateFilter).length > 0 && { purchaseDate: dateFilter }),
       },
       include: { items: true },
       orderBy: { id: "asc" },
@@ -1226,7 +1196,7 @@ export const getInventoryDetails = async (req: Request, res: Response) => {
 
     const leads = await prisma.lead.findMany({
       where: {
-        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }), // Lead ke liye createdAt theek hai
+        ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter }),
       },
       include: {
         model: { select: { modelName: true } },

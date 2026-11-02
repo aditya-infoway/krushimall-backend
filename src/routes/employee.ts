@@ -45,8 +45,9 @@ router.post("/login", employeeLogin);
 // Employee token required
 // ========================================
 
-router.get("/:id", verifyEmployeeToken, getEmployeeById);
-
+router.get("/:id", verifyToken, getEmployeeById); 
+// EMPLOYEE PROFILE
+router.get("/profile/:id", verifyEmployeeToken, getEmployeeById);
 // Self profile update — image optional
 router.put(
   "/profile/:id",

@@ -5,6 +5,8 @@ import ExcelJS from "exceljs";
 import puppeteer from "puppeteer";
 import { getFileUrl } from "../utils/getFileUrl.js";
 
+const NON_EMPLOYEE_ROLES = ["ADMIN", "SUPERADMIN", "BRANCH"];
+
 export const getBankReceipt = async (
   req: Request,
   res: Response,
@@ -132,7 +134,8 @@ export const createBankReceipt = async (
     const user = (req as any).user;
     const role = user?.role?.toUpperCase();
     const name = user?.employeeName || user?.name || "Admin";
-
+    const isEmployee =
+      !!role && !NON_EMPLOYEE_ROLES.includes(role.replace(/\s+/g, "_"));
     if (role === "BRANCH" && !user?.branchId) {
       res.status(400).json({
         success: false,
@@ -141,10 +144,10 @@ export const createBankReceipt = async (
       return;
     }
 
-   const voucherNo = await generateBankReceiptVoucher(
-  Number(companyId),
-  Number(financialYearId)
-);
+    const voucherNo = await generateBankReceiptVoucher(
+      Number(companyId),
+      Number(financialYearId),
+    );
 
     const receipt = await prisma.$transaction(async (tx) => {
       const data = await tx.bankReceipt.create({
@@ -171,7 +174,7 @@ export const createBankReceipt = async (
 
           narration,
 
-          createdById: Number(user.id),
+          createdById: isEmployee ? Number(user.id) : null,
           createdBy: name,
           createdType: role,
           branchId: user?.branchId ? Number(user.branchId) : null,
@@ -202,7 +205,7 @@ export const createBankReceipt = async (
 };
 export const getBankReceiptVoucher = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void> => {
   try {
     const { companyId, financialYearId } = req.query;
@@ -217,7 +220,7 @@ export const getBankReceiptVoucher = async (
 
     const voucherNo = await generateBankReceiptVoucher(
       Number(companyId),
-      Number(financialYearId)
+      Number(financialYearId),
     );
 
     res.json({

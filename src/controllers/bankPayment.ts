@@ -2,6 +2,8 @@ import prisma from "../lib/prisma.js";
 import { Request, Response } from "express";
 import { generateBankPaymentVoucher } from "../utils/generateBankPaymentVoucher.js";
 import ExcelJS from "exceljs";
+
+const NON_EMPLOYEE_ROLES = ["ADMIN", "SUPERADMIN", "BRANCH"];
 export const getBankPayments = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
@@ -38,12 +40,12 @@ export const getBankPayments = async (req: Request, res: Response) => {
             billNo: true,
           },
         },
-          employee: {
-    select: {
-      id: true,
-      employeeName: true,
-    },
-  },
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -69,17 +71,17 @@ export const getBankPaymentById = async (req: Request, res: Response) => {
 
     const payment = await prisma.bankPayment.findFirst({
       where: whereClause,
-     include: {
-  bankAccount: true,
-  oppAccount: true,
-  purchase: true,
-  employee: {
-    select: {
-      id: true,
-      employeeName: true,
-    },
-  },
-},
+      include: {
+        bankAccount: true,
+        oppAccount: true,
+        purchase: true,
+        employee: {
+          select: {
+            id: true,
+            employeeName: true,
+          },
+        },
+      },
     });
 
     if (!payment) {
@@ -116,8 +118,11 @@ export const createBankPayment = async (req: Request, res: Response) => {
     } = req.body;
 
     const user = (req as any).user;
-const role = user?.role?.toUpperCase() ;
-const name = user?.employeeName || user?.name ;
+    const role = user?.role?.toUpperCase();
+    const name = user?.employeeName || user?.name;
+
+    const isEmployee =
+      !!role && !NON_EMPLOYEE_ROLES.includes(role.replace(/\s+/g, "_"));
     if (role === "BRANCH" && !user?.branchId) {
       return res.status(400).json({
         success: false,
@@ -126,9 +131,9 @@ const name = user?.employeeName || user?.name ;
     }
 
     const voucherNo = await generateBankPaymentVoucher(
-    Number(companyId),
-    Number(financialYearId)
-  );
+      Number(companyId),
+      Number(financialYearId),
+    );
 
     const payment = await prisma.$transaction(async (tx) => {
       const data = await tx.bankPayment.create({
@@ -152,9 +157,9 @@ const name = user?.employeeName || user?.name ;
           chequeDate: chequeDate ? new Date(chequeDate) : null,
           clearDate: clearDate ? new Date(clearDate) : null,
 
-          createdById: Number(user.id),
-createdBy: name,
-createdType: role,
+          createdById: isEmployee ? Number(user.id) : null,
+          createdBy: name,
+          createdType: role,
           branchId: user?.branchId ? Number(user.branchId) : null,
         },
       });
@@ -181,10 +186,7 @@ createdType: role,
     });
   }
 };
-export const getBankPaymentVoucher = async (
-  req: Request,
-  res: Response
-) => {
+export const getBankPaymentVoucher = async (req: Request, res: Response) => {
   try {
     const { companyId, financialYearId } = req.query;
 
@@ -197,7 +199,7 @@ export const getBankPaymentVoucher = async (
 
     const voucherNo = await generateBankPaymentVoucher(
       Number(companyId),
-      Number(financialYearId)
+      Number(financialYearId),
     );
 
     return res.json({
@@ -214,11 +216,7 @@ export const getBankPaymentVoucher = async (
   }
 };
 
-
-export const updateBankPayment = async (
-  req: Request,
-  res: Response
-) => {
+export const updateBankPayment = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
@@ -236,10 +234,7 @@ export const updateBankPayment = async (
     });
   }
 };
-export const deleteBankPayment = async (
-  req: Request,
-  res: Response
-) => {
+export const deleteBankPayment = async (req: Request, res: Response) => {
   try {
     await prisma.bankPayment.delete({
       where: {
@@ -258,10 +253,7 @@ export const deleteBankPayment = async (
     });
   }
 };
-export const exportBankPaymentExcel = async (
-  req: Request,
-  res: Response
-) => {
+export const exportBankPaymentExcel = async (req: Request, res: Response) => {
   try {
     const data = await prisma.bankPayment.findMany({
       orderBy: {
@@ -278,11 +270,11 @@ export const exportBankPaymentExcel = async (
             accountName: true,
           },
         },
-         employee: {
-    select: {
-      employeeName: true,
-    },
-  },
+        employee: {
+          select: {
+            employeeName: true,
+          },
+        },
       },
     });
 
@@ -313,9 +305,7 @@ export const exportBankPaymentExcel = async (
     data.forEach((item, index) => {
       worksheet.addRow({
         sr: index + 1,
-        date: item.date
-          ? new Date(item.date).toLocaleDateString("en-GB")
-          : "",
+        date: item.date ? new Date(item.date).toLocaleDateString("en-GB") : "",
         voucherNo: item.voucherNo,
         type: item.type,
         bankAccount: item.bankAccount?.accountName || "",
@@ -331,18 +321,18 @@ export const exportBankPaymentExcel = async (
           : "",
         narration: item.narration || "",
         createdType: item.createdType || "",
-       createdBy: item.employee?.employeeName || item.createdBy || "",
+        createdBy: item.employee?.employeeName || item.createdBy || "",
       });
     });
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
 
     res.setHeader(
       "Content-Disposition",
-      'attachment; filename="BankPaymentRegister.xlsx"'
+      'attachment; filename="BankPaymentRegister.xlsx"',
     );
 
     await workbook.xlsx.write(res);
