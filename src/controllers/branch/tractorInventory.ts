@@ -1,20 +1,21 @@
-// controllers/branch/tractorInventory.ts
-
 import { Request, Response } from "express";
-import prisma from "../../lib/prisma.js";
+import { getTractorInventoryRows } from "../../utils/tractorInventoryRows.js";
 
 const getBranchId = (req: Request) => {
   return Number(
     (req as any).user?.branchId ??
       (req as any).branch?.id ??
       (req as any).branch?.branchId ??
-      null
+      null,
   );
 };
 
+// Branch panel:
+// - Jo vehicles kisi branch ko transfer nahi hui (sab dekh sakti hain)
+// - Jo is branch ko transfer hui
 export const getBranchTractorInventory = async (
   req: Request,
-  res: Response
+  res: Response,
 ) => {
   try {
     const branchId = getBranchId(req);
@@ -26,19 +27,14 @@ export const getBranchTractorInventory = async (
       });
     }
 
-    const vehicles = await prisma.vehicleStockTransfer.findMany({
-      where: {
-        branchId,
-        status: "VERIFIED",
-      },
-      orderBy: {
-        id: "desc",
-      },
+    const data = await getTractorInventoryRows({
+      branchId,
+      mode: "forBranch",
     });
 
     return res.status(200).json({
       success: true,
-      data: vehicles,
+      data,
     });
   } catch (error: any) {
     console.error("getBranchTractorInventory ERROR:", error);

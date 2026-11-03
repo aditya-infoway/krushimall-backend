@@ -773,13 +773,6 @@ export const getVehicleVerifyAccessories = async (
       },
     });
 
-    if (orders.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No verified vehicle order found",
-      });
-    }
-
     const data = orders.map((order, index) => {
       // Accessories Allot Stage
       const completedAccessories = order.orderAccessories.filter(
@@ -789,6 +782,26 @@ export const getVehicleVerifyAccessories = async (
       const pendingAccessories = order.orderAccessories.filter(
         (item) => item.status === "Pending",
       );
+
+      // Saare allotted accessories verify ho chuke hain?
+      const allVerified =
+        completedAccessories.length > 0 &&
+        completedAccessories.every(
+          (item) => String(item.verifyStatus).toLowerCase() === "completed",
+        );
+
+      const mapItem = (item: (typeof order.orderAccessories)[number]) => ({
+        id: item.id,
+        itemId: item.accessoryId,
+        itemName: item.accessory?.itemName || "-",
+        itemCode: item.accessory?.codeNo || "-",
+        hsnCode: item.accessory?.hsnCode || "-",
+        selectedStock: item.qty,
+        tax: item.accessory?.taxSlab,
+        salesPrice: item.salesPrice,
+        status: String(item.status).toLowerCase(),
+        verifyStatus: String(item.verifyStatus ?? "").toLowerCase(),
+      });
 
       return {
         srNo: index + 1,
@@ -824,36 +837,18 @@ export const getVehicleVerifyAccessories = async (
         allotted: completedAccessories.length,
         pending: pendingAccessories.length,
 
+        // Frontend ka green check isi se chalta hai
+        allVerified,
+
         // ➕ Allotted Modal
-        allottedAccessories: completedAccessories.map((item) => ({
-          id: item.id,
-          itemId: item.accessoryId,
-          itemName: item.accessory?.itemName || "-",
-          itemCode: item.accessory?.codeNo || "-",
-          hsnCode: item.accessory?.hsnCode || "-",
-          selectedStock: item.qty,
-          tax: item.accessory?.taxSlab,
-          salesPrice: item.salesPrice,
-          status: item.status.toLowerCase(),
-          verifyStatus: item.verifyStatus.toLowerCase(),
-        })),
+        allottedAccessories: completedAccessories.map(mapItem),
 
         // 👁 Pending Modal
-        pendingAccessories: pendingAccessories.map((item) => ({
-          id: item.id,
-          itemId: item.accessoryId,
-          itemName: item.accessory?.itemName || "-",
-          itemCode: item.accessory?.codeNo || "-",
-          hsnCode: item.accessory?.hsnCode || "-",
-          selectedStock: item.qty,
-          tax: item.accessory?.taxSlab,
-          salesPrice: item.salesPrice,
-          status: item.status.toLowerCase(),
-          verifyStatus: item.verifyStatus.toLowerCase(),
-        })),
+        pendingAccessories: pendingAccessories.map(mapItem),
       };
     });
 
+    // Khali list error nahi hai => 200 + []
     return res.json({
       success: true,
       data,
@@ -1346,24 +1341,8 @@ export const allotAccessoryStock = async (req: Request, res: Response) => {
         },
       });
 
-      // Check remaining pending accessories
-      const pending = await tx.orderAccessory.count({
-        where: {
-          orderId: allotmentId,
-          status: "Pending",
-        },
-      });
-
-      if (pending === 0) {
-        await tx.order.update({
-          where: {
-            id: allotmentId,
-          },
-          data: {
-            accessoriesAllotStatus: "Completed",
-          },
-        });
-      }
+      // NOTE: order.accessoriesAllotStatus yahan set NAHI hota.
+      // Wo sirf saveAccessoriesAllotment (invoice save) mein "Completed" hoga.
     });
 
     return res.json({
