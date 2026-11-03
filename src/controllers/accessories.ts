@@ -125,9 +125,64 @@ export const getAccessories = async (req: Request, res: Response) => {
       },
     });
 
+    // ==========================================
+    // STOCK IN: verified + inward purchases (accessory wise total qty)
+    // ==========================================
+    const inwardTotals = await prisma.accessoriesPurchaseItem.groupBy({
+      by: ["accessoryId"],
+      _sum: {
+        qty: true,
+      },
+      where: {
+        status: "Inward",
+        purchase: {
+          verifyStatus: "verify",
+        },
+      },
+    });
+
+    const inwardMap = new Map<number, number>();
+    for (const row of inwardTotals) {
+      inwardMap.set(Number(row.accessoryId), Number(row._sum.qty || 0));
+    }
+
+    // ==========================================
+    // STOCK OUT: invoice bani hui orders ke allotted accessories
+    // (history wala hi logic, taaki dono jagah same stock aaye)
+    // ==========================================
+    const invoicedOrders = await prisma.order.findMany({
+      where: {
+        accessoriesAllotStatus: "Completed",
+        invoiceNo: {
+          not: null,
+        },
+      },
+      select: {
+        orderAccessories: {
+          where: {
+            status: "Completed",
+          },
+          select: {
+            accessoryId: true,
+            qty: true,
+          },
+        },
+      },
+    });
+
+    const outwardMap = new Map<number, number>();
+    for (const order of invoicedOrders) {
+      for (const item of order.orderAccessories) {
+        const key = Number(item.accessoryId);
+        outwardMap.set(key, (outwardMap.get(key) || 0) + Number(item.qty || 0));
+      }
+    }
+
+    // ==========================================
+    // Showroom variants + final current stock
+    // ==========================================
     const data = await Promise.all(
       accessories.map(async (item) => {
-        // Showroom Variants
         const variantIds = Array.isArray(item.showroomVariants)
           ? item.showroomVariants
               .map((v: any) => Number(v.id))
@@ -145,23 +200,13 @@ export const getAccessories = async (req: Request, res: Response) => {
           },
         });
 
-        // Total verified inward purchase qty
-        const inward = await prisma.accessoriesPurchaseItem.aggregate({
-          _sum: {
-            stock: true,
-          },
-          where: {
-            accessoryId: item.id,
-            status: "Inward",
-            purchase: {
-              verifyStatus: "verify",
-            },
-          },
-        });
+        const openingStock = Number(item.opStock || 0);
+        const purchasedQty = inwardMap.get(item.id) || 0;
+        const invoicedQty = outwardMap.get(item.id) || 0;
 
-        const availableStock = Number(inward._sum.stock || 0);
+        // Opening + Purchase - Invoice  (history ke last balance ke barabar)
+        const currentStock = openingStock + purchasedQty - invoicedQty;
 
-        const currentStock = Number(item.opStock || 0) + availableStock;
         return {
           ...item,
           currentStock,
