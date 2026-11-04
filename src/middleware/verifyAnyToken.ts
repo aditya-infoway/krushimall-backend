@@ -2,12 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import prisma from "../lib/prisma.js";
 
-// ✅ Sirf un routes ke liye jo Admin + Branch + Employee teeno
-// access karte hain (jaise /leads, /leads/:id, /booking-balance, etc.)
-// Role-specific routes ke liye APNA WAHI purana dedicated middleware use
-// karo (verifyToken -> Admin only, verifyEmployeeToken -> Employee only,
-// verifyBranchToken -> Branch only) — unhe touch mat karo.
-
 export const verifyAnyToken = async (
   req: Request,
   res: Response,
@@ -29,16 +23,16 @@ export const verifyAnyToken = async (
     const role = decoded?.role?.toUpperCase();
 
     if (role === "ADMIN") {
-      // ── Admin: same check jo verifyToken karta hai ──
+      // activeToken check hata diya, sirf admin exist karta hai ya nahi
       const admin = await prisma.admin.findUnique({
         where: { id: decoded.id },
-        select: { activeToken: true },
+        select: { id: true },
       });
 
-      if (!admin || admin.activeToken !== token) {
+      if (!admin) {
         return res.status(401).json({
           success: false,
-          message: "Session expired. You have logged in from another device.",
+          message: "Admin not found",
         });
       }
 
@@ -47,7 +41,6 @@ export const verifyAnyToken = async (
     }
 
     if (role === "BRANCH") {
-      // ── Branch: same check jo verifyBranchToken karta hai ──
       const branchId = Number(decoded.id);
 
       const branch = await prisma.branch.findUnique({
@@ -94,7 +87,7 @@ export const verifyAnyToken = async (
       };
       return next();
     }
-    // ── Vendor Admin: same check jo verifyVendorToken karta hai ──
+
     if (role === "VENDORADMIN") {
       (req as any).user = {
         ...decoded,
@@ -103,7 +96,6 @@ export const verifyAnyToken = async (
         name: decoded.name,
       };
 
-      // verifyVendorToken wale controllers ke saath compatible rehne ke liye
       (req as any).vendor = {
         vendorId: decoded.id,
         email: decoded.email,
@@ -112,8 +104,7 @@ export const verifyAnyToken = async (
 
       return next();
     }
-    // ── Employee (Sales Executive / Team Lead / etc.): same check
-    //    jo verifyEmployeeToken karta hai ──
+
     const employee = await prisma.employee.findUnique({
       where: { id: Number(decoded.id) },
       select: {
