@@ -1230,14 +1230,16 @@ const buildLedgerTransactions = async (accountId: number) => {
         lead: true,
       },
     }),
-    prisma.lead.findMany({
-      where: {
-        customerId: accountId,
-        listOfBooking: {
-          gt: 0,
-        },
-      },
-    }),
+   prisma.lead.findMany({
+  where: {
+    customerId: accountId,
+    listOfBooking: {
+      gt: 0,
+    },
+    cashReceipts: { none: {} },
+    bankReceipts: { none: {} },
+  },
+}),
   ]);
 
   const transactions: any[] = [];
