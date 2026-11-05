@@ -1457,9 +1457,25 @@ const buildLedgerTransactions = async (accountId: number) => {
 // SHARED HELPER: Apply date range filter, opening balance,
 // running balance, and search filter
 // ==========================================
+
+const signedOpening = (acc: { openingBalance: any; drCr?: string | null }) => {
+  const amt = Number(acc.openingBalance || 0);
+  return String(acc.drCr || "").toLowerCase() === "cr" ? -amt : amt;
+};
+export const computeClosing = async (acc: {
+  id: number;
+  openingBalance: any;
+  drCr?: string | null;
+}) => {
+  const txns = await buildLedgerTransactions(acc.id);
+  return txns.reduce(
+    (s, t) => s + Number(t.debit || 0) - Number(t.credit || 0),
+    signedOpening(acc),
+  );
+};
 const applyLedgerFilters = (
   transactions: any[],
-  account: { openingBalance: any },
+  account: { openingBalance: any; drCr?: string | null },
   fromDate?: string,
   toDate?: string,
   search?: string,
@@ -1467,7 +1483,7 @@ const applyLedgerFilters = (
   // ==========================================
   // Opening Balance Calculation
   // ==========================================
-  let openingBalance = Number(account.openingBalance || 0);
+  let openingBalance = signedOpening(account);
 
   const startDate = fromDate ? new Date(fromDate) : null;
   const endDate = toDate ? new Date(toDate) : null;
@@ -1517,7 +1533,7 @@ const applyLedgerFilters = (
   // Opening Balance Entry
   // ==========================================
   filteredTransactions.unshift({
-    date: startDate,
+    date: startDate ?? new Date(),
     voucherNo: "-",
     billNo: "-",
     type: "OPENING BALANCE",
@@ -1677,9 +1693,24 @@ export const getLedgerReport = async (req: Request, res: Response) => {
       },
     });
 
+     const report = await Promise.all(
+      accounts.map(async (acc) => {
+        const txns = await buildLedgerTransactions(acc.id);
+        const closing = txns.reduce(
+          (s, t) => s + Number(t.debit || 0) - Number(t.credit || 0),
+          signedOpening(acc),
+        );
+        return {
+          ...acc,
+          closingBalance: Math.abs(closing),
+          drCr: closing >= 0 ? "Dr" : "Cr",
+        };
+      }),
+    );
+
     return res.json({
       success: true,
-      report: accounts,
+      report,
     });
   } catch (err) {
     console.log(err);
@@ -1721,6 +1752,7 @@ export const exportLedgerReport = async (req: Request, res: Response) => {
         accountName: "asc",
       },
       select: {
+          id: true,
         accountName: true,
         group: true,
         address1: true,
@@ -1751,20 +1783,34 @@ export const exportLedgerReport = async (req: Request, res: Response) => {
       bold: true,
     };
 
-    accounts.forEach((item, index) => {
-      worksheet.addRow({
-        sr: index + 1,
-        accountName: item.accountName,
-        group: item.group,
-        address: item.address1 || "",
-        city: item.city,
-        state: item.state,
-        openingBalance: Number(item.openingBalance),
-        closingBalance: Number(item.closingBalance),
-        drCr: item.drCr,
-      });
-    });
+const report = await Promise.all(
+  accounts.map(async (acc) => {
+    const txns = await buildLedgerTransactions(acc.id);
+    const closing = txns.reduce(
+      (s, t) => s + Number(t.debit || 0) - Number(t.credit || 0),
+      signedOpening(acc),
+    );
+    return {
+      ...acc,
+      closingBalance: Math.abs(closing),
+      drCr: closing >= 0 ? "Dr" : "Cr",
+    };
+  }),
+);
 
+report.forEach((item, index) => {
+  worksheet.addRow({
+    sr: index + 1,
+    accountName: item.accountName,
+    group: item.group,
+    address: item.address1 || "",
+    city: item.city,
+    state: item.state,
+    openingBalance: Number(item.openingBalance),
+    closingBalance: Number(item.closingBalance),
+    drCr: item.drCr,
+  });
+});
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1848,19 +1894,20 @@ export const exportLedgerDetails = async (req: Request, res: Response) => {
         particulars: item.particulars || "-",
         debit: Number(item.debit || 0),
         credit: Number(item.credit || 0),
-        balance: Number(item.balance || 0),
+      balance: `${Math.abs(Number(item.balance || 0)).toFixed(2)} ${Number(item.balance || 0) >= 0 ? "Dr" : "Cr"}`,
       });
     });
+const txnRows = filtered.filter((i: any) => i.type !== "OPENING BALANCE");
 
-    const totalDebit = filtered.reduce(
-      (sum, item) => sum + Number(item.debit || 0),
-      0,
-    );
+const totalDebit = txnRows.reduce(
+  (sum, item) => sum + Number(item.debit || 0),
+  0,
+);
 
-    const totalCredit = filtered.reduce(
-      (sum, item) => sum + Number(item.credit || 0),
-      0,
-    );
+const totalCredit = txnRows.reduce(
+  (sum, item) => sum + Number(item.credit || 0),
+  0,
+);
 
     const closingBalance =
       filtered.length > 0
@@ -1873,7 +1920,7 @@ export const exportLedgerDetails = async (req: Request, res: Response) => {
       particulars: "TOTAL",
       debit: totalDebit,
       credit: totalCredit,
-      balance: closingBalance,
+     balance: `${Math.abs(closingBalance).toFixed(2)} ${closingBalance >= 0 ? "Dr" : "Cr"}`,
     });
 
     res.setHeader(

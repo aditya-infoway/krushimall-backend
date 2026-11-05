@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
+import { computeClosing } from "./ledger.js";
+
 // export const createAccount = async (req: Request, res: Response) => {
 //   try {
 //     const user = (req as any).user;
@@ -331,10 +333,26 @@ export const getAccounts = async (req: Request, res: Response) => {
         id: "desc",
       },
     });
+    const withClosing = req.query.withClosing === "true";
+
+    let data: any[] = accounts;
+
+    if (withClosing) {
+      data = await Promise.all(
+        accounts.map(async (acc) => {
+          const closing = await computeClosing(acc);
+          return {
+            ...acc,
+            closingBalance: Math.abs(closing),
+            closingDrCr: closing >= 0 ? "Dr" : "Cr",
+          };
+        }),
+      );
+    }
 
     return res.status(200).json({
       success: true,
-      data: accounts,
+      data,
     });
 
   } catch (error) {
@@ -415,7 +433,7 @@ export const updateAccount = async (req: Request, res: Response) => {
         drCr: req.body.drCr,
 
         openingBalance,
-        closingBalance: openingBalance,
+      
 
         country: req.body.country,
         countryCode: req.body.countryCode,
