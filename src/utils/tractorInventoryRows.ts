@@ -104,6 +104,7 @@ export const getTractorInventoryRows = async (
 
         branchId: transfer?.branch?.id ?? transfer?.branchId ?? null,
         branchName: transfer?.branch?.branchName ?? "",
+             transferStatus: transfer?.status ?? "", 
         location: item.location ?? item.purchase?.purchaseLocation ?? "",
         currentLocation: branchName,
 

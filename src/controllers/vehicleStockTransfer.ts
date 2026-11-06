@@ -481,3 +481,47 @@ export const updateVehicleStockTransfer = async (
     });
   }
 };
+
+
+export const getBranchWiseInventory = async (req: Request, res: Response) => {
+  try {
+    const transfers = await prisma.vehicleStockTransfer.findMany({
+      include: {
+        branch: { select: { id: true, branchName: true } },
+      },
+      orderBy: { id: "desc" },
+    });
+
+    // ek chassis ki latest transfer hi count ho
+    const seen = new Set<string>();
+    const data = [];
+
+    for (const t of transfers) {
+      const key = String(t.chassisNo ?? "").trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+  if (t.status !== "VERIFIED") continue;
+      data.push({
+        id: t.id,
+        branchId: t.branchId,
+        branchName: t.branch?.branchName ?? "",
+        modelName: t.modelName ?? "",
+        variantName: t.variantName ?? "",
+        colour: t.colour ?? "",
+        chassisNo: t.chassisNo ?? "",
+        batteryNo: t.batteryNo ?? "",
+        keyNumber: t.keyNumber ?? "",
+        engineNo: t.engineNo ?? "",
+        batteryMake : t.batteryMake ?? "",
+        status: t.status,
+      });
+    }
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch branch wise inventory." });
+  }
+};

@@ -8,7 +8,7 @@ import {
   getVehicleStockTransfers,
   getVehicleStockTransferById,
   updateVehicleStockTransfer,
-  
+  getBranchWiseInventory, // 👈 NEW
 } from "../controllers/vehicleStockTransfer.js";
 
 const router = Router();
@@ -19,17 +19,29 @@ router.get(
   verifyToken,
   getVehicleStockTransferNo
 );
+
+// Branch Wise Inventory (/:id se pehle hona zaroori hai)
+router.get(
+  "/branch-wise-inventory",
+  verifyToken,
+  getBranchWiseInventory
+); // 👈 NEW
+
 router.get("/", getVehicleStockTransfers);
+
 // Create Vehicle Stock Transfer
 router.post(
   "/",
   verifyToken,
   createVehicleStockTransfer
 );
+
 router.get(
   "/:id",
   verifyToken,
   getVehicleStockTransferById
 );
+
 router.put("/:id", verifyToken, updateVehicleStockTransfer);
+
 export default router;

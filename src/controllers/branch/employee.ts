@@ -1,34 +1,59 @@
 import { Request, Response } from "express";
+import prisma from "../../lib/prisma.js";
 import * as EmployeeController from "../employee.js";
+
+// ==========================================
+// HELPERS
+// ==========================================
+
+const getBranchId = (req: Request): number | null => {
+  const id = Number((req as any).user?.branchId);
+  return Number.isFinite(id) && id > 0 ? id : null;
+};
+
+// Branch sirf wahi employees dekh/edit/delete kar sakti hai
+// jo is branch ke hain AND isi branch ne create kiye hain
+const branchOwnedWhere = (branchId: number) => ({
+  branchId,
+  createdType: "BRANCH",
+});
+
+// Employee is branch ka (branch-created) hai ya nahi
+const isOwnedByBranch = async (employeeId: number, branchId: number) => {
+  const employee = await prisma.employee.findFirst({
+    where: {
+      id: employeeId,
+      ...branchOwnedWhere(branchId),
+    },
+    select: { id: true },
+  });
+
+  return !!employee;
+};
 
 // ==========================================
 // CREATE EMPLOYEE
 // ==========================================
 
-export const createEmployee = async (
-  req: Request,
-  res: Response,
-) => {
+export const createEmployee = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
+    const branchId = getBranchId(req);
 
-    // Branch ID comes ONLY from authenticated branch token
-    if (!user?.branchId) {
+    if (!branchId) {
       return res.status(400).json({
         success: false,
         message: "Valid branch ID is required",
       });
     }
 
-    // Force branch ID from logged-in branch
-    req.body.branchId = Number(user.branchId);
+    // Branch ID sirf token se aayegi
+    req.body.branchId = branchId;
 
     // Created information
     req.body.createdType = "BRANCH";
     req.body.createdBy =
-      user?.branchName ||
-      user?.employeeName ||
-      user?.name;
+      user?.branchName || user?.employeeName || user?.name;
 
     return EmployeeController.createEmployee(req, res);
   } catch (error) {
@@ -41,51 +66,145 @@ export const createEmployee = async (
   }
 };
 
-
 // ==========================================
-// GET ALL EMPLOYEES
-// ==========================================
-
-export const getEmployees = async (
-  req: Request,
-  res: Response,
-) => {
-  return EmployeeController.getEmployees(req, res);
-};
-
-
-// ==========================================
-// GET EMPLOYEE BY ID
+// GET ALL EMPLOYEES (only branch-created)
 // ==========================================
 
-export const getEmployeeById = async (
-  req: Request,
-  res: Response,
-) => {
-  return EmployeeController.getEmployeeById(req, res);
-};
-
-
-// ==========================================
-// UPDATE EMPLOYEE
-// ==========================================
-
-export const updateEmployee = async (
-  req: Request,
-  res: Response,
-) => {
+export const getEmployees = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const branchId = getBranchId(req);
 
-    if (!user?.branchId) {
+    if (!branchId) {
+      return res.status(401).json({
+        success: false,
+        message: "Branch not authenticated.",
+      });
+    }
+
+    const employees = await prisma.employee.findMany({
+      where: branchOwnedWhere(branchId),
+      select: {
+        id: true,
+        department: true,
+        branch: true,
+        role: true,
+        teamLeadId: true,
+        employeeName: true,
+        mobileNumber: true,
+        alternateNumber: true,
+        email: true,
+        status: true,
+        createdAt: true,
+        createdType: true,
+        createdBy: true,
+        branchId: true,
+        profileImage: true,
+      },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: employees,
+    });
+  } catch (error) {
+    console.error("Branch Get Employees Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch employees",
+    });
+  }
+};
+
+// ==========================================
+// GET EMPLOYEE BY ID (only branch-created)
+// ==========================================
+
+export const getEmployeeById = async (req: Request, res: Response) => {
+  try {
+    const branchId = getBranchId(req);
+
+    if (!branchId) {
+      return res.status(401).json({
+        success: false,
+        message: "Branch not authenticated.",
+      });
+    }
+
+    const employee = await prisma.employee.findFirst({
+      where: {
+        id: Number(req.params.id),
+        ...branchOwnedWhere(branchId),
+      },
+      select: {
+        id: true,
+        department: true,
+        branch: true,
+        role: true,
+        teamLeadId: true,
+        employeeName: true,
+        mobileNumber: true,
+        alternateNumber: true,
+        email: true,
+        status: true,
+        createdAt: true,
+        createdType: true,
+        createdBy: true,
+        branchId: true,
+        profileImage: true,
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: employee,
+    });
+  } catch (error) {
+    console.error("Branch Get Employee Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch employee",
+    });
+  }
+};
+
+// ==========================================
+// UPDATE EMPLOYEE (only branch-created)
+// ==========================================
+
+export const updateEmployee = async (req: Request, res: Response) => {
+  try {
+    const branchId = getBranchId(req);
+
+    if (!branchId) {
       return res.status(400).json({
         success: false,
         message: "Valid branch ID is required",
       });
     }
 
-    // Never allow frontend to change branch
-    req.body.branchId = Number(user.branchId);
+    const allowed = await isOwnedByBranch(Number(req.params.id), branchId);
+
+    if (!allowed) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
+
+    // Frontend branch change nahi kar sakta
+    req.body.branchId = branchId;
 
     return EmployeeController.updateEmployee(req, res);
   } catch (error) {
@@ -98,27 +217,29 @@ export const updateEmployee = async (
   }
 };
 
-
 // ==========================================
-// DELETE EMPLOYEE
+// DELETE EMPLOYEE (only branch-created)
 // ==========================================
 
-export const deleteEmployee = async (
-  req: Request,
-  res: Response,
-) => {
+export const deleteEmployee = async (req: Request, res: Response) => {
   try {
-    const user = (req as any).user;
+    const branchId = getBranchId(req);
 
-    if (!user?.branchId) {
+    if (!branchId) {
       return res.status(400).json({
         success: false,
         message: "Valid branch ID is required",
       });
     }
 
-    // First check employee belongs to this branch
-    const originalUser = (req as any).user;
+    const allowed = await isOwnedByBranch(Number(req.params.id), branchId);
+
+    if (!allowed) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
 
     return EmployeeController.deleteEmployee(req, res);
   } catch (error) {
@@ -131,34 +252,55 @@ export const deleteEmployee = async (
   }
 };
 
-
 // ==========================================
-// TOGGLE STATUS
+// TOGGLE STATUS (only branch-created)
 // ==========================================
 
-export const toggleEmployeeStatus =
-  EmployeeController.toggleEmployeeStatus;
+export const toggleEmployeeStatus = async (req: Request, res: Response) => {
+  try {
+    const branchId = getBranchId(req);
 
+    if (!branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid branch ID is required",
+      });
+    }
+
+    const allowed = await isOwnedByBranch(Number(req.params.id), branchId);
+
+    if (!allowed) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found",
+      });
+    }
+
+    return EmployeeController.toggleEmployeeStatus(req, res);
+  } catch (error) {
+    console.error("Branch Toggle Status Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update status",
+    });
+  }
+};
 
 // ==========================================
 // DEPARTMENTS
 // ==========================================
 
-export const getDepartments =
-  EmployeeController.getDepartments;
-
+export const getDepartments = EmployeeController.getDepartments;
 
 // ==========================================
 // ROLES BY DEPARTMENT
 // ==========================================
 
-export const getRolesByDepartment =
-  EmployeeController.getRolesByDepartment;
-
+export const getRolesByDepartment = EmployeeController.getRolesByDepartment;
 
 // ==========================================
 // TEAM LEADS
 // ==========================================
 
-export const getTeamLeads =
-  EmployeeController.getTeamLeads;
+export const getTeamLeads = EmployeeController.getTeamLeads;

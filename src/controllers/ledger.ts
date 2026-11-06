@@ -1156,7 +1156,7 @@ import ExcelJS from "exceljs";
 // SHARED HELPER: Build all ledger transactions for an account
 // Used by both getLedgerDetails and exportLedgerDetails
 // ==========================================
-const buildLedgerTransactions = async (accountId: number) => {
+export const buildLedgerTransactions = async (accountId: number) => {
   const [
     cashPayments,
     bankPayments,
@@ -1458,7 +1458,7 @@ const buildLedgerTransactions = async (accountId: number) => {
 // running balance, and search filter
 // ==========================================
 
-const signedOpening = (acc: { openingBalance: any; drCr?: string | null }) => {
+export  const signedOpening = (acc: { openingBalance: any; drCr?: string | null }) => {
   const amt = Number(acc.openingBalance || 0);
   return String(acc.drCr || "").toLowerCase() === "cr" ? -amt : amt;
 };
@@ -1473,7 +1473,7 @@ export const computeClosing = async (acc: {
     signedOpening(acc),
   );
 };
-const applyLedgerFilters = (
+export  const applyLedgerFilters = (
   transactions: any[],
   account: { openingBalance: any; drCr?: string | null },
   fromDate?: string,
