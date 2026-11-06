@@ -1,7 +1,8 @@
 // routes/branch/ledger.ts
 
 import { Router } from "express";
-import * as LedgerController from "../../controllers/ledger.js";
+// routes/branch/ledger.ts
+import * as LedgerController from "../../controllers/branch/branchLedger.js";
 import { verifyBranchToken } from "../../middleware/branchMiddleware.js";
 const router = Router();
 
