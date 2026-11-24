@@ -4,17 +4,14 @@ export const generateSparePartsPurchaseBillNo = async (
   companyId: number,
   financialYearId: number,
 ): Promise<string> => {
+  // Prefix optional hai: nahi mila to bhi chalega
   const prefixMaster = await prisma.profilePrefix.findFirst({
-    where: {
-      prefixFor: "SPARE_PARTS_PURCHASE",
-    },
+    where: { prefixFor: "SPARE_PARTS_PURCHASE" },
   });
 
-  if (!prefixMaster) {
-    throw new Error("Spare Parts Purchase Prefix not found");
-  }
+  // If no prefix in DB, fallback to "SPP"
+  const prefix = prefixMaster?.prefix?.trim() || "SPP";
 
-  // session se aaya financialYearId use karo, DB se "latest" guess mat karo
   const currentFY = await prisma.financialYear.findUnique({
     where: { id: financialYearId },
   });
@@ -23,30 +20,48 @@ export const generateSparePartsPurchaseBillNo = async (
     throw new Error("Financial Year not found");
   }
 
-  const [startYear, endYear] = currentFY.financialYear.split("-");
+  const [startYear, endYear] = String(currentFY.financialYear).split("-");
+
+  if (!startYear || !endYear) {
+    throw new Error(
+      `Invalid financial year format: ${currentFY.financialYear}`,
+    );
+  }
+
   const financialYear = `${startYear.slice(-2)}-${endYear.slice(-2)}`;
 
-  // transaction wrap - race condition me duplicate billNo se bachne ke liye
+  // Race condition se duplicate billNo bachane ke liye transaction
   return await prisma.$transaction(async (tx) => {
-    const lastBill = await tx.sparePartsPurchase.findFirst({
+    // Is company + FY ke saare bills, prefix ho ya na ho
+    const bills = await tx.sparePartsPurchase.findMany({
       where: {
         companyId,
         financialYearId,
-        billNo: {
-          startsWith: `${prefixMaster.prefix}/${financialYear}/`,
-        },
+        OR: [
+          { billNo: { startsWith: `${financialYear}/` } },
+          { billNo: { contains: `/${financialYear}/` } },
+        ],
       },
-      orderBy: {
-        id: "desc",
-      },
+      select: { billNo: true },
     });
 
-    let nextNumber = 1;
+    // "SPP/26-27/007" ya "26-27/001" dono se last number nikalo
+    const numberRegex = new RegExp(`(?:^|/)${financialYear}/(\\d+)$`);
 
-    if (lastBill?.billNo) {
-      nextNumber = Number(lastBill.billNo.split("/")[2]) + 1;
+    let maxNumber = 0;
+
+    for (const b of bills) {
+      const match = String(b.billNo).match(numberRegex);
+      if (match) {
+        const n = Number(match[1]);
+        if (n > maxNumber) maxNumber = n;
+      }
     }
 
-    return `${prefixMaster.prefix}/${financialYear}/${String(nextNumber).padStart(3, "0")}`;
+    const nextNumber = String(maxNumber + 1).padStart(3, "0");
+
+    return prefix
+      ? `${prefix}/${financialYear}/${nextNumber}`
+      : `${financialYear}/${nextNumber}`;
   });
 };
