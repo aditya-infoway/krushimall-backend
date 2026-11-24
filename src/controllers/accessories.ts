@@ -66,7 +66,6 @@ export const createAccessory = async (req: Request, res: Response) => {
 
     const accessory = await prisma.accessory.create({
       data: {
-        type: req.body.type,
         itemName: req.body.itemName,
         codeNo: req.body.codeNo,
         shortName: req.body.shortName,
@@ -393,7 +392,6 @@ export const updateAccessory = async (req: Request, res: Response) => {
     const item = await prisma.accessory.update({
       where: { id },
       data: {
-        type: req.body.type,
         itemName: req.body.itemName,
         codeNo: req.body.codeNo,
         shortName: req.body.shortName,

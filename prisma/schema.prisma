@@ -61,6 +61,7 @@ model Company {
   branches              Branch[]
   vehicleStockTransfers VehicleStockTransfer[]
   accessoriesPurchases  AccessoriesPurchase[]
+  sparePartsPurchases SparePartsPurchase[]
   orders                Order[]
 }
 
@@ -83,6 +84,7 @@ model FinancialYear {
   branches              Branch[]
   vehicleStockTransfers VehicleStockTransfer[]
   accessoriesPurchases  AccessoriesPurchase[]
+  sparePartsPurchases SparePartsPurchase[]
   orders                Order[]
 
   @@unique([companyId, financialYear])
@@ -191,6 +193,7 @@ model ShowroomVariant {
   variant   Variant? @relation(fields: [variantId], references: [id])
 
   accessories ShowroomVariantAccessory[]
+  showroomVariantSpareParts ShowroomVariantSparePart[]
 
   colours            Colour[]
   leads              Lead[]
@@ -457,6 +460,10 @@ model Account {
   customerLeads        Lead[]                @relation("LeadCustomer")
   accessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseParty")
 
+  sparePartsPurchases     SparePartsPurchase[] @relation("SparePartsPurchaseParty")
+  cashSparePartsPurchases SparePartsPurchase[] @relation("SparePartsPurchaseCash")
+  bankSparePartsPurchases SparePartsPurchase[] @relation("SparePartsPurchaseBank")
+
   cashAccessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseCash")
 
   bankAccessoriesPurchases AccessoriesPurchase[] @relation("AccessoriesPurchaseBank")
@@ -600,6 +607,10 @@ model Employee {
   accessoriesPurchaseItems AccessoriesPurchaseItem[] @relation("AccessoriesPurchaseItemEmployee")
 
   accessories Accessory[]
+
+  spareParts               SparePart[]
+  sparePartsPurchaseItems  SparePartsPurchaseItem[] @relation("SparePartsPurchaseItemEmployee")
+  sparePartsPurchases      SparePartsPurchase[]  
 }
 
 model Tractor {
@@ -860,7 +871,6 @@ model FollowUp {
 
 model Accessory {
   id               Int     @id @default(autoincrement())
-  type             String
   itemName         String
   codeNo           String  @unique
   shortName        String?
@@ -985,6 +995,154 @@ model AccessoriesPurchaseItem {
   employee         Employee?        @relation("AccessoriesPurchaseItemEmployee", fields: [inwardById], references: [id])
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+}
+
+
+
+
+
+model SparePart {
+  id               Int     @id @default(autoincrement())
+  itemName         String
+  codeNo           String  @unique
+  shortName        String?
+  hsnCode          String?
+  unit             String?
+  taxSlab          String?
+  group            String?
+  purchasePrice    Float?
+  salesPrice       Float?
+  mrp              Float?
+  barCode          String?
+  opStock          Int     @default(0)
+  showroomVariants Json?
+  status           String  @default("ACTIVE")
+  createdById      Int?
+  createdBy        String?
+  createdType      String?
+
+  employee                 Employee?                @relation(fields: [createdById], references: [id])
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  showroomVariantSpareParts ShowroomVariantSparePart[]
+  purchaseItems            SparePartsPurchaseItem[]
+  // orderSpareParts        OrderSparePart[]   // add later when you want order allotment
+}
+
+model ShowroomVariantSparePart {
+  id               Int @id @default(autoincrement())
+  sparePartId      Int
+  showroomVariantId Int
+
+  sparePart      SparePart      @relation(fields: [sparePartId], references: [id], onDelete: Cascade)
+  showroomVariant ShowroomVariant @relation(fields: [showroomVariantId], references: [id], onDelete: Cascade)
+
+  @@unique([sparePartId, showroomVariantId])
+}
+
+model SparePartsPurchase {
+  id        Int      @id @default(autoincrement())
+  companyId Int?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  financialYearId Int?
+  financialYear   FinancialYear? @relation(fields: [financialYearId], references: [id])
+  billNo          String         @unique
+  purchaseBillNo  String?
+
+  accountId Int
+  account   Account @relation("SparePartsPurchaseParty", fields: [accountId], references: [id])
+
+  purchaseDate DateTime
+  dueDate      DateTime?
+
+  purchaseLocation String?
+  narration        String?
+
+  terms String // Credit | Cash | Bank
+
+  cashAccountId Int?
+  cashAccount   Account? @relation("SparePartsPurchaseCash", fields: [cashAccountId], references: [id])
+
+  bankAccountId Int?
+  bankAccount   Account? @relation("SparePartsPurchaseBank", fields: [bankAccountId], references: [id])
+
+  paymentMode   String?
+  chequeNo      String?
+  chequeDate    DateTime?
+  clearDate     DateTime?
+  bankNarration String?
+
+  // Transport (extra vs accessories)
+  transportName   String?
+  transportNo     String?
+  lrNo            String?
+  transportDate   DateTime?
+  transportCharge Float?   @default(0)
+
+  totalQty    Int
+  totalAmount Float
+
+  freightCharge Float @default(0)
+  insurance     Float @default(0)
+  otherCharge   Float @default(0)
+  roundAmount   Float @default(0)
+
+  taxableValue Float
+
+  cgst Float @default(0)
+  sgst Float @default(0)
+  igst Float @default(0)
+
+  grandTotal Float
+
+  verifyStatus String  @default("not_verify")
+  createdById  Int?
+  createdBy    String?
+  createdType  String?
+
+  employee  Employee? @relation(fields: [createdById], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  items SparePartsPurchaseItem[]
+}
+
+model SparePartsPurchaseItem {
+  id Int @id @default(autoincrement())
+
+  purchaseId Int
+  purchase   SparePartsPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  sparePartId Int?
+  sparePart   SparePart? @relation(fields: [sparePartId], references: [id])
+
+  itemName    String
+  itemCode    String
+  barCode     String?
+  shortName   String?
+  hsnCode     String?
+  unit        String?
+  taxSlab     String?
+  groupName   String?
+  modelName   String?
+  variantName String?
+
+  qty          Int
+  stock        Int
+  purchaseRate Float
+  gstPercent   Float
+  gstAmount    Float
+  netAmount    Float
+  status       String   @default("Pending")
+  inwardById   Int?
+  inwardBy     String?
+  inwardType   String?
+  inwardDate   DateTime?
+
+  employee  Employee? @relation("SparePartsPurchaseItemEmployee", fields: [inwardById], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model CashPayment {
