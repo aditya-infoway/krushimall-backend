@@ -45,23 +45,22 @@
 //   return `${prefixMaster.prefix}/${fy}/${String(next).padStart(3, "0")}`;
 // };
 
+
+
+
 import prisma from "../lib/prisma.js";
 
 export const generateBankPaymentVoucher = async (
   companyId: number,
-  financialYearId: number
+  financialYearId: number,
 ) => {
+  // Prefix optional hai: nahi mila to bhi chalega
   const prefixMaster = await prisma.profilePrefix.findFirst({
-    where: {
-      prefixFor: "BANK_PAYMENT",
-    },
+    where: { prefixFor: "BANK_PAYMENT" },
   });
 
-  if (!prefixMaster) {
-    throw new Error("Bank Payment prefix not found");
-  }
+  const prefix = prefixMaster?.prefix?.trim() || "";
 
-  // CHANGED: session se aaya financialYearId use karo, DB se "latest" guess mat karo
   const currentFY = await prisma.financialYear.findUnique({
     where: { id: financialYearId },
   });
@@ -70,31 +69,47 @@ export const generateBankPaymentVoucher = async (
     throw new Error("Financial Year not found");
   }
 
-  const [startYear, endYear] = currentFY.financialYear.split("-");
+  const [startYear, endYear] = String(currentFY.financialYear).split("-");
+
+  if (!startYear || !endYear) {
+    throw new Error(
+      `Invalid financial year format: ${currentFY.financialYear}`,
+    );
+  }
+
   const fy = `${startYear.slice(-2)}-${endYear.slice(-2)}`;
 
-  // CHANGED: transaction wrap - race condition me duplicate voucherNo se bachne ke liye
+  // Race condition se duplicate voucherNo bachane ke liye transaction
   return await prisma.$transaction(async (tx) => {
-    const lastVoucher = await tx.bankPayment.findFirst({
+    // Is company + FY ke saare vouchers, prefix ho ya na ho
+    const vouchers = await tx.bankPayment.findMany({
       where: {
-        companyId, // CHANGED: company-wise scoped
+        companyId,
         financialYearId,
-        voucherNo: {
-          startsWith: `${prefixMaster.prefix}/${fy}/`,
-        },
+        OR: [
+          { voucherNo: { startsWith: `${fy}/` } },
+          { voucherNo: { contains: `/${fy}/` } },
+        ],
       },
-      orderBy: {
-        id: "desc",
-      },
+      select: { voucherNo: true },
     });
 
-    let next = 1;
+    // "BP/26-27/007" ya "26-27/001" dono se last number nikalo
+    const numberRegex = new RegExp(`(?:^|/)${fy}/(\\d+)$`);
 
-    if (lastVoucher) {
-      next = Number(lastVoucher.voucherNo.split("/")[2]) + 1;
+    let maxNumber = 0;
+
+    for (const v of vouchers) {
+      const match = String(v.voucherNo).match(numberRegex);
+      if (match) {
+        const n = Number(match[1]);
+        if (n > maxNumber) maxNumber = n;
+      }
     }
 
-    return `${prefixMaster.prefix}/${fy}/${String(next).padStart(3, "0")}`;
+    const nextNumber = String(maxNumber + 1).padStart(3, "0");
+
+    return prefix ? `${prefix}/${fy}/${nextNumber}` : `${fy}/${nextNumber}`;
   });
 };
 
