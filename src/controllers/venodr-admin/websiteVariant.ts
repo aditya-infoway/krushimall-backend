@@ -606,7 +606,14 @@ export const importWebsiteVariants = async (req: Request, res: Response) => {
     const ignoredColumns = new Set<string>();
     const errors: { row: number; message: string }[] = [];
     let created = 0;
+    const makeKey = (x: any) =>
+      [norm(x.productName), norm(x.productCode)].join("|");
 
+    const existing = await prisma.websiteVariant.findMany({
+      where: { vendorAdminId: vendorAuth.vendorId },
+      select: { productName: true, productCode: true },
+    });
+    const seenKeys = new Set(existing.map(makeKey));
     for (let i = 0; i < rows.length; i++) {
       const rowNo = i + 2;
       try {
@@ -708,6 +715,13 @@ export const importWebsiteVariants = async (req: Request, res: Response) => {
           if (!data.variantCode && v.variantCode)
             data.variantCode = v.variantCode;
         }
+        if (seenKeys.has(makeKey(data))) {
+          throw new Error(
+            `Product "${data.productName}"${
+              data.productCode ? ` (${data.productCode})` : ""
+            } already exists (duplicate)`,
+          );
+        }
         const LAST_STEP = 5;
         await prisma.websiteVariant.create({
           data: {
@@ -723,6 +737,7 @@ export const importWebsiteVariants = async (req: Request, res: Response) => {
             currentStep: LAST_STEP,
           } as any,
         });
+        seenKeys.add(makeKey(data));
         created++;
       } catch (err: any) {
         errors.push({

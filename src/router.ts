@@ -50,6 +50,8 @@ import tractorInventoryRoutes from "./routes/tractorInventory.js"
 import vendorAdminRoutes from "./routes/vendorAdmin.js";
 import vendorpanelRoutes from "./routes/vendor-panel/index.js"
 import vendoradminRoutes from "./routes/vendor-admin/index.js"
+import sparePartRoutes from "./routes/sparePart.js"
+import sparePartsPurchaseRoutes from "./routes/sparePartsPurchase.js"
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -103,4 +105,6 @@ router.use("/tractor-inventory", tractorInventoryRoutes);
 router.use("/vendor-admin", vendorAdminRoutes);
 router.use("/vendor-panel", vendorpanelRoutes);
 router.use("/vendoradmin", vendoradminRoutes);
+router.use("/spare-part", sparePartRoutes);
+router.use("/sparepart-purchase", sparePartsPurchaseRoutes);
 export default router;
