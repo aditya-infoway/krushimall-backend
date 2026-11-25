@@ -1162,6 +1162,7 @@ export const buildLedgerTransactions = async (accountId: number) => {
     bankPayments,
     purchases,
     accessoriesPurchases,
+    sparePartsPurchase,
     contras,
     cashReceipts,
     bankReceipts,
@@ -1201,6 +1202,10 @@ export const buildLedgerTransactions = async (accountId: number) => {
         account: true,
       },
     }),
+    prisma.sparePartsPurchase.findMany({
+      where: { accountId },
+      include: { account: true },
+    }),
     prisma.contra.findMany({
       where: {
         OR: [{ cashBankAccountId: accountId }, { oppAccountId: accountId }],
@@ -1230,16 +1235,16 @@ export const buildLedgerTransactions = async (accountId: number) => {
         lead: true,
       },
     }),
-   prisma.lead.findMany({
-  where: {
-    customerId: accountId,
-    listOfBooking: {
-      gt: 0,
-    },
-    cashReceipts: { none: {} },
-    bankReceipts: { none: {} },
-  },
-}),
+    prisma.lead.findMany({
+      where: {
+        customerId: accountId,
+        listOfBooking: {
+          gt: 0,
+        },
+        cashReceipts: { none: {} },
+        bankReceipts: { none: {} },
+      },
+    }),
   ]);
 
   const transactions: any[] = [];
@@ -1313,6 +1318,22 @@ export const buildLedgerTransactions = async (accountId: number) => {
       voucherNo: "-",
       billNo: item.billNo,
       type: "ACCESSORIES PURCHASE",
+      particulars: item.account?.accountName,
+      debit: 0,
+      credit: Number(item.grandTotal || 0),
+    });
+  });
+
+  // ==========================
+  // Spare Parts Purchase
+  // ==========================
+  sparePartsPurchase.forEach((item) => {
+    transactions.push({
+      createdAt: item.createdAt,
+      date: item.purchaseDate,
+      voucherNo: "-",
+      billNo: item.billNo,
+      type: "SPARE PARTS PURCHASE",
       particulars: item.account?.accountName,
       debit: 0,
       credit: Number(item.grandTotal || 0),
@@ -1458,7 +1479,10 @@ export const buildLedgerTransactions = async (accountId: number) => {
 // running balance, and search filter
 // ==========================================
 
-export  const signedOpening = (acc: { openingBalance: any; drCr?: string | null }) => {
+export const signedOpening = (acc: {
+  openingBalance: any;
+  drCr?: string | null;
+}) => {
   const amt = Number(acc.openingBalance || 0);
   return String(acc.drCr || "").toLowerCase() === "cr" ? -amt : amt;
 };
@@ -1473,7 +1497,7 @@ export const computeClosing = async (acc: {
     signedOpening(acc),
   );
 };
-export  const applyLedgerFilters = (
+export const applyLedgerFilters = (
   transactions: any[],
   account: { openingBalance: any; drCr?: string | null },
   fromDate?: string,
@@ -1693,7 +1717,7 @@ export const getLedgerReport = async (req: Request, res: Response) => {
       },
     });
 
-     const report = await Promise.all(
+    const report = await Promise.all(
       accounts.map(async (acc) => {
         const txns = await buildLedgerTransactions(acc.id);
         const closing = txns.reduce(
@@ -1752,7 +1776,7 @@ export const exportLedgerReport = async (req: Request, res: Response) => {
         accountName: "asc",
       },
       select: {
-          id: true,
+        id: true,
         accountName: true,
         group: true,
         address1: true,
@@ -1783,34 +1807,34 @@ export const exportLedgerReport = async (req: Request, res: Response) => {
       bold: true,
     };
 
-const report = await Promise.all(
-  accounts.map(async (acc) => {
-    const txns = await buildLedgerTransactions(acc.id);
-    const closing = txns.reduce(
-      (s, t) => s + Number(t.debit || 0) - Number(t.credit || 0),
-      signedOpening(acc),
+    const report = await Promise.all(
+      accounts.map(async (acc) => {
+        const txns = await buildLedgerTransactions(acc.id);
+        const closing = txns.reduce(
+          (s, t) => s + Number(t.debit || 0) - Number(t.credit || 0),
+          signedOpening(acc),
+        );
+        return {
+          ...acc,
+          closingBalance: Math.abs(closing),
+          drCr: closing >= 0 ? "Dr" : "Cr",
+        };
+      }),
     );
-    return {
-      ...acc,
-      closingBalance: Math.abs(closing),
-      drCr: closing >= 0 ? "Dr" : "Cr",
-    };
-  }),
-);
 
-report.forEach((item, index) => {
-  worksheet.addRow({
-    sr: index + 1,
-    accountName: item.accountName,
-    group: item.group,
-    address: item.address1 || "",
-    city: item.city,
-    state: item.state,
-    openingBalance: Number(item.openingBalance),
-    closingBalance: Number(item.closingBalance),
-    drCr: item.drCr,
-  });
-});
+    report.forEach((item, index) => {
+      worksheet.addRow({
+        sr: index + 1,
+        accountName: item.accountName,
+        group: item.group,
+        address: item.address1 || "",
+        city: item.city,
+        state: item.state,
+        openingBalance: Number(item.openingBalance),
+        closingBalance: Number(item.closingBalance),
+        drCr: item.drCr,
+      });
+    });
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1885,29 +1909,27 @@ export const exportLedgerDetails = async (req: Request, res: Response) => {
     filtered.forEach((item: any, index: number) => {
       worksheet.addRow({
         sr: index + 1,
-        date: item.date
-          ? new Date(item.date).toLocaleDateString("en-GB")
-          : "-",
+        date: item.date ? new Date(item.date).toLocaleDateString("en-GB") : "-",
         billNo: item.billNo || "-",
         voucherNo: item.voucherNo || "-",
         type: item.type || "-",
         particulars: item.particulars || "-",
         debit: Number(item.debit || 0),
         credit: Number(item.credit || 0),
-      balance: `${Math.abs(Number(item.balance || 0)).toFixed(2)} ${Number(item.balance || 0) >= 0 ? "Dr" : "Cr"}`,
+        balance: `${Math.abs(Number(item.balance || 0)).toFixed(2)} ${Number(item.balance || 0) >= 0 ? "Dr" : "Cr"}`,
       });
     });
-const txnRows = filtered.filter((i: any) => i.type !== "OPENING BALANCE");
+    const txnRows = filtered.filter((i: any) => i.type !== "OPENING BALANCE");
 
-const totalDebit = txnRows.reduce(
-  (sum, item) => sum + Number(item.debit || 0),
-  0,
-);
+    const totalDebit = txnRows.reduce(
+      (sum, item) => sum + Number(item.debit || 0),
+      0,
+    );
 
-const totalCredit = txnRows.reduce(
-  (sum, item) => sum + Number(item.credit || 0),
-  0,
-);
+    const totalCredit = txnRows.reduce(
+      (sum, item) => sum + Number(item.credit || 0),
+      0,
+    );
 
     const closingBalance =
       filtered.length > 0
@@ -1920,7 +1942,7 @@ const totalCredit = txnRows.reduce(
       particulars: "TOTAL",
       debit: totalDebit,
       credit: totalCredit,
-     balance: `${Math.abs(closingBalance).toFixed(2)} ${closingBalance >= 0 ? "Dr" : "Cr"}`,
+      balance: `${Math.abs(closingBalance).toFixed(2)} ${closingBalance >= 0 ? "Dr" : "Cr"}`,
     });
 
     res.setHeader(
