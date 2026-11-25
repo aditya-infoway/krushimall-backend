@@ -52,6 +52,11 @@ import vendorpanelRoutes from "./routes/vendor-panel/index.js"
 import vendoradminRoutes from "./routes/vendor-admin/index.js"
 import sparePartRoutes from "./routes/sparePart.js"
 import sparePartsPurchaseRoutes from "./routes/sparePartsPurchase.js"
+import implementCategoryRoutes from "./routes/implementCategory.js";
+import implementBrandRoutes from "./routes/implementBrand.js";
+import implementRoutes from "./routes/implement.js";
+
+
 const router = Router();
 
 router.use("/auth", authRoutes);
@@ -107,4 +112,7 @@ router.use("/vendor-panel", vendorpanelRoutes);
 router.use("/vendoradmin", vendoradminRoutes);
 router.use("/spare-part", sparePartRoutes);
 router.use("/sparepart-purchase", sparePartsPurchaseRoutes);
+router.use("/implement-category", implementCategoryRoutes);
+router.use("/implement-brand", implementBrandRoutes);
+router.use("/implement", implementRoutes);
 export default router;

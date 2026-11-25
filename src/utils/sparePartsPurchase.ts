@@ -10,7 +10,7 @@ export const generateSparePartsPurchaseBillNo = async (
   });
 
   // If no prefix in DB, fallback to "SPP"
-  const prefix = prefixMaster?.prefix?.trim() || "SPP";
+  const prefix = prefixMaster?.prefix?.trim() || "";
 
   const currentFY = await prisma.financialYear.findUnique({
     where: { id: financialYearId },

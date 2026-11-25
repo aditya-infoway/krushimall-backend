@@ -2799,3 +2799,47 @@ model EquipmentEnquiryFollowup {
 
   @@index([enquiryId])
 }
+
+
+
+model ImplementCategory {
+  id           Int      @id @default(autoincrement())
+  categoryName String   @unique
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  brands       ImplementBrand[] 
+}
+
+
+model ImplementBrand {
+  id           Int               @id @default(autoincrement())
+  brandName    String
+  categoryId   Int
+  category     ImplementCategory @relation(fields: [categoryId], references: [id])
+  status       String            @default("ACTIVE")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([brandName, categoryId])
+}
+
+
+model Implement {
+  id             Int      @id @default(autoincrement())
+  operationType  String   // "SELF_OPERATED" | "TRACTOR_OPERATED"
+  
+  itemCode       String   @unique
+  itemName       String   @unique  
+  hsnCode        String?
+  unit           String?
+  
+  // Only for SELF_OPERATED
+  chassisNo      String?
+  engineNo       String?
+  serialNo       String?           
+  
+  status         String   @default("ACTIVE")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
