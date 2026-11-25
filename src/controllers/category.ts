@@ -26,7 +26,7 @@ export const createCategory = async (
       data: {
         categoryName: categoryName,
         status: req.body.status || "ACTIVE",
-        image: req.file?.filename || null,
+        image: req.file?.filename || null, 
       },
     });
 
