@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createModel,
   getModels,
+  getActiveModels,
   getModelById,
   updateModel,
   deleteModel,
@@ -20,6 +21,8 @@ router.post(
 );
 
 router.get("/",verifyAnyToken, getModels);
+
+router.get("/active", verifyToken, getActiveModels);
 
 router.get("/:id",  verifyAnyToken,getModelById);
 

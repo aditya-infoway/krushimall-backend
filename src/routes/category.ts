@@ -3,6 +3,7 @@ import { Router } from "express";
 import {
   createCategory,
   getCategories,
+  getActiveCategories,
   getCategoryById,
   updateCategory,
   deleteCategory,
@@ -18,6 +19,8 @@ router.post("/", verifyToken, upload.single("image"), createCategory);
 
 // ✅ Admin, Branch, Employee sab list/detail dekh sakte hain
 router.get("/", verifyAnyToken, getCategories);
+
+router.get("/active", verifyAnyToken, getActiveCategories);
 
 router.get("/:id", verifyAnyToken, getCategoryById);
 
