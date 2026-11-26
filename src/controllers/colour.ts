@@ -220,3 +220,23 @@ export const updateColourCode = async (req: Request, res: Response) => {
     });
   }
 };
+
+
+
+export const getActiveColours = async (req: Request, res: Response) => {
+  try {
+    const colours = await prisma.colour.findMany({
+      where: { status: "ACTIVE" },
+      include: { model: true, variant: true, showroomVariant: true },
+      orderBy: { id: "desc" },
+    });
+
+    return res.status(200).json({ success: true, data: colours });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch active colours",
+    });
+  }
+};

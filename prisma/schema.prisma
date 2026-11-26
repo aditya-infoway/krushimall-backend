@@ -2809,6 +2809,9 @@ model ImplementCategory {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   brands       ImplementBrand[] 
+  models       ImplementModel[]
+  variants    ImplementVariant[]
+  colours     ImplementColour[]
 }
 
 
@@ -2820,8 +2823,64 @@ model ImplementBrand {
   status       String            @default("ACTIVE")
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
-
+  models       ImplementModel[] 
+  variants    ImplementVariant[]
+  colours     ImplementColour[]
   @@unique([brandName, categoryId])
+}
+
+model ImplementModel {
+  id           Int               @id @default(autoincrement())
+  modelName    String
+  image        String?
+  categoryId   Int
+  category     ImplementCategory @relation(fields: [categoryId], references: [id])
+  brandId      Int
+  brand        ImplementBrand    @relation(fields: [brandId], references: [id])
+  status       String            @default("ACTIVE")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  variants    ImplementVariant[]
+  colours     ImplementColour[]
+  @@unique([brandId, modelName])
+}
+
+
+
+model ImplementVariant {
+  id          Int              @id @default(autoincrement())
+  variantName String
+  categoryId  Int
+  brandId     Int
+  modelId     Int
+  category    ImplementCategory @relation(fields: [categoryId], references: [id])
+  brand       ImplementBrand    @relation(fields: [brandId], references: [id])
+  model       ImplementModel    @relation(fields: [modelId], references: [id])
+  status      String           @default("ACTIVE")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  colours     ImplementColour[]
+  @@unique([modelId, variantName])
+}
+
+
+model ImplementColour {
+  id          Int              @id @default(autoincrement())
+  colourName  String
+  colourCode  String            // hex value like #FF0000
+  categoryId  Int
+  brandId     Int
+  modelId     Int
+  variantId   Int
+  category    ImplementCategory @relation(fields: [categoryId], references: [id])
+  brand       ImplementBrand    @relation(fields: [brandId], references: [id])
+  model       ImplementModel    @relation(fields: [modelId], references: [id])
+  variant     ImplementVariant  @relation(fields: [variantId], references: [id])
+  status      String           @default("ACTIVE")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([variantId, colourName])
 }
 
 

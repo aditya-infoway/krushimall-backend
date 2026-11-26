@@ -224,3 +224,22 @@ export const deleteModelYear =
       });
     }
   };
+
+
+  export const getActiveModelYears = async (req: Request, res: Response) => {
+  try {
+    const modelYears = await prisma.modelYear.findMany({
+      where: { status: "ACTIVE" },
+      include: { category: true, brand: true, model: true },
+      orderBy: { id: "desc" },
+    });
+
+    return res.status(200).json({ success: true, data: modelYears });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch active model years",
+    });
+  }
+};

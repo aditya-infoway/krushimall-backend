@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createBrand,
   getBrands,
+  getActiveBrands,
   getBrandById,
   updateBrand,
   deleteBrand,
@@ -17,6 +18,8 @@ router.post("/", verifyToken, upload.single("image"), createBrand);
 
 // ✅ Admin, Branch, Employee sab list/detail dekh sakte hain
 router.get("/", verifyAnyToken, getBrands);
+
+router.get("/active", verifyToken,  getActiveBrands);
 
 router.get("/:id", verifyAnyToken, getBrandById);
 

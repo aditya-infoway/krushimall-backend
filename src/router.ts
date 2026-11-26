@@ -38,24 +38,26 @@ import vendorRoutes from "./routes/vendor.js";
 import salesExecutiveRoutes from "./routes/employee/salesexecutive/index.js";
 import WebvendorRoutes from "./routes/vendor/index.js";
 import testDriveRoutes from "./routes/testDrive.js";
-import compareTractorRoutes from "./routes/compareTractor.js"
-import accountantRoute from "./routes/employee/accountant/index.js"
+import compareTractorRoutes from "./routes/compareTractor.js";
+import accountantRoute from "./routes/employee/accountant/index.js";
 import wishlistRoutes from "./routes/wishlist.js";
 import notificationRoutes from "./routes/notification.js";
-import storemanagerRoutes from "./routes/employee/storemanger/index.js"
-import teamleadRoutes from "./routes/employee/teamlead/index.js"
+import storemanagerRoutes from "./routes/employee/storemanger/index.js";
+import teamleadRoutes from "./routes/employee/teamlead/index.js";
 import branchEmployeeRoutes from "./routes/branch/index.js";
 import webRoutes from "./routes/web/index.js";
-import tractorInventoryRoutes from "./routes/tractorInventory.js"
+import tractorInventoryRoutes from "./routes/tractorInventory.js";
 import vendorAdminRoutes from "./routes/vendorAdmin.js";
-import vendorpanelRoutes from "./routes/vendor-panel/index.js"
-import vendoradminRoutes from "./routes/vendor-admin/index.js"
-import sparePartRoutes from "./routes/sparePart.js"
-import sparePartsPurchaseRoutes from "./routes/sparePartsPurchase.js"
+import vendorpanelRoutes from "./routes/vendor-panel/index.js";
+import vendoradminRoutes from "./routes/vendor-admin/index.js";
+import sparePartRoutes from "./routes/sparePart.js";
+import sparePartsPurchaseRoutes from "./routes/sparePartsPurchase.js";
 import implementCategoryRoutes from "./routes/implementCategory.js";
 import implementBrandRoutes from "./routes/implementBrand.js";
 import implementRoutes from "./routes/implement.js";
-
+import implementModelRoutes from "./routes/implementModel.js";
+import implementVariantRoutes from "./routes/implementVariant.js";
+import implementColourRoutes from "./routes/implementColour.js";
 
 const router = Router();
 
@@ -115,4 +117,7 @@ router.use("/sparepart-purchase", sparePartsPurchaseRoutes);
 router.use("/implement-category", implementCategoryRoutes);
 router.use("/implement-brand", implementBrandRoutes);
 router.use("/implement", implementRoutes);
+router.use("/implement-model", implementModelRoutes);
+router.use("/implement-variant", implementVariantRoutes);
+router.use("/implement-colour", implementColourRoutes);
 export default router;

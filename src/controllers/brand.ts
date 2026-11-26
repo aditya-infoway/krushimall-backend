@@ -1,10 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 
-export const createBrand = async (
-  req: Request,
-  res: Response
-) => {
+export const createBrand = async (req: Request, res: Response) => {
   try {
     const existingBrand = await prisma.brand.findFirst({
       where: {
@@ -43,10 +40,7 @@ export const createBrand = async (
   }
 };
 
-export const getBrands = async (
-  req: Request,
-  res: Response
-) => {
+export const getBrands = async (req: Request, res: Response) => {
   try {
     const brands = await prisma.brand.findMany({
       include: {
@@ -71,10 +65,7 @@ export const getBrands = async (
   }
 };
 
-export const getBrandById = async (
-  req: Request,
-  res: Response
-) => {
+export const getBrandById = async (req: Request, res: Response) => {
   try {
     const brand = await prisma.brand.findUnique({
       where: {
@@ -106,10 +97,7 @@ export const getBrandById = async (
   }
 };
 
-export const updateBrand = async (
-  req: Request,
-  res: Response
-) => {
+export const updateBrand = async (req: Request, res: Response) => {
   try {
     const updateData: any = {
       categoryId: Number(req.body.categoryId),
@@ -142,10 +130,7 @@ export const updateBrand = async (
   }
 };
 
-export const deleteBrand = async (
-  req: Request,
-  res: Response
-) => {
+export const deleteBrand = async (req: Request, res: Response) => {
   try {
     await prisma.brand.delete({
       where: {
@@ -164,5 +149,21 @@ export const deleteBrand = async (
       success: false,
       message: "Failed to delete brand",
     });
+  }
+};
+
+export const getActiveBrands = async (req: Request, res: Response) => {
+  try {
+    const brands = await prisma.brand.findMany({
+      where: { status: "ACTIVE" },
+      include: { category: true },
+      orderBy: { id: "desc" },
+    });
+    return res.status(200).json({ success: true, data: brands });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch active brands" });
   }
 };
