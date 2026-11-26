@@ -173,3 +173,20 @@ export const deleteModel = async (
     });
   }
 };
+
+
+export const getActiveModels = async (req: Request, res: Response) => {
+  try {
+    const models = await prisma.model.findMany({
+      where: { status: "ACTIVE" },
+      include: { category: true, brand: true },
+      orderBy: { id: "desc" },
+    });
+    return res.status(200).json({ success: true, data: models });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Failed to fetch active models" });
+  }
+};
+
+

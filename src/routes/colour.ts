@@ -3,6 +3,7 @@ import express from "express";
 import {
   createColour,
   getColours,
+  getActiveColours,
   getColourById,
   updateColour,
   deleteColour,
@@ -14,6 +15,7 @@ const router = express.Router();
 
 router.post("/",  verifyToken, createColour);
 router.get("/",   getColours);
+router.get("/active", verifyToken, getActiveColours);
 router.get("/:id",   getColourById);
 router.put("/:id",  verifyToken, updateColour);
 router.delete("/:id",  verifyToken, deleteColour);

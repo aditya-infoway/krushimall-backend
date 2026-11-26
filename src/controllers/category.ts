@@ -1,14 +1,11 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 
-export const createCategory = async (
-  req: Request,
-  res: Response
-) => {
+export const createCategory = async (req: Request, res: Response) => {
   try {
     // Get categoryName from either field
     const categoryName = req.body.categoryName || req.body.name;
-    
+
     const existingCategory = await prisma.category.findFirst({
       where: {
         categoryName: categoryName,
@@ -26,7 +23,7 @@ export const createCategory = async (
       data: {
         categoryName: categoryName,
         status: req.body.status || "ACTIVE",
-        image: req.file?.filename || null, 
+        image: req.file?.filename || null,
       },
     });
 
@@ -43,10 +40,7 @@ export const createCategory = async (
   }
 };
 
-export const getCategories = async (
-  req: Request,
-  res: Response
-) => {
+export const getCategories = async (req: Request, res: Response) => {
   try {
     const categories = await prisma.category.findMany({
       orderBy: {
@@ -68,10 +62,7 @@ export const getCategories = async (
   }
 };
 
-export const getCategoryById = async (
-  req: Request,
-  res: Response
-) => {
+export const getCategoryById = async (req: Request, res: Response) => {
   try {
     const category = await prisma.category.findUnique({
       where: {
@@ -100,14 +91,11 @@ export const getCategoryById = async (
   }
 };
 
-export const updateCategory = async (
-  req: Request,
-  res: Response
-) => {
+export const updateCategory = async (req: Request, res: Response) => {
   try {
     // Get categoryName from either field
     const categoryName = req.body.categoryName || req.body.name;
-    
+
     const updateData: any = {
       categoryName: categoryName,
       status: req.body.status,
@@ -138,10 +126,7 @@ export const updateCategory = async (
   }
 };
 
-export const deleteCategory = async (
-  req: Request,
-  res: Response
-) => {
+export const deleteCategory = async (req: Request, res: Response) => {
   try {
     await prisma.category.delete({
       where: {
@@ -159,6 +144,27 @@ export const deleteCategory = async (
     return res.status(500).json({
       success: false,
       message: "Failed to delete category",
+    });
+  }
+};
+
+// NEW: Only active categories (for dropdown in Brand form)
+export const getActiveCategories = async (req: Request, res: Response) => {
+  try {
+    const categories = await prisma.category.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { id: "desc" },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch active categories",
     });
   }
 };

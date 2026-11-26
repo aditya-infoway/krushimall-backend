@@ -3,6 +3,7 @@ import { Router } from "express";
 import {
   createModelYear,
   getModelYears,
+  getActiveModelYears,
   getModelYearById,
   updateModelYear,
   deleteModelYear,
@@ -17,6 +18,8 @@ const router = Router();
 router.post("/", verifyToken, upload.single("image"), createModelYear);
 
 router.get("/", verifyAnyToken, getModelYears);
+
+router.get("/active", verifyAnyToken, getActiveModelYears);
 
 router.get("/:id", verifyAnyToken, getModelYearById);
 
