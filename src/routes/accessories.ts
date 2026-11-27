@@ -5,6 +5,7 @@ import {
   updateAccessory,
   deleteAccessory,
   getAccessoriesHistory,
+  getActiveAccessories
 } from "../controllers/accessories.js";
 import { verifyToken } from "../middleware/middleware.js";
 import { verifyAnyToken } from "../middleware/verifyAnyToken.js";
@@ -13,6 +14,7 @@ const router = express.Router();
 
 router.post("/", verifyToken, createAccessory);
 router.get("/", verifyAnyToken, getAccessories);
+router.get("/active", verifyToken, getActiveAccessories);
 router.get("/history/:id", verifyAnyToken, getAccessoriesHistory);
 router.put("/:id", verifyToken, updateAccessory);
 router.delete("/:id", verifyToken, deleteAccessory);

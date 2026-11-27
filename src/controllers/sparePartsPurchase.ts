@@ -696,33 +696,55 @@ export const updateSparePartsPurchaseItemStatus = async (
 
 export const getSparePartsInventory = async (req: Request, res: Response) => {
   try {
+    // 1) Saare spare parts - purchase ho ya na ho, inventory me dikhne chahiye
+    const spareParts = await prisma.sparePart.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+
+    type InventoryRow = {
+      id: number;
+      sparePartId: number | null;
+      itemName: string;
+      itemCode: string;
+      hsn: string;
+      group: string;
+      tax: number;
+      purPrice: number;
+      salesPrice: number;
+      mrp: number;
+      closingStock: number;
+    };
+
+    const inventoryMap = new Map<string, InventoryRow>();
+
+    for (const sp of spareParts) {
+      inventoryMap.set(`sparePart-${sp.id}`, {
+        id: sp.id,
+        sparePartId: sp.id,
+        itemName: sp.itemName || "-",
+        itemCode: sp.codeNo || "-",
+        hsn: sp.hsnCode || "-",
+        group: sp.group || "-",
+        tax: parseFloat(String(sp.taxSlab ?? "0")) || 0,
+        purPrice: Number(sp.purchasePrice || 0),
+        salesPrice: Number(sp.salesPrice || 0),
+        mrp: Number(sp.mrp || 0),
+        closingStock: Number(sp.opStock || 0), // opening stock se start
+      });
+    }
+
+    // 2) Verified + Inward purchases ka qty upar se add karo
     const purchases = await prisma.sparePartsPurchase.findMany({
       where: { verifyStatus: "verify" },
       include: {
         items: {
           where: { status: "Inward" },
-          include: { sparePart: true },
         },
       },
-      orderBy: { id: "desc" },
+      orderBy: { id: "desc" }, // latest purchase pehle
     });
 
-    const inventoryMap = new Map<
-      string,
-      {
-        id: number;
-        sparePartId: number | null;
-        itemName: string;
-        itemCode: string;
-        hsn: string;
-        group: string;
-        tax: number;
-        purPrice: number;
-        salesPrice: number;
-        mrp: number;
-        closingStock: number;
-      }
-    >();
+    const priceUpdated = new Set<string>();
 
     for (const purchase of purchases) {
       for (const item of purchase.items) {
@@ -730,36 +752,40 @@ export const getSparePartsInventory = async (req: Request, res: Response) => {
           ? `sparePart-${item.sparePartId}`
           : `code-${item.itemCode}`;
 
-        const existingItem = inventoryMap.get(key);
         const purchasedQty = Number(item.qty || 0);
+        const existing = inventoryMap.get(key);
 
-        if (existingItem) {
-          existingItem.closingStock += purchasedQty;
-          existingItem.purPrice = Number(item.purchaseRate || 0);
+        if (existing) {
+          existing.closingStock += purchasedQty;
+
+          // latest purchase rate (purchases desc order me hain)
+          if (!priceUpdated.has(key)) {
+            existing.purPrice = Number(item.purchaseRate || 0);
+            priceUpdated.add(key);
+          }
         } else {
-          const openingStock = Number(item.sparePart?.opStock || 0);
+          // sparePartId null wale items (master me link nahi)
           inventoryMap.set(key, {
-            id: item.sparePartId ?? item.id,
-            sparePartId: item.sparePartId ?? null,
+            id: item.id,
+            sparePartId: null,
             itemName: item.itemName || "-",
             itemCode: item.itemCode || "-",
             hsn: item.hsnCode || "-",
-            group: item.groupName || item.sparePart?.group || "-",
+            group: item.groupName || "-",
             tax: Number(item.gstPercent || item.taxSlab || 0),
             purPrice: Number(item.purchaseRate || 0),
-            salesPrice: Number(item.sparePart?.salesPrice || 0),
-            mrp: Number(item.sparePart?.mrp || 0),
-            closingStock: openingStock + purchasedQty,
+            salesPrice: 0,
+            mrp: 0,
+            closingStock: purchasedQty,
           });
+          priceUpdated.add(key);
         }
       }
     }
 
-    const inventory = Array.from(inventoryMap.values());
-
     return res.status(200).json({
       success: true,
-      data: inventory,
+      data: Array.from(inventoryMap.values()),
     });
   } catch (error) {
     console.error("GET SPARE PARTS INVENTORY ERROR:", error);

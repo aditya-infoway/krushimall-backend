@@ -1163,6 +1163,7 @@ export const buildLedgerTransactions = async (accountId: number) => {
     purchases,
     accessoriesPurchases,
     sparePartsPurchase,
+    implementPurchases,
     contras,
     cashReceipts,
     bankReceipts,
@@ -1203,6 +1204,10 @@ export const buildLedgerTransactions = async (accountId: number) => {
       },
     }),
     prisma.sparePartsPurchase.findMany({
+      where: { accountId },
+      include: { account: true },
+    }),
+    prisma.implementPurchase.findMany({
       where: { accountId },
       include: { account: true },
     }),
@@ -1335,6 +1340,23 @@ export const buildLedgerTransactions = async (accountId: number) => {
       billNo: item.billNo,
       type: "SPARE PARTS PURCHASE",
       particulars: item.account?.accountName,
+      debit: 0,
+      credit: Number(item.grandTotal || 0),
+    });
+  });
+
+  // ==========================
+  // Implement Purchase
+  // ==========================
+  implementPurchases.forEach((item) => {
+    transactions.push({
+      createdAt: item.createdAt,
+      date: item.purchaseDate,
+      voucherNo: "-",
+      billNo: item.billNo,
+      type: "IMPLEMENT PURCHASE",
+      particulars: item.account?.accountName,
+      // Supplier Ledger -> Credit
       debit: 0,
       credit: Number(item.grandTotal || 0),
     });

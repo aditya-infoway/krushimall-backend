@@ -58,6 +58,7 @@ import implementRoutes from "./routes/implement.js";
 import implementModelRoutes from "./routes/implementModel.js";
 import implementVariantRoutes from "./routes/implementVariant.js";
 import implementColourRoutes from "./routes/implementColour.js";
+import implementPurchaseRoutes from "./routes/implementPurchase.js";
 
 const router = Router();
 
@@ -120,4 +121,5 @@ router.use("/implement", implementRoutes);
 router.use("/implement-model", implementModelRoutes);
 router.use("/implement-variant", implementVariantRoutes);
 router.use("/implement-colour", implementColourRoutes);
+router.use("/implement-purchase", implementPurchaseRoutes);
 export default router;

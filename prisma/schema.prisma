@@ -62,6 +62,7 @@ model Company {
   vehicleStockTransfers VehicleStockTransfer[]
   accessoriesPurchases  AccessoriesPurchase[]
   sparePartsPurchases SparePartsPurchase[]
+   implementPurchases ImplementPurchase[]
   orders                Order[]
 }
 
@@ -85,6 +86,7 @@ model FinancialYear {
   vehicleStockTransfers VehicleStockTransfer[]
   accessoriesPurchases  AccessoriesPurchase[]
   sparePartsPurchases SparePartsPurchase[]
+  implementPurchases ImplementPurchase[]
   orders                Order[]
 
   @@unique([companyId, financialYear])
@@ -482,7 +484,9 @@ model Account {
   cashReceiptsOpp          CashReceipt[]         @relation("CashReceiptOpp")
   branches                 Branch[]              @relation("BranchManager")
   orderCashAccounts        Order[]               @relation("OrderCashAccount")
-
+  implementPurchaseParty ImplementPurchase[] @relation("ImplementPurchaseParty")
+  implementPurchaseCash  ImplementPurchase[] @relation("ImplementPurchaseCash")
+  implementPurchaseBank  ImplementPurchase[] @relation("ImplementPurchaseBank")
   orderBankAccounts     Order[]                @relation("OrderBankAccount")
   vehicleStockTransfers VehicleStockTransfer[]
 
@@ -611,6 +615,8 @@ model Employee {
   spareParts               SparePart[]
   sparePartsPurchaseItems  SparePartsPurchaseItem[] @relation("SparePartsPurchaseItemEmployee")
   sparePartsPurchases      SparePartsPurchase[]  
+  implementPurchases     ImplementPurchase[]
+  implementPurchaseItems ImplementPurchaseItem[] @relation("ImplementPurchaseItemEmployee")
 }
 
 model Tractor {
@@ -693,6 +699,7 @@ model Purchase {
   transporterName String?
   mobileNumber    String?
   vehicleNumber   String?
+    driverName      String?
   status          String   @default("NOT_VERIFY")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -734,6 +741,7 @@ model PurchaseItem {
   keyNo         String?
   batteryMake   String?
   batteryNo     String?
+   tyreMake      String?
   first1TyerNo  String?
   first2TyerNo  String?
   second1TyerNo String?
@@ -2812,6 +2820,7 @@ model ImplementCategory {
   models       ImplementModel[]
   variants    ImplementVariant[]
   colours     ImplementColour[]
+   implements Implement[]
 }
 
 
@@ -2826,6 +2835,7 @@ model ImplementBrand {
   models       ImplementModel[] 
   variants    ImplementVariant[]
   colours     ImplementColour[]
+   implements Implement[]
   @@unique([brandName, categoryId])
 }
 
@@ -2842,6 +2852,7 @@ model ImplementModel {
   updatedAt    DateTime          @updatedAt
   variants    ImplementVariant[]
   colours     ImplementColour[]
+   implements Implement[]
   @@unique([brandId, modelName])
 }
 
@@ -2860,6 +2871,7 @@ model ImplementVariant {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   colours     ImplementColour[]
+   implements Implement[]
   @@unique([modelId, variantName])
 }
 
@@ -2879,7 +2891,7 @@ model ImplementColour {
   status      String           @default("ACTIVE")
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
-
+   implements Implement[]
   @@unique([variantId, colourName])
 }
 
@@ -2888,17 +2900,156 @@ model Implement {
   id             Int      @id @default(autoincrement())
   operationType  String   // "SELF_OPERATED" | "TRACTOR_OPERATED"
   
+  categoryId     Int
+  category       ImplementCategory @relation(fields: [categoryId], references: [id])
+  
+  brandId        Int
+  brand          ImplementBrand @relation(fields: [brandId], references: [id])
+  
+  modelId        Int
+  model          ImplementModel @relation(fields: [modelId], references: [id])
+  
+  variantId      Int
+  variant        ImplementVariant @relation(fields: [variantId], references: [id])
+  
+  colourId       Int
+  colour         ImplementColour @relation(fields: [colourId], references: [id])
+  
   itemCode       String   @unique
-  itemName       String   @unique  
+  itemName       String   @unique
   hsnCode        String?
+  taxSlab        String?
   unit           String?
   
-  // Only for SELF_OPERATED
-  chassisNo      String?
-  engineNo       String?
-  serialNo       String?           
-  
+  purchasePrice  Float    @default(0)
+  salesPrice     Float    @default(0)
+  mrp            Float    @default(0)
+  purchaseItems ImplementPurchaseItem[]
   status         String   @default("ACTIVE")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+
+model ImplementPurchase {
+  id        Int      @id @default(autoincrement())
+  companyId Int?
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  financialYearId Int?
+  financialYear   FinancialYear? @relation(fields: [financialYearId], references: [id])
+  billNo          String         @unique
+  purchaseBillNo  String?
+
+  accountId Int
+  account   Account @relation("ImplementPurchaseParty", fields: [accountId], references: [id])
+
+  purchaseDate DateTime
+  dueDate      DateTime?
+
+  purchaseLocation String?
+  narration        String?
+
+  terms String // Credit | Cash | Bank
+
+  cashAccountId Int?
+  cashAccount   Account? @relation("ImplementPurchaseCash", fields: [cashAccountId], references: [id])
+
+  bankAccountId Int?
+  bankAccount   Account? @relation("ImplementPurchaseBank", fields: [bankAccountId], references: [id])
+
+  paymentMode   String?
+  chequeNo      String?
+  chequeDate    DateTime?
+  clearDate     DateTime?
+  bankNarration String?
+
+  // Transport (optional)
+  transportName   String?
+  transportNo     String?
+  lrNo            String?
+  transportDate   DateTime?
+  transportCharge Float?   @default(0)
+
+  totalQty    Int
+  totalAmount Float
+
+  freightCharge Float @default(0)
+  insurance     Float @default(0)
+  otherCharge   Float @default(0)
+  roundAmount   Float @default(0)
+
+  taxableValue Float
+
+  cgst Float @default(0)
+  sgst Float @default(0)
+  igst Float @default(0)
+
+  grandTotal Float
+
+  verifyStatus String  @default("not_verify")
+  createdById  Int?
+  createdBy    String?
+  createdType  String?
+
+  employee  Employee? @relation(fields: [createdById], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  items ImplementPurchaseItem[]
+}
+
+model ImplementPurchaseItem {
+  id Int @id @default(autoincrement())
+
+  purchaseId Int
+  purchase   ImplementPurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  implementId Int?
+  implement   Implement? @relation(fields: [implementId], references: [id])
+
+  operationType String? // Self Operated | Tractor Operated
+
+  itemName     String
+  itemCode     String
+  hsnCode      String?
+  unit         String?
+  taxSlab      String?
+  categoryName String?
+  brandName    String?
+  modelName    String?
+  variantName  String?
+  colourName   String?
+
+  // Self Operated  => chassisNo + engineNo + serialNo
+  // Tractor Operated => sirf serialNo (chassisNo/engineNo null)
+  chassisNo String?
+  engineNo  String?
+  serialNo  String?
+
+  qty          Int
+  stock        Int
+  purchaseRate Float
+  gstPercent   Float
+  gstAmount    Float
+  netAmount    Float
+
+  status         String    @default("Pending") // Pending | Inward
+  inwardById     Int?
+  inwardBy       String?
+  inwardType     String?
+  inwardDate     DateTime?
+  inwardLocation String?
+  grnNumber      String?
+  grnDate        DateTime?
+  grnRecordDate  DateTime?
+
+  employee  Employee? @relation("ImplementPurchaseItemEmployee", fields: [inwardById], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([chassisNo])
+  @@index([engineNo])
+  @@index([serialNo])
+  @@index([implementId])
 }
