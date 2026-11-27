@@ -385,51 +385,86 @@ export const getAccessoriesHistory = async (req: Request, res: Response) => {
     });
   }
 };
+// export const updateAccessory = async (req: Request, res: Response) => {
+//   try {
+//     const id = Number(req.params.id);
+
+//     const item = await prisma.accessory.update({
+//       where: { id },
+//       data: {
+//         itemName: req.body.itemName,
+//         codeNo: req.body.codeNo,
+//         shortName: req.body.shortName,
+//         hsnCode: req.body.hsnCode,
+//         unit: req.body.unit,
+//         taxSlab: req.body.taxSlab,
+//         group: req.body.group,
+
+//         purchasePrice: req.body.purchasePrice
+//           ? Number(req.body.purchasePrice)
+//           : null,
+
+//         salesPrice: req.body.salesPrice ? Number(req.body.salesPrice) : null,
+
+//         mrp: req.body.mrp ? Number(req.body.mrp) : null,
+
+//         opStock: req.body.opStock ? Number(req.body.opStock) : 0,
+//         barCode: req.body.barCode,
+//         showroomVariants: req.body.showroomVariants || [],
+
+//         status: req.body.status,
+//       },
+//     });
+
+//     return res.json({
+//       success: true,
+//       data: item,
+//     });
+//   } catch (error) {
+//     console.error(error);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Failed to update item",
+//     });
+//   }
+// };
+
+
 export const updateAccessory = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
+    const b = req.body;
 
-    const item = await prisma.accessory.update({
-      where: { id },
-      data: {
-        itemName: req.body.itemName,
-        codeNo: req.body.codeNo,
-        shortName: req.body.shortName,
-        hsnCode: req.body.hsnCode,
-        unit: req.body.unit,
-        taxSlab: req.body.taxSlab,
-        group: req.body.group,
+    const data: any = {};
+    const num = (v: any) => (v === "" || v === null ? null : Number(v));
 
-        purchasePrice: req.body.purchasePrice
-          ? Number(req.body.purchasePrice)
-          : null,
+    if (b.itemName !== undefined) data.itemName = b.itemName;
+    if (b.codeNo !== undefined) data.codeNo = b.codeNo;
+    if (b.shortName !== undefined) data.shortName = b.shortName;
+    if (b.hsnCode !== undefined) data.hsnCode = b.hsnCode;
+    if (b.unit !== undefined) data.unit = b.unit;
+    if (b.taxSlab !== undefined) data.taxSlab = b.taxSlab;
+    if (b.group !== undefined) data.group = b.group;
+    if (b.purchasePrice !== undefined) data.purchasePrice = num(b.purchasePrice);
+    if (b.salesPrice !== undefined) data.salesPrice = num(b.salesPrice);
+    if (b.mrp !== undefined) data.mrp = num(b.mrp);
+    if (b.opStock !== undefined) data.opStock = Number(b.opStock) || 0;
+    if (b.barCode !== undefined) data.barCode = b.barCode;
+    if (b.showroomVariants !== undefined) data.showroomVariants = b.showroomVariants;
+    if (b.status !== undefined) data.status = b.status;
 
-        salesPrice: req.body.salesPrice ? Number(req.body.salesPrice) : null,
+    const item = await prisma.accessory.update({ where: { id }, data });
 
-        mrp: req.body.mrp ? Number(req.body.mrp) : null,
-
-        opStock: req.body.opStock ? Number(req.body.opStock) : 0,
-        barCode: req.body.barCode,
-        showroomVariants: req.body.showroomVariants || [],
-
-        status: req.body.status,
-      },
-    });
-
-    return res.json({
-      success: true,
-      data: item,
-    });
+    return res.json({ success: true, data: item });
   } catch (error) {
     console.error(error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to update item",
     });
   }
 };
-
 export const deleteAccessory = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
@@ -447,5 +482,20 @@ export const deleteAccessory = async (req: Request, res: Response) => {
       success: false,
       message: "Failed to delete item",
     });
+  }
+};
+export const getActiveAccessories = async (req: Request, res: Response) => {
+  try {
+    const accessories = await prisma.accessory.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.status(200).json({ success: true, data: accessories });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch active accessories" });
   }
 };

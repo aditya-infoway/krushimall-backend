@@ -2,6 +2,7 @@ import express from "express";
 import {
   createSparePart,
   getSpareParts,
+  getActiveSpareParts,
   getSparePartHistory,
   updateSparePart,
   deleteSparePart,
@@ -13,6 +14,7 @@ const router = express.Router();
 
 router.post("/", verifyToken, createSparePart);
 router.get("/", verifyToken, getSpareParts);
+router.get("/active", verifyToken, getActiveSpareParts);
 router.get("/:id/history", verifyAnyToken, getSparePartHistory);
 router.put("/:id", verifyToken, updateSparePart);
 router.delete("/:id", verifyToken, deleteSparePart);
