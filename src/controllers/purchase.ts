@@ -841,6 +841,7 @@ export const submitPurchaseItemInward = async (req: Request, res: Response) => {
       keyNo,
       batteryMake,
       batteryNo,
+         tyreMake,  
       first1TyerNo,
       first2TyerNo,
       second1TyerNo,
@@ -859,6 +860,7 @@ export const submitPurchaseItemInward = async (req: Request, res: Response) => {
         keyNo,
         batteryMake,
         batteryNo,
+            tyreMake, 
         first1TyerNo,
         first2TyerNo,
         second1TyerNo,
@@ -912,7 +914,7 @@ export const saveTransport = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
 
-    const { transporterName, mobileNumber, vehicleNumber } = req.body;
+    const { transporterName, mobileNumber, vehicleNumber,   driverName, } = req.body;
 
     const purchase = await prisma.purchase.update({
       where: { id },
@@ -920,6 +922,7 @@ export const saveTransport = async (req: Request, res: Response) => {
         transporterName,
         mobileNumber,
         vehicleNumber,
+           driverName,
       },
     });
 
@@ -948,6 +951,7 @@ export const getTransport = async (req: Request, res: Response) => {
         transporterName: true,
         mobileNumber: true,
         vehicleNumber: true,
+           driverName: true,
       },
     });
 
