@@ -2812,6 +2812,7 @@ model ImplementCategory {
   models       ImplementModel[]
   variants    ImplementVariant[]
   colours     ImplementColour[]
+   implements Implement[]
 }
 
 
@@ -2826,6 +2827,7 @@ model ImplementBrand {
   models       ImplementModel[] 
   variants    ImplementVariant[]
   colours     ImplementColour[]
+   implements Implement[]
   @@unique([brandName, categoryId])
 }
 
@@ -2842,6 +2844,7 @@ model ImplementModel {
   updatedAt    DateTime          @updatedAt
   variants    ImplementVariant[]
   colours     ImplementColour[]
+   implements Implement[]
   @@unique([brandId, modelName])
 }
 
@@ -2860,6 +2863,7 @@ model ImplementVariant {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   colours     ImplementColour[]
+   implements Implement[]
   @@unique([modelId, variantName])
 }
 
@@ -2879,7 +2883,7 @@ model ImplementColour {
   status      String           @default("ACTIVE")
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
-
+   implements Implement[]
   @@unique([variantId, colourName])
 }
 
@@ -2888,15 +2892,30 @@ model Implement {
   id             Int      @id @default(autoincrement())
   operationType  String   // "SELF_OPERATED" | "TRACTOR_OPERATED"
   
+  categoryId     Int
+  category       ImplementCategory @relation(fields: [categoryId], references: [id])
+  
+  brandId        Int
+  brand          ImplementBrand @relation(fields: [brandId], references: [id])
+  
+  modelId        Int
+  model          ImplementModel @relation(fields: [modelId], references: [id])
+  
+  variantId      Int
+  variant        ImplementVariant @relation(fields: [variantId], references: [id])
+  
+  colourId       Int
+  colour         ImplementColour @relation(fields: [colourId], references: [id])
+  
   itemCode       String   @unique
-  itemName       String   @unique  
+  itemName       String   @unique
   hsnCode        String?
+  taxSlab        String?
   unit           String?
   
-  // Only for SELF_OPERATED
-  chassisNo      String?
-  engineNo       String?
-  serialNo       String?           
+  purchasePrice  Float    @default(0)
+  salesPrice     Float    @default(0)
+  mrp            Float    @default(0)
   
   status         String   @default("ACTIVE")
   createdAt      DateTime @default(now())

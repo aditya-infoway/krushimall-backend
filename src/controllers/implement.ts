@@ -6,27 +6,31 @@ export const createImplement = async (req: Request, res: Response) => {
   try {
     const {
       operationType,
+      categoryId,
+      brandId,
+      modelId,
+      variantId,
+      colourId,
       itemCode,
       itemName,
       hsnCode,
+      taxSlab,
       unit,
-      chassisNo,
-      engineNo,
-      serialNo,
+      purchasePrice,
+      salesPrice,
+      mrp,
       status,
     } = req.body;
 
-    if (!itemCode || !itemName || !operationType) {
+    if (!itemCode || !itemName || !operationType || !categoryId || !brandId || !modelId || !variantId || !colourId) {
       return res.status(400).json({
         success: false,
-        message: "Item Code, Item Name, and Operation Type are required",
+        message: "All required fields must be provided",
       });
     }
 
     const existing = await prisma.implement.findFirst({
-      where: {
-        OR: [{ itemCode }, { itemName }],
-      },
+      where: { OR: [{ itemCode }, { itemName }] },
     });
 
     if (existing) {
@@ -40,15 +44,22 @@ export const createImplement = async (req: Request, res: Response) => {
     const implement = await prisma.implement.create({
       data: {
         operationType,
+        categoryId: Number(categoryId),
+        brandId: Number(brandId),
+        modelId: Number(modelId),
+        variantId: Number(variantId),
+        colourId: Number(colourId),
         itemCode,
         itemName,
-        hsnCode,
-        unit,
-        chassisNo: operationType === "SELF_OPERATED" ? chassisNo : null,
-        engineNo: operationType === "SELF_OPERATED" ? engineNo : null,
-        serialNo,
+        hsnCode: hsnCode || null,
+        taxSlab: taxSlab || null,
+        unit: unit || null,
+        purchasePrice: purchasePrice ? Number(purchasePrice) : 0,
+        salesPrice: salesPrice ? Number(salesPrice) : 0,
+        mrp: mrp ? Number(mrp) : 0,
         status: status || "ACTIVE",
       },
+      include: { category: true, brand: true, model: true, variant: true, colour: true },
     });
 
     return res.status(201).json({ success: true, data: implement });
@@ -63,6 +74,13 @@ export const getImplements = async (req: Request, res: Response) => {
   try {
     const implementsList = await prisma.implement.findMany({
       orderBy: { id: "desc" },
+      include: {
+        category: { select: { id: true, categoryName: true } },
+        brand: { select: { id: true, brandName: true } },
+        model: { select: { id: true, modelName: true } },
+        variant: { select: { id: true, variantName: true } },
+        colour: { select: { id: true, colourName: true, colourCode: true } },
+      },
     });
     return res.status(200).json({ success: true, data: implementsList });
   } catch (error) {
@@ -75,7 +93,10 @@ export const getImplements = async (req: Request, res: Response) => {
 export const getImplementById = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
-    const implement = await prisma.implement.findUnique({ where: { id } });
+    const implement = await prisma.implement.findUnique({
+      where: { id },
+      include: { category: true, brand: true, model: true, variant: true, colour: true },
+    });
 
     if (!implement) {
       return res.status(404).json({ success: false, message: "Implement not found" });
@@ -94,13 +115,19 @@ export const updateImplement = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
     const {
       operationType,
+      categoryId,
+      brandId,
+      modelId,
+      variantId,
+      colourId,
       itemCode,
       itemName,
       hsnCode,
+      taxSlab,
       unit,
-      chassisNo,
-      engineNo,
-      serialNo,
+      purchasePrice,
+      salesPrice,
+      mrp,
       status,
     } = req.body;
 
@@ -123,15 +150,22 @@ export const updateImplement = async (req: Request, res: Response) => {
       where: { id },
       data: {
         operationType,
+        categoryId: Number(categoryId),
+        brandId: Number(brandId),
+        modelId: Number(modelId),
+        variantId: Number(variantId),
+        colourId: Number(colourId),
         itemCode,
         itemName,
-        hsnCode,
-        unit,
-        chassisNo: operationType === "SELF_OPERATED" ? chassisNo : null,
-        engineNo: operationType === "SELF_OPERATED" ? engineNo : null,
-        serialNo,
+        hsnCode: hsnCode || null,
+        taxSlab: taxSlab || null,
+        unit: unit || null,
+        purchasePrice: purchasePrice ? Number(purchasePrice) : 0,
+        salesPrice: salesPrice ? Number(salesPrice) : 0,
+        mrp: mrp ? Number(mrp) : 0,
         status,
       },
+      include: { category: true, brand: true, model: true, variant: true, colour: true },
     });
 
     return res.status(200).json({ success: true, data: implement });
