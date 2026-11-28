@@ -936,11 +936,10 @@ export const updateImplementPurchaseItemStatus = async (
 
 export const getImplementInventory = async (req: Request, res: Response) => {
   try {
-    const purchases = await prisma.implementPurchase.findMany({
-      where: { verifyStatus: "verify" },
-      include: { account: true, items: true },
-      orderBy: { id: "desc" },
-    });
+const purchases = await prisma.implementPurchase.findMany({
+  include: { account: true, items: true },
+  orderBy: { id: "desc" },
+})
 
     const data = purchases.flatMap((purchase) =>
       purchase.items.map((item) => {
